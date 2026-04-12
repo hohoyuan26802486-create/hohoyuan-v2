@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>禾禾園 - 權限管理後台 (安全升級版)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { color: #333; font-size: 24px; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-bottom: 20px;}
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; color: #555; }
+        .action-btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-right: 5px; }
+        .btn-success { background-color: #28a745; }
+        .btn-primary { background-color: #1a73e8; }
+        .btn-danger { background-color: #dc3545; }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: bold; margin-bottom: 5px; font-size: 14px;}
+        .form-group input, .form-group select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 150px;}
+        
+        .role-selector { background: #333; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .role-selector select { padding: 8px; border-radius: 4px; font-size: 16px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight:bold; color: white;}
+        .bg-warning { background-color: #ffc107; color: #333; }
+        .bg-info { background-color: #17a2b8; }
+        .bg-primary { background-color: #0d6efd; }
+        .bg-success { background-color: #28a745; }
+        .bg-danger { background-color: #dc3545; }
+        
+        /* 隱藏薪資的樣式 */
+        .salary-hidden { filter: blur(4px); user-select: none; }
+    </style>
+</head>
+<body>
+
+<div class="container role-selector">
+    <div>
+        <strong>🔑 目前登入身分：</strong>
+        <select id="adminRole" onchange="handleRoleChange()">
+            <option value="業務部主管">業務部 - 主管</option>
+            <option value="運輸部主管">運輸部 - 主管</option>
+            <option value="會計部主管">會計部 - 主管</option>
+            <option value="倉儲部主管">倉儲部 - 主管</option>
+            <option value="生產部主管">生產部 - 主管</option>
+            <option value="人事部">人事部 (系統總管)</option>
+            <option value="副總">最高管理層 - 副總</option>
+        </select>
+    </div>
+    <button onclick="if(confirm('確定要清除所有資料嗎？')) { localStorage.clear(); location.reload(); }" class="btn-danger" style="padding: 5px 10px; border-radius: 4px; border:none;">清除所有資料</button>
+</div>
+
+<div class="container" id="employeeManagementSection">
+    <h1>👥 員工管理與部門設定</h1>
+    
+    <div id="addEmployeeForm" style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
+        <h3 style="margin-top: 0; color: #d63384;">➕ 新增/修改員工 (僅人事專用)</h3>
+        <div class="form-row">
+            <div class="form-group"><label>員工姓名</label><input type="text" id="empName" placeholder="例如：王小明"></div>
+            <div class="form-group">
+                <label>所屬部門</label>
+                <input type="text" id="empDept" placeholder="例如：財務部" list="deptList">
+                <datalist id="deptList">
+                    <option value="業務部">
+                    <option value="運輸部">
+                    <option value="人事部">
+                    <option value="會計部">
+                    <option value="生產部">
+                    <option value="倉儲部">
+                </datalist>
+            </div>
+            <div class="form-group"><label>計薪方式</label><select id="empType"><option>月薪</option><option>時薪</option></select></div>
+            <div class="form-group"><label>基本薪資/時薪</label><input type="number" id="empSalary" placeholder="例如：36000"></div>
+            <button class="action-btn btn-primary" onclick="addEmployee()">💾 儲存資料</button>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>部門</th>
+                <th>姓名</th>
+                <th>計薪方式</th>
+                <th>基本薪資 <span id="salaryVisibilityNote" style="font-size:12px; font-weight:normal; color:#dc3545;">(已遮蔽)</span></th>
+                <th id="actionColumnTh" style="display:none;">操作</th>
+            </tr>
+        </thead>
+        <tbody id="employeeListBody"></tbody>
+    </table>
+</div>
+
+<div class="container" id="reportSection" style="display:none;">
+    <h1>📊 結算與匯出 Excel (機密功能)</h1>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <label style="font-weight: bold;">請選擇結算月份：</label>
+        <input type="month" id="reportMonth" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        <button class="action-btn btn-success" onclick="generateReport()">📥 計算薪資並下載</button>
+    </div>
+</div>
+
+<div class="container">
+    <h1>📝 請假簽核任務 (<span id="roleLabel" style="color:#1a73e8;">業務部主管</span>)</h1>
+    <p style="color:#666; font-size:14px;">您只會看到需要您目前層級審核的假單，或您部門內的歷史紀錄。</p>
+    <table>
+        <thead><tr><th>部門</th><th>員工</th><th>假別</th><th>起訖時間</th><th>狀態</th><th>簽核操作</th></tr></thead>
+        <tbody id="leaveBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // --- 密碼設定區 ---
+    const HR_PASSWORD = "123";   // 人事部密碼
+    const BOSS_PASSWORD = "456"; // 副總密碼
+    let currentRole = "業務部主管"; // 預設身分
+
+    const defaultEmps = [
+        { name: "測試員", dept: "業務部", type: "月薪", salary: 36000 },
+        { name: "人事主管", dept: "人事部", type: "月薪", salary: 50000 }
+    ];
+
+    // 處理身分切換與密碼驗證
+    window.handleRoleChange = function() {
+        const select = document.getElementById('adminRole');
+        const selectedRole = select.value;
+
+        if (selectedRole === '人事部') {
+            const pwd = prompt("請輸入【人事部】專用密碼：");
+            if (pwd !== HR_PASSWORD) {
+                alert("密碼錯誤！權限已退回一般主管。");
+                select.value = currentRole; // 退回原本的選擇
+                return;
+            }
+        } else if (selectedRole === '副總') {
+            const pwd = prompt("請輸入【副總】專用密碼：");
+            if (pwd !== BOSS_PASSWORD) {
+                alert("密碼錯誤！權限已退回一般主管。");
+                select.value = currentRole;
+                return;
+            }
+        }
+        
+        // 驗證成功或切換為一般主管
+        currentRole = selectedRole;
+        loadData();
+    }
+
+    // 1. 員工管理功能 (加入薪資遮蔽邏輯)
+    function loadEmployees() {
+        const role = currentRole;
+        const isHR = role === '人事部';
+        
+        const emps = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
+        const tbody = document.getElementById('employeeListBody');
+        tbody.innerHTML = '';
+
+        // 控制表頭顯示
+        document.getElementById('salaryVisibilityNote').style.display = isHR ? 'none' : 'inline';
+        document.getElementById('actionColumnTh').style.display = isHR ? 'table-cell' : 'none';
+
+        emps.forEach(e => {
+            // 如果不是人事，薪水欄位顯示為 ***
+            const displaySalary = isHR ? `$${e.salary}` : `<span class="salary-hidden">***</span>`;
+            const actionBtn = isHR ? `<td><button class="action-btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteEmployee('${e.name}')">刪除</button></td>` : `<td style="display:none;"></td>`;
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td>${e.dept}</td>
+                    <td><strong>${e.name}</strong></td>
+                    <td>${e.type}</td>
+                    <td>${displaySalary}</td>
+                    ${actionBtn}
+                </tr>
+            `;
+        });
+    }
+
+    window.addEmployee = function() {
+        const name = document.getElementById('empName').value.trim();
+        const dept = document.getElementById('empDept').value.trim();
+        const type = document.getElementById('empType').value;
+        const salary = document.getElementById('empSalary').value;
+        if(!name || !dept || !salary) return alert("請填寫完整資訊！包含部門名稱。");
+
+        let emps = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
+        const index = emps.findIndex(e => e.name === name);
+        if(index !== -1) { emps[index] = { name, dept, type, salary }; } 
+        else { emps.push({ name, dept, type, salary }); }
+        
+        localStorage.setItem('employee_list', JSON.stringify(emps));
+        document.getElementById('empName').value = '';
+        document.getElementById('empSalary').value = '';
+        loadEmployees();
+        alert(`✅ 已儲存 ${name} (${dept}) 的資料！`);
+    }
+
+    window.deleteEmployee = function(name) {
+        if(confirm(`確定要刪除 ${name} 嗎？`)) {
+            let emps = JSON.parse(localStorage.getItem('employee_list')) || [];
+            emps = emps.filter(e => e.name !== name);
+            localStorage.setItem('employee_list', JSON.stringify(emps));
+            loadEmployees();
+        }
+    }
+
+    // 2. 載入並過濾假單與權限 UI
+    window.loadData = function() {
+        const role = currentRole;
+        document.getElementById('roleLabel').innerText = role;
+
+        // 權限控制
+        const isHR = role === '人事部';
+        const isBoss = role === '副總';
+        
+        // 只有人事可以新增員工
+        document.getElementById('addEmployeeForm').style.display = isHR ? 'block' : 'none';
+        // 只有人事和副總可以下載報表
+        document.getElementById('reportSection').style.display = (isHR || isBoss) ? 'block' : 'none';
+
+        loadEmployees(); // 重新載入員工名單以套用遮蔽
+
+        const leaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
+        const tbody = document.getElementById('leaveBody');
+        tbody.innerHTML = '';
+
+        leaves.reverse().forEach(l => {
+            let showRow = false;
+            let canApprove = false;
+            let targetAction = '';
+
+            if (role.includes('主管')) {
+                const targetDept = role.split('主管')[0];
+                if (l.department === targetDept) {
+                    showRow = true;
+                    if (l.status === '待主管審核') { canApprove = true; targetAction = '待人事審核'; }
+                }
+            } else if (role === '人事部') {
+                showRow = true; 
+                if (l.status === '待人事審核') { canApprove = true; targetAction = '待副總審核'; }
+            } else if (role === '副總') {
+                showRow = true;
+                if (l.status === '待副總審核') { canApprove = true; targetAction = '已生效'; }
+            }
+
+            if (showRow) {
+                let badgeClass = 'bg-warning';
+                if (l.status === '待人事審核') badgeClass = 'bg-info';
+                if (l.status === '待副總審核') badgeClass = 'bg-primary';
+                if (l.status === '已生效') badgeClass = 'bg-success';
+                if (l.status === '已退件') badgeClass = 'bg-danger';
+
+                let btnHtml = '';
+                if (canApprove) {
+                    btnHtml = `
+                        <button class="action-btn btn-success" style="padding:4px 8px; font-size:12px;" onclick="processLeave('${l.id}', '${targetAction}')">同意</button>
+                        <button class="action-btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="processLeave('${l.id}', '已退件')">退件</button>
+                    `;
+                } else {
+                    btnHtml = `<span style="color:#888; font-size:12px;">無操作權限或已審畢</span>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${l.department}</td>
+                        <td><strong>${l.employeeName}</strong></td>
+                        <td>${l.leaveType}</td>
+                        <td style="font-size:14px;">${l.startTime.replace('T',' ')} ~ ${l.endTime.replace('T',' ')}</td>
+                        <td><span class="badge ${badgeClass}">${l.status}</span></td>
+                        <td>${btnHtml}</td>
+                    </tr>
+                `;
+            }
+        });
+    }
+
+    window.processLeave = function(id, nextStatus) {
+        let leaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
+        const idx = leaves.findIndex(l => l.id === id);
+        if(idx !== -1) { 
+            leaves[idx].status = nextStatus; 
+            localStorage.setItem('leave_requests', JSON.stringify(leaves)); 
+            loadData(); 
+        }
+    }
+
+    // 3. 產生 Excel
+    window.generateReport = function() {
+        const monthStr = document.getElementById('reportMonth').value;
+        if(!monthStr) return alert("請先選擇結算月份！");
+        const emps = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
+        const records = JSON.parse(localStorage.getItem('attendance_records')) || [];
+        const reportData = {};
+        
+        emps.forEach(emp => {
+            const baseSal = parseFloat(emp.salary);
+            const hourly = emp.type === "月薪" ? Math.round(baseSal / 240) : baseSal;
+            reportData[emp.name] = { "部門": emp.dept, "員工姓名": emp.name, "計薪方式": emp.type, "基本薪資": baseSal, "正常出勤": 0, "遲到": 0, "加班費預估": 0 };
+        });
+
+        records.forEach(r => {
+            if(r.timestamp.startsWith(monthStr) && reportData[r.employeeName]) {
+                const target = reportData[r.employeeName];
+                if(r.status === "正常上班") target["正常出勤"]++;
+                if(r.status === "遲到") target["遲到"]++;
+                if(r.status === "加班") { target["加班費預估"] += Math.round((target["基本薪資"]/240) * 1.34 * 2); }
+            }
+        });
+
+        const finalArray = Object.values(reportData);
+        if(finalArray.length === 0) return alert("沒有資料可匯出！");
+        const ws = XLSX.utils.json_to_sheet(finalArray);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "薪資結算");
+        XLSX.writeFile(wb, `禾禾園_${monthStr}_薪資報表.xlsx`);
+    }
+
+    // 初始化載入
+    loadData();
+</script>
+</body>
+</html>
