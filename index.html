@@ -19,17 +19,10 @@
         .leave-form { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #eee; text-align: left; }
         .my-leaves { text-align: left; }
         .leave-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #17a2b8; }
-        .leave-item.status-final { border-left-color: #28a745; background: #e8f5e9; }
-        .leave-item.status-rejected { border-left-color: #dc3545; background: #ffebee; }
-        .leave-item p { margin: 5px 0; font-size: 14px; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
         .bg-success { background-color: #28a745; }
-        .bg-danger { background-color: #dc3545; }
         .bg-warning { background-color: #ffc107; color: #333; }
-        .bg-info { background-color: #17a2b8; }
-        .bg-primary { background-color: #0d6efd; }
-        #deptDisplay { font-size: 14px; color: #666; font-weight: bold; text-align: left; margin-top: -10px; margin-bottom: 15px; display: none; }
-        
+        .bg-danger { background-color: #dc3545; }
         #actionArea, #historyArea { display: none; }
         #welcomeMessage { color: #888; margin-top: 10px; font-size: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px dashed #ccc;}
     </style>
@@ -41,258 +34,116 @@
     <div id="clock">00:00:00</div>
     
     <div class="form-group">
-        <label>👤 請先選擇您的名字：</label>
+        <label>👤 請選擇您的名字：</label>
         <select id="employeeSelect" onchange="onEmployeeChange()">
-            <option value="">-- 點此選擇員工 --</option>
+            <option value="">-- 讀取名單中... --</option>
         </select>
     </div>
-    <div id="deptDisplay">所屬部門：<span id="empDeptName">-</span></div>
     
-    <div id="welcomeMessage">👋 請先在上方選擇您的名字，即可展開打卡與請假功能。</div>
+    <div id="welcomeMessage">👋 請先選擇名字以展開功能。</div>
 
     <div id="actionArea">
         <button class="btn btn-in" onclick="handlePunch('in')">📍 上班打卡</button>
         <button class="btn btn-out" onclick="handlePunch('out')">📍 下班打卡</button>
         
         <div class="leave-form">
-            <h3 style="margin-top:0; color:#333;">📝 線上申請請假</h3>
+            <h3 style="margin-top:0;">📝 申請請假</h3>
             <div class="form-group"><label>假別</label><select id="leaveType"><option>特休</option><option>病假</option><option>事假</option></select></div>
             <div class="form-group"><label>開始時間</label><input type="datetime-local" id="leaveStart"></div>
             <div class="form-group"><label>結束時間</label><input type="datetime-local" id="leaveEnd"></div>
-            <div class="form-group"><label>請假事由</label><input type="text" id="leaveReason" placeholder="請簡述原因"></div>
-            <button id="leaveSubmitBtn" class="btn btn-leave" onclick="submitLeave()">送出假單</button>
+            <div class="form-group"><label>原因</label><input type="text" id="leaveReason" placeholder="請簡述"></div>
+            <button id="lBtn" class="btn btn-leave" onclick="submitLeave()">送出假單</button>
         </div>
     </div>
 </div>
 
 <div class="container my-leaves" id="historyArea">
-    <h3 style="margin-top:0; color:#333; border-bottom: 2px solid #1a73e8; padding-bottom: 5px;">👀 我的請假紀錄與進度</h3>
+    <h3 style="margin-top:0;">👀 我的請假進度</h3>
     <div id="myLeavesList"></div>
 </div>
 
 <script>
-    // 🔗 這裡已經換成您最新的專屬網址！
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwKOAHwEOeybHmbhlUI_jMFAMAgX2s3kWLmOvDvcEYYqwFmm-lfTm0OgSKu-JC24384kQ/exec";
-
-    // 從雲端動態載入員工名單
-    async function loadEmployees() {
-        const select = document.getElementById('employeeSelect');
-        select.innerHTML = '<option value="">-- 正在讀取名單... --</option>';
-        
-        try {
-            const response = await fetch(CONFIG_URL);
-            const result = await response.json();
-            const employees = result.employees.filter(r => r[0]).map(r => ({ name: r[0], dept: r[1] }));
-            
-            if(employees.length > 0) {
-                select.innerHTML = '<option value="">-- 點此選擇員工 --</option>' + 
-                    employees.map(emp => `<option value="${emp.name}" data-dept="${emp.dept}">${emp.name}</option>`).join('');
-                localStorage.setItem('employee_list_cache', JSON.stringify(employees));
-            } else {
-                select.innerHTML = '<option value="">-- 尚無名單，請聯絡人事 --</option>';
-            }
-        } catch(e) {
-            // 沒網路時用快取
-            const cached = JSON.parse(localStorage.getItem('employee_list_cache')) || [{ name: "測試員", dept: "業務部" }];
-            select.innerHTML = '<option value="">-- (離線模式) 點此選擇員工 --</option>' + 
-                cached.map(emp => `<option value="${emp.name}" data-dept="${emp.dept}">${emp.name}</option>`).join('');
-        }
-    }
-
-    window.onEmployeeChange = function() {
-        const select = document.getElementById('employeeSelect');
-        const selectedOption = select.options[select.selectedIndex];
-        
-        const actionArea = document.getElementById('actionArea');
-        const historyArea = document.getElementById('historyArea');
-        const welcomeMsg = document.getElementById('welcomeMessage');
-        const deptDisplay = document.getElementById('deptDisplay');
-        const empDeptName = document.getElementById('empDeptName');
-
-        if(select.value) {
-            deptDisplay.style.display = 'block';
-            empDeptName.innerText = selectedOption.getAttribute('data-dept') || '未設定';
-            welcomeMsg.style.display = 'none';
-            actionArea.style.display = 'block';
-            historyArea.style.display = 'block';
-            loadMyLeaves();
-        } else {
-            deptDisplay.style.display = 'none';
-            welcomeMsg.style.display = 'block';
-            actionArea.style.display = 'none';
-            historyArea.style.display = 'none';
-        }
-    }
-
-    // 讀取個人的請假進度
-    async function loadMyLeaves() {
-        const empName = document.getElementById('employeeSelect').value;
-        const listDiv = document.getElementById('myLeavesList');
-        listDiv.innerHTML = '<p style="color:#888; text-align:center;">資料讀取中...</p>';
-        
-        try {
-            const response = await fetch(CONFIG_URL);
-            const result = await response.json();
-            
-            const myLeaves = result.leave.filter(r => r[0] && r[2] === empName).map(r => ({
-                leaveType: r[4], startTime: r[5], endTime: r[6], reason: r[7], status: r[8]
-            }));
-
-            if (myLeaves.length === 0) { 
-                listDiv.innerHTML = '<p style="color:#888; text-align:center;">您目前沒有任何請假紀錄。</p>'; 
-                return; 
-            }
-
-            listDiv.innerHTML = myLeaves.reverse().map(l => {
-                let statusClass = '';
-                let statusText = l.status;
-                let badgeClass = 'bg-warning';
-
-                if (l.status === '已生效') { badgeClass = 'bg-success'; statusClass = 'status-final'; }
-                if (l.status === '已退件') { badgeClass = 'bg-danger'; statusClass = 'status-rejected'; }
-                if (l.status === '待人事審核') { badgeClass = 'bg-info'; }
-                if (l.status === '待副總審核') { badgeClass = 'bg-primary'; }
-
-                const startStr = typeof l.startTime === 'string' ? l.startTime.replace('T', ' ').substring(0, 16) : l.startTime;
-                const endStr = typeof l.endTime === 'string' ? l.endTime.replace('T', ' ').substring(0, 16) : l.endTime;
-
-                return `
-                <div class="leave-item ${statusClass}">
-                    <p><strong>假別：</strong> ${l.leaveType}</p>
-                    <p><strong>時間：</strong> ${startStr} ~ ${endStr}</p>
-                    <p><strong>事由：</strong> ${l.reason}</p>
-                    <p><strong>目前進度：</strong> <span class="badge ${badgeClass}">${statusText}</span></p>
-                </div>
-                `;
-            }).join('');
-        } catch(e) {
-            listDiv.innerHTML = '<p style="color:red; text-align:center;">網路連線失敗，無法顯示紀錄。</p>';
-        }
-    }
-
-    setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false }), 1000);
-
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzAra7T4uQelRBAdAc02xKnKEbWP5Ic12mBXEgW2HOBwu-Q_xLsixuGe1PJ7gxoKfDBJA/exec";
     const COMPANY_LAT = 24.95028;
     const COMPANY_LON = 121.38905;
-    const MAX_DISTANCE_KM = 2.0;
+    const MAX_DIST = 2.0;
 
-    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-        const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    async function loadData() {
+        const res = await fetch(CONFIG_URL);
+        const data = await res.json();
+        const select = document.getElementById('employeeSelect');
+        const emps = data.employees.filter(r => r[0]);
+        select.innerHTML = '<option value="">-- 請選擇 --</option>' + emps.map(r => `<option value="${r[0]}" data-dept="${r[1]}">${r[0]}</option>`).join('');
+        window.cloudLeave = data.leave;
+    }
+
+    function onEmployeeChange() {
+        const val = document.getElementById('employeeSelect').value;
+        document.getElementById('actionArea').style.display = val ? 'block' : 'none';
+        document.getElementById('historyArea').style.display = val ? 'block' : 'none';
+        document.getElementById('welcomeMessage').style.display = val ? 'none' : 'block';
+        if(val) renderMyLeaves(val);
+    }
+
+    function renderMyLeaves(name) {
+        const list = window.cloudLeave.filter(r => r[2] === name);
+        document.getElementById('myLeavesList').innerHTML = list.reverse().map(r => `
+            <div class="leave-item">
+                <p><strong>${r[4]}</strong>: ${r[5].replace('T',' ')} ~ ${r[6].replace('T',' ')}</p>
+                <p>狀態: <span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning'}">${r[8]}</span></p>
+            </div>
+        `).join('') || '尚無紀錄';
+    }
+
+    function getDist(lat1, lon1, lat2, lon2) {
+        const R = 6371; const dLat = (lat2-lat1)*Math.PI/180; const dLon = (lon2-lon1)*Math.PI/180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // 打卡邏輯
     window.handlePunch = function(type) {
-        const select = document.getElementById('employeeSelect');
-        const empName = select.value;
-        if (!empName) return alert("⚠️ 請先在最上方選擇您的名字！");
-        
-        if (!navigator.geolocation) return alert("您的瀏覽器不支援定位功能！");
+        const name = document.getElementById('employeeSelect').value;
+        const dept = document.getElementById('employeeSelect').selectedOptions[0].dataset.dept;
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const dist = getDist(COMPANY_LAT, COMPANY_LON, pos.coords.latitude, pos.coords.longitude);
+            if(type==='in' && dist > MAX_DIST) return alert("距離過遠，打卡失敗");
 
-        navigator.geolocation.getCurrentPosition((position) => {
-            const distance = getDistanceFromLatLonInKm(COMPANY_LAT, COMPANY_LON, position.coords.latitude, position.coords.longitude);
-            
-            // 只有「上班(in)」才檢查距離
-            if (type === 'in' && distance > MAX_DISTANCE_KM) {
-                return alert(`打卡失敗！您目前距離公司超過範圍。`);
-            }
-
-            const dept = select.options[select.selectedIndex].getAttribute('data-dept');
             const now = new Date();
-            const timeNum = now.getHours() * 100 + now.getMinutes();
-            let punchStatus = "正常";
-            let displayType = type === 'in' ? "上班" : "下班";
+            const hhmm = now.getHours()*100 + now.getMinutes();
+            let status = "正常";
 
-            if (type === 'in') { // 上班
-                if (timeNum < 720) {
-                    const choice = prompt("目前早於 07:20，請選擇原因：\n1. 因個人因素提早上班");
-                    if (choice === "1") {
-                        punchStatus = "個人因素提早上班";
-                    } else {
-                        return alert("未選擇原因，打卡取消。");
-                    }
-                } else if (timeNum > 730) {
-                    const choice = prompt("已超過 07:30，請選擇狀態：\n1. 遲到\n2. 正常上班");
-                    if (choice === "1") punchStatus = "遲到";
-                    else if (choice === "2") punchStatus = "正常上班";
-                    else return alert("未選擇原因，打卡取消。");
-                } else {
-                    punchStatus = "正常上班";
+            if(type==='in') {
+                if(hhmm < 720) {
+                    if(prompt("目前早於 07:20，請輸入 1 確認：\n1. 因個人因素提早上班") !== "1") return;
+                    status = "個人因素提早上班";
+                } else if(hhmm > 730) {
+                    const c = prompt("超過 07:30，請選擇：\n1. 遲到\n2. 正常上班");
+                    status = (c==="1") ? "遲到" : "正常上班";
                 }
-            } else { // 下班
-                if (timeNum >= 1650) {
-                    const choice = prompt("已超過 16:50 下班時間，請選擇原因：\n1. 經主管事前核准後同意加班\n2. 因個人因素延後下班");
-                    if (choice === "1") punchStatus = "主管核准加班";
-                    else if (choice === "2") punchStatus = "個人因素晚走";
-                    else return alert("未選擇原因，打卡取消。");
-                } else {
-                    punchStatus = "正常下班";
+            } else {
+                if(hhmm >= 1650) {
+                    const c = prompt("超過 16:50，請選擇：\n1. 經主管事前核准後同意加班\n2. 因個人因素延後下班");
+                    status = (c==="1") ? "主管核准加班" : "個人因素延後下班";
                 }
             }
 
-            // 傳送資料到 Google 試算表
-            fetch(CONFIG_URL, {
-                method: "POST",
-                body: JSON.stringify({
-                    action: "write",
-                    sheetName: "attendance",
-                    name: empName,
-                    dept: dept,
-                    type: displayType,
-                    status: punchStatus
-                })
-            }).then(() => {
-                alert(`✅ ${empName} 打卡成功！資料已同步至雲端。\n狀態：${punchStatus}`);
-            }).catch(err => {
-                alert("網路連線錯誤，無法上傳至雲端，請稍後再試。");
-            });
-            
-        }, () => alert("定位失敗，請允許網頁存取位置資訊！"), { enableHighAccuracy: true });
+            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action:"write", sheetName:"attendance", name, dept, type:type==='in'?'上班':'下班', status }) });
+            alert("打卡成功！");
+        }, () => alert("請開啟定位"));
     }
 
-    // 雲端請假單
-    window.submitLeave = function() {
-        const select = document.getElementById('employeeSelect');
-        const empName = select.value;
-        if (!empName) return alert("⚠️ 請先在最上方選擇您的名字！");
-        const dept = select.options[select.selectedIndex].getAttribute('data-dept');
-        const start = document.getElementById('leaveStart').value;
-        const end = document.getElementById('leaveEnd').value;
-        if (!start || !end) return alert("⚠️ 請選擇時間！");
-        
-        const leaveType = document.getElementById('leaveType').value;
-        const reason = document.getElementById('leaveReason').value || "無";
-
-        const btn = document.getElementById('leaveSubmitBtn');
-        btn.innerText = "⏳ 雲端傳送中...";
-        btn.disabled = true;
-
-        fetch(CONFIG_URL, {
-            method: "POST",
-            body: JSON.stringify({
-                action: "write",
-                sheetName: "leave",
-                name: empName,
-                dept: dept,
-                leaveType: leaveType,
-                start: start,
-                end: end,
-                reason: reason
-            })
-        }).then(() => {
-            alert("✅ 假單已成功送出！請等待主管審核。");
-            btn.innerText = "送出假單";
-            btn.disabled = false;
-            loadMyLeaves(); // 重新讀取雲端狀態
-        }).catch(err => {
-            alert("網路連線錯誤，請稍後再試。");
-            btn.innerText = "送出假單";
-            btn.disabled = false;
-        });
+    window.submitLeave = async function() {
+        const name = document.getElementById('employeeSelect').value;
+        const dept = document.getElementById('employeeSelect').selectedOptions[0].dataset.dept;
+        const data = { action:"write", sheetName:"leave", name, dept, leaveType: document.getElementById('leaveType').value, start: document.getElementById('leaveStart').value, end: document.getElementById('leaveEnd').value, reason: document.getElementById('leaveReason').value };
+        document.getElementById('lBtn').disabled = true;
+        await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(data) });
+        alert("假單已送出");
+        location.reload();
     }
 
-    loadEmployees();
+    setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-TW', {hour12:false}), 1000);
+    loadData();
 </script>
 </body>
 </html>
