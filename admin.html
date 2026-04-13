@@ -3,67 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>禾禾園 - 管理後台 V3</title>
+    <title>禾禾園 - 管理後台 V4 (完整連線版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { color: #333; font-size: 20px; border-left: 5px solid #1a73e8; padding-left: 15px; margin-bottom: 15px; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #f8f9fa; }
+        th { background-color: #f8f9fa; font-weight: bold; }
         .form-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #eee; padding: 15px; border-radius: 8px;}
-        .form-group { display: flex; flex-direction: column; flex: 1; min-width: 150px;}
-        .btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; }
+        .btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; }
         .btn-primary { background-color: #1a73e8; }
         .btn-success { background-color: #28a745; }
         .btn-danger { background-color: #dc3545; }
         .salary-hidden { filter: blur(4px); pointer-events: none; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
+        .bg-info { background-color: #17a2b8; }
+        .bg-warning { background-color: #ffc107; color: #333; }
+        .bg-success { background-color: #28a745; }
+        .status-text { font-weight: bold; color: #d63384; }
     </style>
 </head>
 <body>
 
 <div class="container" style="background:#2c3e50; color:white; display:flex; justify-content:space-between; align-items:center;">
-    <div>身分: <select id="adminRole" onchange="authRole()"><option value="業務部主管">業務部主管</option><option value="會計部主管">會計部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="人事部">人事部</option><option value="副總">副總</option></select></div>
-    <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端</button>
-</div>
-
-<div id="hrBox" class="container" style="display:none;">
-    <h1>👥 新增員工</h1>
-    <div class="form-row">
-        <div class="form-group"><label>姓名</label><input type="text" id="eName"></div>
-        <div class="form-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
-        <div class="form-group"><label>薪資</label><input type="number" id="eSal"></div>
-        <div class="form-group"><label>到職日</label><input type="date" id="eDate"></div>
-        <div class="form-group"><label>總特休(天)</label><input type="number" id="eLV" value="0"></div>
-        <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">儲存</button>
-    </div>
-    <table>
-        <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>薪資</th><th>總特休</th><th>已用</th><th>剩餘</th></tr></thead>
-        <tbody id="empBody"></tbody>
-    </table>
+    <div><strong>🔑 身分：</strong> <select id="adminRole" onchange="authRole()"><option value="業務部主管">業務部主管</option><option value="會計部主管">會計部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="人事部">人事部</option><option value="副總">副總</option></select></div>
+    <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
 </div>
 
 <div class="container">
-    <h1>📝 待審假單</h1>
+    <h1>📍 全公司打卡紀錄 (即時動態)</h1>
+    <p style="color:#666; font-size:13px;">此處顯示所有員工的上下班時間、地點檢查結果以及打卡時選擇的「特別原因」。</p>
+    <div style="max-height: 400px; overflow-y: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>打卡時間</th>
+                    <th>部門</th>
+                    <th>姓名</th>
+                    <th>類別</th>
+                    <th>狀態/選項</th>
+                </tr>
+            </thead>
+            <tbody id="attendanceBody">
+                <tr><td colspan="5" style="text-align:center;">⏳ 正在讀取雲端打卡資料...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="container">
+    <h1>📝 待處理假單</h1>
     <table>
-        <thead><tr><th>部門</th><th>姓名</th><th>時間</th><th>狀態</th><th>操作</th></tr></thead>
+        <thead><tr><th>部門</th><th>姓名</th><th>起訖時間</th><th>假別</th><th>狀態</th><th>操作</th></tr></thead>
         <tbody id="leaveBody"></tbody>
     </table>
 </div>
 
+<div id="hrBox" class="container" style="display:none;">
+    <h1>👥 員工名冊管理</h1>
+    <div class="form-row">
+        <input type="text" id="eName" placeholder="姓名">
+        <select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select>
+        <input type="number" id="eSal" placeholder="薪資">
+        <input type="date" id="eDate">
+        <input type="number" id="eLV" value="0" title="總特休(天)">
+        <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">💾 儲存員工</button>
+    </div>
+    <table>
+        <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>薪資</th><th>特休(總/剩)</th></tr></thead>
+        <tbody id="empBody"></tbody>
+    </table>
+</div>
+
 <div id="reportBox" class="container" style="display:none;">
-    <h1>📊 月結報表</h1>
-    <input type="month" id="rMonth"> <button class="btn btn-success" onclick="exportEx()">匯出 Excel</button>
+    <h1>📊 結算月報表</h1>
+    <input type="month" id="rMonth"> <button class="btn btn-success" onclick="exportEx()">📥 匯出 Excel 薪資表</button>
 </div>
 
 <script>
-    // ✅ 已更新為您最新的網址
+    // ✅ 已自動帶入您最新的網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = { employees: [], leave: [], attendance: [] };
 
     function authRole() {
         const r = document.getElementById('adminRole').value;
-        if(r==='人事部' && prompt("人事密碼")!=="123") document.getElementById('adminRole').value="業務部主管";
+        if(r==='人事部' && prompt("請輸入人事部專用密碼")!=="123") document.getElementById('adminRole').value="業務部主管";
         render();
     }
 
@@ -72,64 +98,81 @@
             const res = await fetch(CONFIG_URL);
             db = await res.json();
             render();
-        } catch (e) {
-            alert("雲端讀取失敗，請確認試算表分頁名稱是否正確。");
-        }
+        } catch (e) { alert("連線失敗，請檢查雲端腳本部署。"); }
     }
 
     function render() {
         const role = document.getElementById('adminRole').value;
         const isHR = role === '人事部';
+        const isBoss = role === '副總';
         document.getElementById('hrBox').style.display = isHR ? 'block' : 'none';
-        document.getElementById('reportBox').style.display = (isHR || role==='副總') ? 'block' : 'none';
+        document.getElementById('reportBox').style.display = (isHR || isBoss) ? 'block' : 'none';
 
-        document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]).map(r => {
-            const used = db.leave.filter(l => l[2]===r[0] && l[4]==='特休' && l[8]==='已生效').length;
-            return `<tr><td>${r[1]}</td><td>${r[0]}</td><td>${r[4]?new Date(r[4]).toLocaleDateString():'-'}</td><td class="${isHR?'':'salary-hidden'}">${r[3]}</td><td>${r[5]}</td><td>${used}</td><td>${r[5]-used}</td></tr>`;
-        }).join('');
+        // 渲染打卡紀錄 (關鍵修正)
+        const attBody = document.getElementById('attendanceBody');
+        attBody.innerHTML = db.attendance.filter(r => r[0] && r[0] !== "時間戳記").reverse().map(r => {
+            const timeStr = typeof r[0] === 'string' ? r[0].replace('T', ' ').substring(0, 19) : new Date(r[0]).toLocaleString();
+            return `<tr>
+                <td style="color:#666;">${timeStr}</td>
+                <td>${r[2]}</td>
+                <td><strong>${r[1]}</strong></td>
+                <td><span class="badge ${r[3]==='上班'?'bg-info':'bg-success'}">${r[3]}</span></td>
+                <td class="status-text">${r[4]}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="5" style="text-align:center;">目前尚無打卡紀錄</td></tr>';
 
-        document.getElementById('leaveBody').innerHTML = db.leave.filter(r=>r[0]).reverse().map(r => {
+        // 渲染假單
+        document.getElementById('leaveBody').innerHTML = db.leave.filter(r=>r[0] && r[0] !== "ID").reverse().map(r => {
             let next = '';
             if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核';
             else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核';
             else if(role==='副總' && r[8]==='待副總審核') next = '已生效';
-            
-            return `<tr><td>${r[3]}</td><td>${r[2]}</td><td>${r[5].replace('T',' ')}</td><td>${r[8]}</td><td>${next?`<button class="btn btn-success" onclick="upd('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="upd('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
+            return `<tr>
+                <td>${r[3]}</td><td><strong>${r[2]}</strong></td>
+                <td style="font-size:12px;">${r[5].replace('T',' ')} ~ <br>${r[6].replace('T',' ')}</td>
+                <td>${r[4]}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning'}">${r[8]}</span></td>
+                <td>${next?`<button class="btn btn-success" onclick="upd('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="upd('${r[0]}','已退件')">退件</button>`:'-'}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="6" style="text-align:center;">暫無待處理假單</td></tr>';
+
+        // 渲染員工名冊
+        document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0] && r[0] !== "姓名").map(r => {
+            const used = db.leave.filter(l => l[2]===r[0] && l[4]==='特休' && l[8]==='已生效').length;
+            return `<tr>
+                <td>${r[1]}</td><td>${r[0]}</td><td>${r[4]?new Date(r[4]).toLocaleDateString():'-'}</td>
+                <td class="${isHR?'':'salary-hidden'}">$${r[3]}</td>
+                <td>${r[5]} / <strong style="color:green;">${r[5]-used}</strong></td>
+            </tr>`;
         }).join('');
     }
 
     async function saveEmp() {
         const data = { action:"saveEmployee", name:document.getElementById('eName').value, dept:document.getElementById('eDept').value, type:"月薪", salary:document.getElementById('eSal').value, onboardingDate:document.getElementById('eDate').value, totalLeave:document.getElementById('eLV').value };
-        
-        if(!data.name || !data.salary || !data.onboardingDate) return alert("請填寫姓名、薪資與到職日！");
-        
-        document.getElementById('saveBtn').disabled = true;
-        document.getElementById('saveBtn').innerText = "⏳ 傳送中...";
-        
-        try {
-            await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify(data) });
-            alert("✅ 員工已成功儲存！");
-            location.reload();
-        } catch(e) {
-            alert("儲存失敗，請檢查網路。");
-            document.getElementById('saveBtn').disabled = false;
-            document.getElementById('saveBtn').innerText = "儲存";
-        }
+        if(!data.name || !data.salary) return alert("姓名與薪資必填！");
+        document.getElementById('saveBtn').innerText = "傳送中...";
+        await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify(data) });
+        alert("已成功存入雲端"); fetchData();
+        document.getElementById('saveBtn').innerText = "儲存員工";
     }
 
     async function upd(id, s) {
+        if(!id || id==='undefined') return alert("舊資料無法線上簽核，請至試算表手動修改。");
+        if(!confirm(`確認將此單改為「${s}」？`)) return;
         await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"updateLeave", id, newStatus:s }) });
         fetchData();
     }
 
     function exportEx() {
         const m = document.getElementById('rMonth').value;
-        if(!m) return alert("請選擇月份");
-        const data = db.employees.filter(r=>r[0]).map(e => ({ "部門":e[1], "姓名":e[0], "到職日":e[4], "薪資":e[3], "出勤次數": db.attendance.filter(a => a[1]===e[0] && a[0].startsWith(m)).length }));
+        if(!m) return alert("請先選擇月份");
+        const data = db.employees.filter(r=>r[0] && r[0] !== "姓名").map(e => ({
+            "部門":e[1], "姓名":e[0], "薪資":e[3], 
+            "本月打卡次數": db.attendance.filter(a => a[1]===e[0] && a[0].startsWith(m)).length 
+        }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "報表");
-        XLSX.writeFile(wb, `禾禾園_${m}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "月結薪資報表");
+        XLSX.writeFile(wb, `禾禾園_${m}_報表.xlsx`);
     }
 
     fetchData();
