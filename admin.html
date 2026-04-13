@@ -104,8 +104,8 @@
 </div>
 
 <script>
-    // 🔗 您的專屬 Google 雲端資料庫網址 (已自動帶入)
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbz75F9wgnt_g3GqVDksC0evHixCM3L6Xve5vaeibGJkrOGfLJhnKvUtcZiDNrjF53OHBw/exec";
+    // 🔗 這裡已經換成您最新的專屬網址！
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwKOAHwEOeybHmbhlUI_jMFAMAgX2s3kWLmOvDvcEYYqwFmm-lfTm0OgSKu-JC24384kQ/exec";
 
     // 密碼設定
     const HR_PASSWORD = "123";
@@ -115,7 +115,6 @@
     // 全域雲端資料庫
     let cloudData = { employees: [], attendance: [], leave: [] };
 
-    // --- 1. 核心：從 Google 雲端讀取資料 ---
     async function fetchCloudData() {
         document.getElementById('leaveBody').innerHTML = '<tr><td colspan="6" class="loading">⏳ 雲端資料同步中...</td></tr>';
         
@@ -123,7 +122,6 @@
             const response = await fetch(CONFIG_URL);
             const result = await response.json();
             
-            // 轉換陣列為易讀的物件格式，並過濾掉空白行
             cloudData.employees = result.employees.filter(r => r[0]).map(r => ({ name: r[0], dept: r[1], type: r[2], salary: r[3] }));
             cloudData.attendance = result.attendance.filter(r => r[0]).map(r => ({ timestamp: r[0], employeeName: r[1], dept: r[2], type: r[3], status: r[4] }));
             cloudData.leave = result.leave.filter(r => r[0]).map(r => ({
@@ -137,7 +135,6 @@
         }
     }
 
-    // --- 2. 權限與介面渲染 ---
     window.handleRoleChange = function() {
         const select = document.getElementById('adminRole');
         const selectedRole = select.value;
@@ -166,7 +163,6 @@
         document.getElementById('reportSection').style.display = (isHR || isBoss) ? 'block' : 'none';
         document.getElementById('salaryVisibilityNote').style.display = isHR ? 'none' : 'inline';
 
-        // 渲染員工名單
         const empTbody = document.getElementById('employeeListBody');
         empTbody.innerHTML = '';
         if (cloudData.employees.length === 0) {
@@ -178,12 +174,10 @@
             });
         }
 
-        // 渲染假單 (三階簽核過濾)
         const leaveTbody = document.getElementById('leaveBody');
         leaveTbody.innerHTML = '';
         let hasLeave = false;
 
-        // 反轉陣列，讓最新假單在最上面
         [...cloudData.leave].reverse().forEach(l => {
             let showRow = false;
             let canApprove = false;
@@ -221,7 +215,6 @@
                     btnHtml = `<span style="color:#888; font-size:12px;">已審畢或無權限</span>`;
                 }
                 
-                // 處理日期格式 (Google Sheets 傳來的可能是 ISO 字串)
                 const startStr = typeof l.startTime === 'string' ? l.startTime.replace('T', ' ').substring(0, 16) : l.startTime;
                 const endStr = typeof l.endTime === 'string' ? l.endTime.replace('T', ' ').substring(0, 16) : l.endTime;
 
@@ -241,7 +234,6 @@
         if (!hasLeave) leaveTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">目前沒有需要您審核的假單</td></tr>';
     }
 
-    // --- 3. 寫入雲端功能 ---
     window.addEmployee = function() {
         const name = document.getElementById('empName').value.trim();
         const dept = document.getElementById('empDept').value.trim();
@@ -259,29 +251,26 @@
             alert(`✅ 已成功將 ${name} 新增至雲端資料庫！`);
             document.getElementById('empName').value = ''; document.getElementById('empSalary').value = '';
             btn.innerText = "💾 儲存至雲端"; btn.disabled = false;
-            fetchCloudData(); // 重新抓取
+            fetchCloudData();
         }).catch(err => { alert("連線錯誤"); btn.innerText = "💾 儲存至雲端"; btn.disabled = false; });
     }
 
     window.processLeave = function(id, nextStatus) {
-        // 先在畫面上改變狀態，提升使用者體驗
         fetch(CONFIG_URL, {
             method: "POST",
             body: JSON.stringify({ action: "updateLeave", id: id, newStatus: nextStatus })
         }).then(() => {
             alert(`✅ 假單狀態已更新為：${nextStatus}`);
-            fetchCloudData(); // 重新抓取確認
+            fetchCloudData();
         }).catch(err => alert("連線錯誤，無法更新假單。"));
     }
 
-    // --- 4. 產生 Excel 報表 ---
     window.generateReport = function() {
-        const monthStr = document.getElementById('reportMonth').value; // YYYY-MM
+        const monthStr = document.getElementById('reportMonth').value; 
         if(!monthStr) return alert("請先選擇結算月份！");
         
         const reportData = {};
         
-        // 建立名單骨架
         cloudData.employees.forEach(emp => {
             const baseSal = parseFloat(emp.salary) || 0;
             const hourly = emp.type === "月薪" ? Math.round(baseSal / 240) : baseSal;
@@ -292,7 +281,6 @@
             };
         });
 
-        // 灌入打卡紀錄
         cloudData.attendance.forEach(r => {
             const dateStr = typeof r.timestamp === 'string' ? r.timestamp : new Date(r.timestamp).toISOString();
             if(dateStr.startsWith(monthStr) && reportData[r.employeeName]) {
@@ -315,7 +303,6 @@
         XLSX.writeFile(wb, `禾禾園_${monthStr}_薪資報表.xlsx`);
     }
 
-    // 網頁載入時自動抓取雲端資料
     fetchCloudData();
 </script>
 </body>

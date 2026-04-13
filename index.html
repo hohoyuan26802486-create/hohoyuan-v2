@@ -71,16 +71,32 @@
 </div>
 
 <script>
-    // 🔗 您的專屬 Google 雲端資料庫網址 (已自動帶入)
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbz75F9wgnt_g3GqVDksC0evHixCM3L6Xve5vaeibGJkrOGfLJhnKvUtcZiDNrjF53OHBw/exec";
+    // 🔗 這裡已經換成您最新的專屬網址！
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwKOAHwEOeybHmbhlUI_jMFAMAgX2s3kWLmOvDvcEYYqwFmm-lfTm0OgSKu-JC24384kQ/exec";
 
-    const defaultEmps = [{ name: "測試員", type: "月薪", salary: 36000, dept: "業務部" }];
-
-    function loadEmployees() {
-        const employees = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
+    // 從雲端動態載入員工名單
+    async function loadEmployees() {
         const select = document.getElementById('employeeSelect');
-        select.innerHTML = '<option value="">-- 點此選擇員工 --</option>' + 
-            employees.map(emp => `<option value="${emp.name}" data-dept="${emp.dept}">${emp.name}</option>`).join('');
+        select.innerHTML = '<option value="">-- 正在讀取名單... --</option>';
+        
+        try {
+            const response = await fetch(CONFIG_URL);
+            const result = await response.json();
+            const employees = result.employees.filter(r => r[0]).map(r => ({ name: r[0], dept: r[1] }));
+            
+            if(employees.length > 0) {
+                select.innerHTML = '<option value="">-- 點此選擇員工 --</option>' + 
+                    employees.map(emp => `<option value="${emp.name}" data-dept="${emp.dept}">${emp.name}</option>`).join('');
+                localStorage.setItem('employee_list_cache', JSON.stringify(employees));
+            } else {
+                select.innerHTML = '<option value="">-- 尚無名單，請聯絡人事 --</option>';
+            }
+        } catch(e) {
+            // 沒網路時用快取
+            const cached = JSON.parse(localStorage.getItem('employee_list_cache')) || [{ name: "測試員", dept: "業務部" }];
+            select.innerHTML = '<option value="">-- (離線模式) 點此選擇員工 --</option>' + 
+                cached.map(emp => `<option value="${emp.name}" data-dept="${emp.dept}">${emp.name}</option>`).join('');
+        }
     }
 
     window.onEmployeeChange = function() {
@@ -108,36 +124,50 @@
         }
     }
 
-    window.loadMyLeaves = function() {
+    // 讀取個人的請假進度
+    async function loadMyLeaves() {
         const empName = document.getElementById('employeeSelect').value;
         const listDiv = document.getElementById('myLeavesList');
-        const allLeaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
-        const myLeaves = allLeaves.filter(l => l.employeeName === empName);
+        listDiv.innerHTML = '<p style="color:#888; text-align:center;">資料讀取中...</p>';
+        
+        try {
+            const response = await fetch(CONFIG_URL);
+            const result = await response.json();
+            
+            const myLeaves = result.leave.filter(r => r[0] && r[2] === empName).map(r => ({
+                leaveType: r[4], startTime: r[5], endTime: r[6], reason: r[7], status: r[8]
+            }));
 
-        if (myLeaves.length === 0) { listDiv.innerHTML = '<p style="color:#888; text-align:center;">您目前沒有任何請假紀錄。</p>'; return; }
+            if (myLeaves.length === 0) { 
+                listDiv.innerHTML = '<p style="color:#888; text-align:center;">您目前沒有任何請假紀錄。</p>'; 
+                return; 
+            }
 
-        listDiv.innerHTML = myLeaves.reverse().map(l => {
-            let statusClass = '';
-            let statusText = l.status;
-            let badgeClass = 'bg-warning';
+            listDiv.innerHTML = myLeaves.reverse().map(l => {
+                let statusClass = '';
+                let statusText = l.status;
+                let badgeClass = 'bg-warning';
 
-            if (l.status === '已生效') { badgeClass = 'bg-success'; statusClass = 'status-final'; }
-            if (l.status === '已退件') { badgeClass = 'bg-danger'; statusClass = 'status-rejected'; }
-            if (l.status === '待人事審核') { badgeClass = 'bg-info'; }
-            if (l.status === '待副總審核') { badgeClass = 'bg-primary'; }
+                if (l.status === '已生效') { badgeClass = 'bg-success'; statusClass = 'status-final'; }
+                if (l.status === '已退件') { badgeClass = 'bg-danger'; statusClass = 'status-rejected'; }
+                if (l.status === '待人事審核') { badgeClass = 'bg-info'; }
+                if (l.status === '待副總審核') { badgeClass = 'bg-primary'; }
 
-            const startStr = l.startTime.replace('T', ' ');
-            const endStr = l.endTime.replace('T', ' ');
+                const startStr = typeof l.startTime === 'string' ? l.startTime.replace('T', ' ').substring(0, 16) : l.startTime;
+                const endStr = typeof l.endTime === 'string' ? l.endTime.replace('T', ' ').substring(0, 16) : l.endTime;
 
-            return `
-            <div class="leave-item ${statusClass}">
-                <p><strong>假別：</strong> ${l.leaveType}</p>
-                <p><strong>時間：</strong> ${startStr} ~ ${endStr}</p>
-                <p><strong>事由：</strong> ${l.reason}</p>
-                <p><strong>目前進度：</strong> <span class="badge ${badgeClass}">${statusText}</span></p>
-            </div>
-            `;
-        }).join('');
+                return `
+                <div class="leave-item ${statusClass}">
+                    <p><strong>假別：</strong> ${l.leaveType}</p>
+                    <p><strong>時間：</strong> ${startStr} ~ ${endStr}</p>
+                    <p><strong>事由：</strong> ${l.reason}</p>
+                    <p><strong>目前進度：</strong> <span class="badge ${badgeClass}">${statusText}</span></p>
+                </div>
+                `;
+            }).join('');
+        } catch(e) {
+            listDiv.innerHTML = '<p style="color:red; text-align:center;">網路連線失敗，無法顯示紀錄。</p>';
+        }
     }
 
     setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false }), 1000);
@@ -152,7 +182,7 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // 🚀 核心升級：雲端打卡 + 自訂時間選項
+    // 打卡邏輯
     window.handlePunch = function(type) {
         const select = document.getElementById('employeeSelect');
         const empName = select.value;
@@ -213,11 +243,7 @@
                     status: punchStatus
                 })
             }).then(() => {
-                // 為了讓手機端介面同步，也保留一份在本地
-                let records = JSON.parse(localStorage.getItem('attendance_records')) || [];
-                records.push({employeeName: empName, department: dept, type: displayType, status: punchStatus, timestamp: now.toISOString()});
-                localStorage.setItem('attendance_records', JSON.stringify(records));
-                alert(`✅ ${empName} 打卡資料已成功同步至雲端！\n狀態：${punchStatus}`);
+                alert(`✅ ${empName} 打卡成功！資料已同步至雲端。\n狀態：${punchStatus}`);
             }).catch(err => {
                 alert("網路連線錯誤，無法上傳至雲端，請稍後再試。");
             });
@@ -225,7 +251,7 @@
         }, () => alert("定位失敗，請允許網頁存取位置資訊！"), { enableHighAccuracy: true });
     }
 
-    // 🚀 核心升級：雲端請假單
+    // 雲端請假單
     window.submitLeave = function() {
         const select = document.getElementById('employeeSelect');
         const empName = select.value;
@@ -255,18 +281,10 @@
                 reason: reason
             })
         }).then(() => {
-            // 同步留一份在本地供畫面顯示
-            let leaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
-            leaves.push({
-                id: Date.now().toString(), employeeName: empName, department: dept, leaveType: leaveType,
-                startTime: start, endTime: end, reason: reason, status: "待主管審核", timestamp: new Date().toISOString()
-            });
-            localStorage.setItem('leave_requests', JSON.stringify(leaves));
-            
-            alert("✅ 假單已成功同步至雲端！請等待主管審核。");
+            alert("✅ 假單已成功送出！請等待主管審核。");
             btn.innerText = "送出假單";
             btn.disabled = false;
-            loadMyLeaves();
+            loadMyLeaves(); // 重新讀取雲端狀態
         }).catch(err => {
             alert("網路連線錯誤，請稍後再試。");
             btn.innerText = "送出假單";
