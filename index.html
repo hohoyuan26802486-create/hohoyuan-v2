@@ -1,4 +1,159 @@
-window.handlePunch = function(type) {
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>禾禾園出勤系統 - 員工端</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px;}
+        h1 { color: #333; font-size: 24px; margin-bottom: 5px; }
+        #clock { font-size: 48px; font-weight: bold; color: #1a73e8; margin: 20px 0; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        .form-group select, .form-group input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .btn-in { background-color: #34a853; }
+        .btn-out { background-color: #ea4335; }
+        .btn-leave { background-color: #fbbc05; color: #333; font-weight: bold; margin-top: 20px;}
+        .leave-form { margin-top: 30px; padding-top: 20px; border-top: 2px dashed #eee; text-align: left; }
+        .my-leaves { text-align: left; }
+        .leave-item { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #17a2b8; }
+        .leave-item.status-final { border-left-color: #28a745; background: #e8f5e9; }
+        .leave-item.status-rejected { border-left-color: #dc3545; background: #ffebee; }
+        .leave-item p { margin: 5px 0; font-size: 14px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
+        .bg-success { background-color: #28a745; }
+        .bg-danger { background-color: #dc3545; }
+        .bg-warning { background-color: #ffc107; color: #333; }
+        .bg-info { background-color: #17a2b8; }
+        .bg-primary { background-color: #0d6efd; }
+        #deptDisplay { font-size: 14px; color: #666; font-weight: bold; text-align: left; margin-top: -10px; margin-bottom: 15px; display: none; }
+        
+        #actionArea, #historyArea { display: none; }
+        #welcomeMessage { color: #888; margin-top: 10px; font-size: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px dashed #ccc;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>禾禾園出勤系統</h1>
+    <div id="clock">00:00:00</div>
+    
+    <div class="form-group">
+        <label>👤 請先選擇您的名字：</label>
+        <select id="employeeSelect" onchange="onEmployeeChange()">
+            <option value="">-- 點此選擇員工 --</option>
+        </select>
+    </div>
+    <div id="deptDisplay">所屬部門：<span id="empDeptName">-</span></div>
+    
+    <div id="welcomeMessage">👋 請先在上方選擇您的名字，即可展開打卡與請假功能。</div>
+
+    <div id="actionArea">
+        <button class="btn btn-in" onclick="handlePunch('in')">📍 上班打卡</button>
+        <button class="btn btn-out" onclick="handlePunch('out')">📍 下班打卡</button>
+        
+        <div class="leave-form">
+            <h3 style="margin-top:0; color:#333;">📝 線上申請請假</h3>
+            <div class="form-group"><label>假別</label><select id="leaveType"><option>特休</option><option>病假</option><option>事假</option></select></div>
+            <div class="form-group"><label>開始時間</label><input type="datetime-local" id="leaveStart"></div>
+            <div class="form-group"><label>結束時間</label><input type="datetime-local" id="leaveEnd"></div>
+            <div class="form-group"><label>請假事由</label><input type="text" id="leaveReason" placeholder="請簡述原因"></div>
+            <button id="leaveSubmitBtn" class="btn btn-leave" onclick="submitLeave()">送出假單</button>
+        </div>
+    </div>
+</div>
+
+<div class="container my-leaves" id="historyArea">
+    <h3 style="margin-top:0; color:#333; border-bottom: 2px solid #1a73e8; padding-bottom: 5px;">👀 我的請假紀錄與進度</h3>
+    <div id="myLeavesList"></div>
+</div>
+
+<script>
+    // 🔗 您的專屬 Google 雲端資料庫網址 (已自動帶入)
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbz75F9wgnt_g3GqVDksC0evHixCM3L6Xve5vaeibGJkrOGfLJhnKvUtcZiDNrjF53OHBw/exec";
+
+    const defaultEmps = [{ name: "測試員", type: "月薪", salary: 36000, dept: "業務部" }];
+
+    function loadEmployees() {
+        const employees = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
+        const select = document.getElementById('employeeSelect');
+        select.innerHTML = '<option value="">-- 點此選擇員工 --</option>' + 
+            employees.map(emp => `<option value="${emp.name}" data-dept="${emp.dept}">${emp.name}</option>`).join('');
+    }
+
+    window.onEmployeeChange = function() {
+        const select = document.getElementById('employeeSelect');
+        const selectedOption = select.options[select.selectedIndex];
+        
+        const actionArea = document.getElementById('actionArea');
+        const historyArea = document.getElementById('historyArea');
+        const welcomeMsg = document.getElementById('welcomeMessage');
+        const deptDisplay = document.getElementById('deptDisplay');
+        const empDeptName = document.getElementById('empDeptName');
+
+        if(select.value) {
+            deptDisplay.style.display = 'block';
+            empDeptName.innerText = selectedOption.getAttribute('data-dept') || '未設定';
+            welcomeMsg.style.display = 'none';
+            actionArea.style.display = 'block';
+            historyArea.style.display = 'block';
+            loadMyLeaves();
+        } else {
+            deptDisplay.style.display = 'none';
+            welcomeMsg.style.display = 'block';
+            actionArea.style.display = 'none';
+            historyArea.style.display = 'none';
+        }
+    }
+
+    window.loadMyLeaves = function() {
+        const empName = document.getElementById('employeeSelect').value;
+        const listDiv = document.getElementById('myLeavesList');
+        const allLeaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
+        const myLeaves = allLeaves.filter(l => l.employeeName === empName);
+
+        if (myLeaves.length === 0) { listDiv.innerHTML = '<p style="color:#888; text-align:center;">您目前沒有任何請假紀錄。</p>'; return; }
+
+        listDiv.innerHTML = myLeaves.reverse().map(l => {
+            let statusClass = '';
+            let statusText = l.status;
+            let badgeClass = 'bg-warning';
+
+            if (l.status === '已生效') { badgeClass = 'bg-success'; statusClass = 'status-final'; }
+            if (l.status === '已退件') { badgeClass = 'bg-danger'; statusClass = 'status-rejected'; }
+            if (l.status === '待人事審核') { badgeClass = 'bg-info'; }
+            if (l.status === '待副總審核') { badgeClass = 'bg-primary'; }
+
+            const startStr = l.startTime.replace('T', ' ');
+            const endStr = l.endTime.replace('T', ' ');
+
+            return `
+            <div class="leave-item ${statusClass}">
+                <p><strong>假別：</strong> ${l.leaveType}</p>
+                <p><strong>時間：</strong> ${startStr} ~ ${endStr}</p>
+                <p><strong>事由：</strong> ${l.reason}</p>
+                <p><strong>目前進度：</strong> <span class="badge ${badgeClass}">${statusText}</span></p>
+            </div>
+            `;
+        }).join('');
+    }
+
+    setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-TW', { hour12: false }), 1000);
+
+    const COMPANY_LAT = 24.95028;
+    const COMPANY_LON = 121.38905;
+    const MAX_DISTANCE_KM = 2.0;
+
+    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+        const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // 🚀 核心升級：雲端打卡 + 自訂時間選項
+    window.handlePunch = function(type) {
         const select = document.getElementById('employeeSelect');
         const empName = select.value;
         if (!empName) return alert("⚠️ 請先在最上方選擇您的名字！");
@@ -19,13 +174,11 @@ window.handlePunch = function(type) {
             let punchStatus = "正常";
             let displayType = type === 'in' ? "上班" : "下班";
 
-            // 🎯 全新升級的打卡時間判斷邏輯
-            if (type === 'in') { // 上班打卡
+            if (type === 'in') { // 上班
                 if (timeNum < 720) {
-                    // ★ 文字已更新為「因個人因素提早上班」
                     const choice = prompt("目前早於 07:20，請選擇原因：\n1. 因個人因素提早上班");
                     if (choice === "1") {
-                        punchStatus = "個人因素提早上班"; // 寫入資料庫的狀態也同步更新
+                        punchStatus = "個人因素提早上班";
                     } else {
                         return alert("未選擇原因，打卡取消。");
                     }
@@ -37,7 +190,7 @@ window.handlePunch = function(type) {
                 } else {
                     punchStatus = "正常上班";
                 }
-            } else { // 下班打卡
+            } else { // 下班
                 if (timeNum >= 1650) {
                     const choice = prompt("已超過 16:50 下班時間，請選擇原因：\n1. 經主管事前核准後同意加班\n2. 因個人因素延後下班");
                     if (choice === "1") punchStatus = "主管核准加班";
@@ -48,7 +201,7 @@ window.handlePunch = function(type) {
                 }
             }
 
-            // 發送資料到 Google 雲端
+            // 傳送資料到 Google 試算表
             fetch(CONFIG_URL, {
                 method: "POST",
                 body: JSON.stringify({
@@ -59,8 +212,69 @@ window.handlePunch = function(type) {
                     type: displayType,
                     status: punchStatus
                 })
-            }).then(() => alert(`✅ ${empName} 雲端打卡成功！\n狀態：${punchStatus}`))
-              .catch(err => alert("網路連線錯誤，請稍後再試。"));
+            }).then(() => {
+                // 為了讓手機端介面同步，也保留一份在本地
+                let records = JSON.parse(localStorage.getItem('attendance_records')) || [];
+                records.push({employeeName: empName, department: dept, type: displayType, status: punchStatus, timestamp: now.toISOString()});
+                localStorage.setItem('attendance_records', JSON.stringify(records));
+                alert(`✅ ${empName} 打卡資料已成功同步至雲端！\n狀態：${punchStatus}`);
+            }).catch(err => {
+                alert("網路連線錯誤，無法上傳至雲端，請稍後再試。");
+            });
             
         }, () => alert("定位失敗，請允許網頁存取位置資訊！"), { enableHighAccuracy: true });
     }
+
+    // 🚀 核心升級：雲端請假單
+    window.submitLeave = function() {
+        const select = document.getElementById('employeeSelect');
+        const empName = select.value;
+        if (!empName) return alert("⚠️ 請先在最上方選擇您的名字！");
+        const dept = select.options[select.selectedIndex].getAttribute('data-dept');
+        const start = document.getElementById('leaveStart').value;
+        const end = document.getElementById('leaveEnd').value;
+        if (!start || !end) return alert("⚠️ 請選擇時間！");
+        
+        const leaveType = document.getElementById('leaveType').value;
+        const reason = document.getElementById('leaveReason').value || "無";
+
+        const btn = document.getElementById('leaveSubmitBtn');
+        btn.innerText = "⏳ 雲端傳送中...";
+        btn.disabled = true;
+
+        fetch(CONFIG_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                action: "write",
+                sheetName: "leave",
+                name: empName,
+                dept: dept,
+                leaveType: leaveType,
+                start: start,
+                end: end,
+                reason: reason
+            })
+        }).then(() => {
+            // 同步留一份在本地供畫面顯示
+            let leaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
+            leaves.push({
+                id: Date.now().toString(), employeeName: empName, department: dept, leaveType: leaveType,
+                startTime: start, endTime: end, reason: reason, status: "待主管審核", timestamp: new Date().toISOString()
+            });
+            localStorage.setItem('leave_requests', JSON.stringify(leaves));
+            
+            alert("✅ 假單已成功同步至雲端！請等待主管審核。");
+            btn.innerText = "送出假單";
+            btn.disabled = false;
+            loadMyLeaves();
+        }).catch(err => {
+            alert("網路連線錯誤，請稍後再試。");
+            btn.innerText = "送出假單";
+            btn.disabled = false;
+        });
+    }
+
+    loadEmployees();
+</script>
+</body>
+</html>
