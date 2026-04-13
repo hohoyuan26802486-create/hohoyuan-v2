@@ -63,18 +63,23 @@
 </div>
 
 <script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzAra7T4uQelRBAdAc02xKnKEbWP5Ic12mBXEgW2HOBwu-Q_xLsixuGe1PJ7gxoKfDBJA/exec";
+    // ✅ 已更新為您最新的網址
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     const COMPANY_LAT = 24.95028;
     const COMPANY_LON = 121.38905;
     const MAX_DIST = 2.0;
 
     async function loadData() {
-        const res = await fetch(CONFIG_URL);
-        const data = await res.json();
-        const select = document.getElementById('employeeSelect');
-        const emps = data.employees.filter(r => r[0]);
-        select.innerHTML = '<option value="">-- 請選擇 --</option>' + emps.map(r => `<option value="${r[0]}" data-dept="${r[1]}">${r[0]}</option>`).join('');
-        window.cloudLeave = data.leave;
+        try {
+            const res = await fetch(CONFIG_URL);
+            const data = await res.json();
+            const select = document.getElementById('employeeSelect');
+            const emps = data.employees.filter(r => r[0]);
+            select.innerHTML = '<option value="">-- 請選擇 --</option>' + emps.map(r => `<option value="${r[0]}" data-dept="${r[1]}">${r[0]}</option>`).join('');
+            window.cloudLeave = data.leave || [];
+        } catch(e) {
+            document.getElementById('employeeSelect').innerHTML = '<option value="">網路連線異常</option>';
+        }
     }
 
     function onEmployeeChange() {
@@ -86,6 +91,7 @@
     }
 
     function renderMyLeaves(name) {
+        if(!window.cloudLeave) return;
         const list = window.cloudLeave.filter(r => r[2] === name);
         document.getElementById('myLeavesList').innerHTML = list.reverse().map(r => `
             <div class="leave-item">
@@ -127,8 +133,12 @@
                 }
             }
 
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action:"write", sheetName:"attendance", name, dept, type:type==='in'?'上班':'下班', status }) });
-            alert("打卡成功！");
+            try {
+                await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action:"write", sheetName:"attendance", name, dept, type:type==='in'?'上班':'下班', status }) });
+                alert(`✅ 打卡成功！\n狀態：${status}`);
+            } catch(e) {
+                alert("打卡失敗，請檢查網路連線。");
+            }
         }, () => alert("請開啟定位"));
     }
 
@@ -136,10 +146,21 @@
         const name = document.getElementById('employeeSelect').value;
         const dept = document.getElementById('employeeSelect').selectedOptions[0].dataset.dept;
         const data = { action:"write", sheetName:"leave", name, dept, leaveType: document.getElementById('leaveType').value, start: document.getElementById('leaveStart').value, end: document.getElementById('leaveEnd').value, reason: document.getElementById('leaveReason').value };
+        
+        if(!data.start || !data.end) return alert("請選擇起訖時間");
+        
         document.getElementById('lBtn').disabled = true;
-        await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(data) });
-        alert("假單已送出");
-        location.reload();
+        document.getElementById('lBtn').innerText = "⏳ 傳送中...";
+        
+        try {
+            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(data) });
+            alert("✅ 假單已送出，請等待主管審核。");
+            location.reload();
+        } catch(e) {
+            alert("假單送出失敗，請檢查網路連線。");
+            document.getElementById('lBtn').disabled = false;
+            document.getElementById('lBtn').innerText = "送出假單";
+        }
     }
 
     setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString('zh-TW', {hour12:false}), 1000);

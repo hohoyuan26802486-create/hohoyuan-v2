@@ -35,7 +35,7 @@
         <div class="form-group"><label>薪資</label><input type="number" id="eSal"></div>
         <div class="form-group"><label>到職日</label><input type="date" id="eDate"></div>
         <div class="form-group"><label>總特休(天)</label><input type="number" id="eLV" value="0"></div>
-        <button class="btn btn-primary" onclick="saveEmp()">儲存</button>
+        <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">儲存</button>
     </div>
     <table>
         <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>薪資</th><th>總特休</th><th>已用</th><th>剩餘</th></tr></thead>
@@ -57,7 +57,8 @@
 </div>
 
 <script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzAra7T4uQelRBAdAc02xKnKEbWP5Ic12mBXEgW2HOBwu-Q_xLsixuGe1PJ7gxoKfDBJA/exec";
+    // ✅ 已更新為您最新的網址
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = { employees: [], leave: [], attendance: [] };
 
     function authRole() {
@@ -67,9 +68,13 @@
     }
 
     async function fetchData() {
-        const res = await fetch(CONFIG_URL);
-        db = await res.json();
-        render();
+        try {
+            const res = await fetch(CONFIG_URL);
+            db = await res.json();
+            render();
+        } catch (e) {
+            alert("雲端讀取失敗，請確認試算表分頁名稱是否正確。");
+        }
     }
 
     function render() {
@@ -79,7 +84,7 @@
         document.getElementById('reportBox').style.display = (isHR || role==='副總') ? 'block' : 'none';
 
         document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]).map(r => {
-            const used = db.leave.filter(l => l[2]===r[0] && l[4]==='特休' && l[8]==='已生效').length; // 簡化計天，可改更精確
+            const used = db.leave.filter(l => l[2]===r[0] && l[4]==='特休' && l[8]==='已生效').length;
             return `<tr><td>${r[1]}</td><td>${r[0]}</td><td>${r[4]?new Date(r[4]).toLocaleDateString():'-'}</td><td class="${isHR?'':'salary-hidden'}">${r[3]}</td><td>${r[5]}</td><td>${used}</td><td>${r[5]-used}</td></tr>`;
         }).join('');
 
@@ -95,8 +100,21 @@
 
     async function saveEmp() {
         const data = { action:"saveEmployee", name:document.getElementById('eName').value, dept:document.getElementById('eDept').value, type:"月薪", salary:document.getElementById('eSal').value, onboardingDate:document.getElementById('eDate').value, totalLeave:document.getElementById('eLV').value };
-        await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify(data) });
-        alert("已儲存"); fetchData();
+        
+        if(!data.name || !data.salary || !data.onboardingDate) return alert("請填寫姓名、薪資與到職日！");
+        
+        document.getElementById('saveBtn').disabled = true;
+        document.getElementById('saveBtn').innerText = "⏳ 傳送中...";
+        
+        try {
+            await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify(data) });
+            alert("✅ 員工已成功儲存！");
+            location.reload();
+        } catch(e) {
+            alert("儲存失敗，請檢查網路。");
+            document.getElementById('saveBtn').disabled = false;
+            document.getElementById('saveBtn').innerText = "儲存";
+        }
     }
 
     async function upd(id, s) {
@@ -106,6 +124,7 @@
 
     function exportEx() {
         const m = document.getElementById('rMonth').value;
+        if(!m) return alert("請選擇月份");
         const data = db.employees.filter(r=>r[0]).map(e => ({ "部門":e[1], "姓名":e[0], "到職日":e[4], "薪資":e[3], "出勤次數": db.attendance.filter(a => a[1]===e[0] && a[0].startsWith(m)).length }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
