@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>禾禾園 - 權限管理後台 (安全升級版)</title>
+    <title>禾禾園 - 權限管理後台 (雲端連線版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h1 { color: #333; font-size: 24px; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; margin-bottom: 20px;}
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #f8f9fa; font-weight: bold; color: #555; }
         .action-btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-right: 5px; }
@@ -30,8 +30,8 @@
         .bg-success { background-color: #28a745; }
         .bg-danger { background-color: #dc3545; }
         
-        /* 隱藏薪資的樣式 */
         .salary-hidden { filter: blur(4px); user-select: none; }
+        .loading { text-align: center; color: #1a73e8; font-weight: bold; padding: 20px; }
     </style>
 </head>
 <body>
@@ -41,40 +41,33 @@
         <strong>🔑 目前登入身分：</strong>
         <select id="adminRole" onchange="handleRoleChange()">
             <option value="業務部主管">業務部 - 主管</option>
-            <option value="運輸部主管">運輸部 - 主管</option>
-            <option value="會計部主管">會計部 - 主管</option>
-            <option value="倉儲部主管">倉儲部 - 主管</option>
-            <option value="生產部主管">生產部 - 主管</option>
+            <option value="行銷部主管">行銷部 - 主管</option>
             <option value="人事部">人事部 (系統總管)</option>
             <option value="副總">最高管理層 - 副總</option>
         </select>
     </div>
-    <button onclick="if(confirm('確定要清除所有資料嗎？')) { localStorage.clear(); location.reload(); }" class="btn-danger" style="padding: 5px 10px; border-radius: 4px; border:none;">清除所有資料</button>
+    <div>
+        <button class="action-btn btn-primary" onclick="fetchCloudData()">🔄 重新整理雲端資料</button>
+    </div>
 </div>
 
 <div class="container" id="employeeManagementSection">
-    <h1>👥 員工管理與部門設定</h1>
+    <h1>👥 雲端員工名冊</h1>
     
     <div id="addEmployeeForm" style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
-        <h3 style="margin-top: 0; color: #d63384;">➕ 新增/修改員工 (僅人事專用)</h3>
+        <h3 style="margin-top: 0; color: #d63384;">➕ 新增員工 (同步至雲端)</h3>
         <div class="form-row">
             <div class="form-group"><label>員工姓名</label><input type="text" id="empName" placeholder="例如：王小明"></div>
             <div class="form-group">
                 <label>所屬部門</label>
                 <input type="text" id="empDept" placeholder="例如：財務部" list="deptList">
-                <datalist id="deptList">
-                    <option value="業務部">
-                    <option value="運輸部">
-                    <option value="人事部">
-                    <option value="會計部">
-                    <option value="生產部">
-                    <option value="倉儲部">
-                </datalist>
+                <datalist id="deptList"><option value="業務部"><option value="行銷部"><option value="人事部"></datalist>
             </div>
             <div class="form-group"><label>計薪方式</label><select id="empType"><option>月薪</option><option>時薪</option></select></div>
             <div class="form-group"><label>基本薪資/時薪</label><input type="number" id="empSalary" placeholder="例如：36000"></div>
-            <button class="action-btn btn-primary" onclick="addEmployee()">💾 儲存資料</button>
+            <button id="saveEmpBtn" class="action-btn btn-primary" onclick="addEmployee()">💾 儲存至雲端</button>
         </div>
+        <p style="font-size:12px; color:#666; margin:0;">註：為確保資料安全，如需「刪除」員工，請直接至 Google 試算表操作。</p>
     </div>
     
     <table>
@@ -84,7 +77,6 @@
                 <th>姓名</th>
                 <th>計薪方式</th>
                 <th>基本薪資 <span id="salaryVisibilityNote" style="font-size:12px; font-weight:normal; color:#dc3545;">(已遮蔽)</span></th>
-                <th id="actionColumnTh" style="display:none;">操作</th>
             </tr>
         </thead>
         <tbody id="employeeListBody"></tbody>
@@ -92,139 +84,107 @@
 </div>
 
 <div class="container" id="reportSection" style="display:none;">
-    <h1>📊 結算與匯出 Excel (機密功能)</h1>
+    <h1>📊 結算與匯出 Excel (讀取雲端打卡紀錄)</h1>
     <div style="display: flex; gap: 10px; align-items: center;">
         <label style="font-weight: bold;">請選擇結算月份：</label>
         <input type="month" id="reportMonth" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
-        <button class="action-btn btn-success" onclick="generateReport()">📥 計算薪資並下載</button>
+        <button class="action-btn btn-success" onclick="generateReport()">📥 雲端計算薪資並下載</button>
     </div>
 </div>
 
 <div class="container">
     <h1>📝 請假簽核任務 (<span id="roleLabel" style="color:#1a73e8;">業務部主管</span>)</h1>
-    <p style="color:#666; font-size:14px;">您只會看到需要您目前層級審核的假單，或您部門內的歷史紀錄。</p>
+    <p style="color:#666; font-size:14px;">資料即時與 Google 試算表同步。您只會看到需要您目前層級審核的假單。</p>
     <table>
         <thead><tr><th>部門</th><th>員工</th><th>假別</th><th>起訖時間</th><th>狀態</th><th>簽核操作</th></tr></thead>
-        <tbody id="leaveBody"></tbody>
+        <tbody id="leaveBody">
+            <tr><td colspan="6" class="loading">⏳ 正在與 Google 雲端連線中...</td></tr>
+        </tbody>
     </table>
 </div>
 
 <script>
-    // --- 密碼設定區 ---
-    const HR_PASSWORD = "123";   // 人事部密碼
-    const BOSS_PASSWORD = "456"; // 副總密碼
-    let currentRole = "業務部主管"; // 預設身分
+    // 🔗 您的專屬 Google 雲端資料庫網址 (已自動帶入)
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbz75F9wgnt_g3GqVDksC0evHixCM3L6Xve5vaeibGJkrOGfLJhnKvUtcZiDNrjF53OHBw/exec";
 
-    const defaultEmps = [
-        { name: "測試員", dept: "業務部", type: "月薪", salary: 36000 },
-        { name: "人事主管", dept: "人事部", type: "月薪", salary: 50000 }
-    ];
+    // 密碼設定
+    const HR_PASSWORD = "123";
+    const BOSS_PASSWORD = "456"; 
+    let currentRole = "業務部主管";
+    
+    // 全域雲端資料庫
+    let cloudData = { employees: [], attendance: [], leave: [] };
 
-    // 處理身分切換與密碼驗證
+    // --- 1. 核心：從 Google 雲端讀取資料 ---
+    async function fetchCloudData() {
+        document.getElementById('leaveBody').innerHTML = '<tr><td colspan="6" class="loading">⏳ 雲端資料同步中...</td></tr>';
+        
+        try {
+            const response = await fetch(CONFIG_URL);
+            const result = await response.json();
+            
+            // 轉換陣列為易讀的物件格式，並過濾掉空白行
+            cloudData.employees = result.employees.filter(r => r[0]).map(r => ({ name: r[0], dept: r[1], type: r[2], salary: r[3] }));
+            cloudData.attendance = result.attendance.filter(r => r[0]).map(r => ({ timestamp: r[0], employeeName: r[1], dept: r[2], type: r[3], status: r[4] }));
+            cloudData.leave = result.leave.filter(r => r[0]).map(r => ({
+                id: r[0], timestamp: r[1], employeeName: r[2], department: r[3], leaveType: r[4], startTime: r[5], endTime: r[6], reason: r[7], status: r[8]
+            }));
+
+            renderUI();
+        } catch (error) {
+            console.error(error);
+            document.getElementById('leaveBody').innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">❌ 雲端連線失敗，請檢查網路或重新整理。</td></tr>';
+        }
+    }
+
+    // --- 2. 權限與介面渲染 ---
     window.handleRoleChange = function() {
         const select = document.getElementById('adminRole');
         const selectedRole = select.value;
 
         if (selectedRole === '人事部') {
-            const pwd = prompt("請輸入【人事部】專用密碼：");
-            if (pwd !== HR_PASSWORD) {
-                alert("密碼錯誤！權限已退回一般主管。");
-                select.value = currentRole; // 退回原本的選擇
-                return;
+            if (prompt("請輸入【人事部】專用密碼：") !== HR_PASSWORD) {
+                alert("密碼錯誤！"); select.value = currentRole; return;
             }
         } else if (selectedRole === '副總') {
-            const pwd = prompt("請輸入【副總】專用密碼：");
-            if (pwd !== BOSS_PASSWORD) {
-                alert("密碼錯誤！權限已退回一般主管。");
-                select.value = currentRole;
-                return;
+            if (prompt("請輸入【副總】專用密碼：") !== BOSS_PASSWORD) {
+                alert("密碼錯誤！"); select.value = currentRole; return;
             }
         }
-        
-        // 驗證成功或切換為一般主管
         currentRole = selectedRole;
-        loadData();
+        renderUI();
     }
 
-    // 1. 員工管理功能 (加入薪資遮蔽邏輯)
-    function loadEmployees() {
-        const role = currentRole;
-        const isHR = role === '人事部';
-        
-        const emps = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
-        const tbody = document.getElementById('employeeListBody');
-        tbody.innerHTML = '';
-
-        // 控制表頭顯示
-        document.getElementById('salaryVisibilityNote').style.display = isHR ? 'none' : 'inline';
-        document.getElementById('actionColumnTh').style.display = isHR ? 'table-cell' : 'none';
-
-        emps.forEach(e => {
-            // 如果不是人事，薪水欄位顯示為 ***
-            const displaySalary = isHR ? `$${e.salary}` : `<span class="salary-hidden">***</span>`;
-            const actionBtn = isHR ? `<td><button class="action-btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteEmployee('${e.name}')">刪除</button></td>` : `<td style="display:none;"></td>`;
-            
-            tbody.innerHTML += `
-                <tr>
-                    <td>${e.dept}</td>
-                    <td><strong>${e.name}</strong></td>
-                    <td>${e.type}</td>
-                    <td>${displaySalary}</td>
-                    ${actionBtn}
-                </tr>
-            `;
-        });
-    }
-
-    window.addEmployee = function() {
-        const name = document.getElementById('empName').value.trim();
-        const dept = document.getElementById('empDept').value.trim();
-        const type = document.getElementById('empType').value;
-        const salary = document.getElementById('empSalary').value;
-        if(!name || !dept || !salary) return alert("請填寫完整資訊！包含部門名稱。");
-
-        let emps = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
-        const index = emps.findIndex(e => e.name === name);
-        if(index !== -1) { emps[index] = { name, dept, type, salary }; } 
-        else { emps.push({ name, dept, type, salary }); }
-        
-        localStorage.setItem('employee_list', JSON.stringify(emps));
-        document.getElementById('empName').value = '';
-        document.getElementById('empSalary').value = '';
-        loadEmployees();
-        alert(`✅ 已儲存 ${name} (${dept}) 的資料！`);
-    }
-
-    window.deleteEmployee = function(name) {
-        if(confirm(`確定要刪除 ${name} 嗎？`)) {
-            let emps = JSON.parse(localStorage.getItem('employee_list')) || [];
-            emps = emps.filter(e => e.name !== name);
-            localStorage.setItem('employee_list', JSON.stringify(emps));
-            loadEmployees();
-        }
-    }
-
-    // 2. 載入並過濾假單與權限 UI
-    window.loadData = function() {
+    function renderUI() {
         const role = currentRole;
         document.getElementById('roleLabel').innerText = role;
 
-        // 權限控制
         const isHR = role === '人事部';
         const isBoss = role === '副總';
         
-        // 只有人事可以新增員工
         document.getElementById('addEmployeeForm').style.display = isHR ? 'block' : 'none';
-        // 只有人事和副總可以下載報表
         document.getElementById('reportSection').style.display = (isHR || isBoss) ? 'block' : 'none';
+        document.getElementById('salaryVisibilityNote').style.display = isHR ? 'none' : 'inline';
 
-        loadEmployees(); // 重新載入員工名單以套用遮蔽
+        // 渲染員工名單
+        const empTbody = document.getElementById('employeeListBody');
+        empTbody.innerHTML = '';
+        if (cloudData.employees.length === 0) {
+            empTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">目前雲端尚無員工資料</td></tr>';
+        } else {
+            cloudData.employees.forEach(e => {
+                const displaySalary = isHR ? `$${e.salary}` : `<span class="salary-hidden">***</span>`;
+                empTbody.innerHTML += `<tr><td>${e.dept}</td><td><strong>${e.name}</strong></td><td>${e.type}</td><td>${displaySalary}</td></tr>`;
+            });
+        }
 
-        const leaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
-        const tbody = document.getElementById('leaveBody');
-        tbody.innerHTML = '';
+        // 渲染假單 (三階簽核過濾)
+        const leaveTbody = document.getElementById('leaveBody');
+        leaveTbody.innerHTML = '';
+        let hasLeave = false;
 
-        leaves.reverse().forEach(l => {
+        // 反轉陣列，讓最新假單在最上面
+        [...cloudData.leave].reverse().forEach(l => {
             let showRow = false;
             let canApprove = false;
             let targetAction = '';
@@ -244,6 +204,7 @@
             }
 
             if (showRow) {
+                hasLeave = true;
                 let badgeClass = 'bg-warning';
                 if (l.status === '待人事審核') badgeClass = 'bg-info';
                 if (l.status === '待副總審核') badgeClass = 'bg-primary';
@@ -257,66 +218,105 @@
                         <button class="action-btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="processLeave('${l.id}', '已退件')">退件</button>
                     `;
                 } else {
-                    btnHtml = `<span style="color:#888; font-size:12px;">無操作權限或已審畢</span>`;
+                    btnHtml = `<span style="color:#888; font-size:12px;">已審畢或無權限</span>`;
                 }
+                
+                // 處理日期格式 (Google Sheets 傳來的可能是 ISO 字串)
+                const startStr = typeof l.startTime === 'string' ? l.startTime.replace('T', ' ').substring(0, 16) : l.startTime;
+                const endStr = typeof l.endTime === 'string' ? l.endTime.replace('T', ' ').substring(0, 16) : l.endTime;
 
-                tbody.innerHTML += `
+                leaveTbody.innerHTML += `
                     <tr>
                         <td>${l.department}</td>
                         <td><strong>${l.employeeName}</strong></td>
                         <td>${l.leaveType}</td>
-                        <td style="font-size:14px;">${l.startTime.replace('T',' ')} ~ ${l.endTime.replace('T',' ')}</td>
+                        <td style="font-size:13px;">${startStr} ~ ${endStr}</td>
                         <td><span class="badge ${badgeClass}">${l.status}</span></td>
                         <td>${btnHtml}</td>
                     </tr>
                 `;
             }
         });
+
+        if (!hasLeave) leaveTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">目前沒有需要您審核的假單</td></tr>';
+    }
+
+    // --- 3. 寫入雲端功能 ---
+    window.addEmployee = function() {
+        const name = document.getElementById('empName').value.trim();
+        const dept = document.getElementById('empDept').value.trim();
+        const type = document.getElementById('empType').value;
+        const salary = document.getElementById('empSalary').value;
+        if(!name || !dept || !salary) return alert("請填寫完整資訊！");
+
+        const btn = document.getElementById('saveEmpBtn');
+        btn.innerText = "⏳ 傳送中..."; btn.disabled = true;
+
+        fetch(CONFIG_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "saveEmployee", name: name, dept: dept, type: type, salary: salary })
+        }).then(() => {
+            alert(`✅ 已成功將 ${name} 新增至雲端資料庫！`);
+            document.getElementById('empName').value = ''; document.getElementById('empSalary').value = '';
+            btn.innerText = "💾 儲存至雲端"; btn.disabled = false;
+            fetchCloudData(); // 重新抓取
+        }).catch(err => { alert("連線錯誤"); btn.innerText = "💾 儲存至雲端"; btn.disabled = false; });
     }
 
     window.processLeave = function(id, nextStatus) {
-        let leaves = JSON.parse(localStorage.getItem('leave_requests')) || [];
-        const idx = leaves.findIndex(l => l.id === id);
-        if(idx !== -1) { 
-            leaves[idx].status = nextStatus; 
-            localStorage.setItem('leave_requests', JSON.stringify(leaves)); 
-            loadData(); 
-        }
+        // 先在畫面上改變狀態，提升使用者體驗
+        fetch(CONFIG_URL, {
+            method: "POST",
+            body: JSON.stringify({ action: "updateLeave", id: id, newStatus: nextStatus })
+        }).then(() => {
+            alert(`✅ 假單狀態已更新為：${nextStatus}`);
+            fetchCloudData(); // 重新抓取確認
+        }).catch(err => alert("連線錯誤，無法更新假單。"));
     }
 
-    // 3. 產生 Excel
+    // --- 4. 產生 Excel 報表 ---
     window.generateReport = function() {
-        const monthStr = document.getElementById('reportMonth').value;
+        const monthStr = document.getElementById('reportMonth').value; // YYYY-MM
         if(!monthStr) return alert("請先選擇結算月份！");
-        const emps = JSON.parse(localStorage.getItem('employee_list')) || defaultEmps;
-        const records = JSON.parse(localStorage.getItem('attendance_records')) || [];
+        
         const reportData = {};
         
-        emps.forEach(emp => {
-            const baseSal = parseFloat(emp.salary);
+        // 建立名單骨架
+        cloudData.employees.forEach(emp => {
+            const baseSal = parseFloat(emp.salary) || 0;
             const hourly = emp.type === "月薪" ? Math.round(baseSal / 240) : baseSal;
-            reportData[emp.name] = { "部門": emp.dept, "員工姓名": emp.name, "計薪方式": emp.type, "基本薪資": baseSal, "正常出勤": 0, "遲到": 0, "加班費預估": 0 };
+            reportData[emp.name] = { 
+                "部門": emp.dept, "員工姓名": emp.name, "計薪方式": emp.type, "基本薪資": baseSal, 
+                "換算時薪": hourly, "正常出勤天數": 0, "遲到次數": 0, "個人因素提早次數": 0, 
+                "核准加班次數": 0, "加班費預估": 0 
+            };
         });
 
-        records.forEach(r => {
-            if(r.timestamp.startsWith(monthStr) && reportData[r.employeeName]) {
+        // 灌入打卡紀錄
+        cloudData.attendance.forEach(r => {
+            const dateStr = typeof r.timestamp === 'string' ? r.timestamp : new Date(r.timestamp).toISOString();
+            if(dateStr.startsWith(monthStr) && reportData[r.employeeName]) {
                 const target = reportData[r.employeeName];
-                if(r.status === "正常上班") target["正常出勤"]++;
-                if(r.status === "遲到") target["遲到"]++;
-                if(r.status === "加班") { target["加班費預估"] += Math.round((target["基本薪資"]/240) * 1.34 * 2); }
+                if(r.status === "正常上班") target["正常出勤天數"]++;
+                if(r.status === "遲到") target["遲到次數"]++;
+                if(r.status === "個人因素提早上班") target["個人因素提早次數"]++;
+                if(r.status === "主管核准加班") { 
+                    target["核准加班次數"]++;
+                    target["加班費預估"] += Math.round(target["換算時薪"] * 1.34 * 2); 
+                }
             }
         });
 
         const finalArray = Object.values(reportData);
-        if(finalArray.length === 0) return alert("沒有資料可匯出！");
+        if(finalArray.length === 0) return alert("雲端中沒有員工資料可匯出！請先新增員工。");
         const ws = XLSX.utils.json_to_sheet(finalArray);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "薪資結算");
         XLSX.writeFile(wb, `禾禾園_${monthStr}_薪資報表.xlsx`);
     }
 
-    // 初始化載入
-    loadData();
+    // 網頁載入時自動抓取雲端資料
+    fetchCloudData();
 </script>
 </body>
 </html>
