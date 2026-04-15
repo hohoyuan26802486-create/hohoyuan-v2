@@ -140,7 +140,6 @@
         document.getElementById(tabId).classList.add('active');
     }
 
-    // 🌟 核心邏輯：自動根據時間變化選項
     function updateDynamicStatus() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         const container = document.getElementById('dynamicStatus');
@@ -176,13 +175,15 @@
                     <input type="radio" name="attStatus" id="s4" value="經主管核准加班">
                     <label for="s4">核准加班</label>
                 `;
-                hintText = "※ 16:50 後打卡，若為核准加班系統才會計算加班費。";
+                // 🌟 已經將下班後的紅字提示清空
+                hintText = ""; 
             } else {
                 html = `
                     <input type="radio" name="attStatus" id="s1" value="正常" checked>
                     <label for="s1">正常</label>
                 `;
-                hintText = "※ 16:30 - 16:50 之間下班為正常緩衝區。";
+                // 🌟 已經將下班後的紅字提示清空
+                hintText = ""; 
             }
         }
 
@@ -190,10 +191,8 @@
         hint.innerText = hintText;
     }
 
-    // 頁面載入時先執行一次時間判斷
     document.addEventListener("DOMContentLoaded", () => {
         updateDynamicStatus();
-        // 每分鐘自動更新一次選項，防止員工網頁開著放很久
         setInterval(updateDynamicStatus, 60000); 
     });
 
@@ -219,7 +218,7 @@
         } finally {
             btn.innerText = "送出打卡";
             btn.disabled = false;
-            updateDynamicStatus(); // 重置選項
+            updateDynamicStatus(); 
         }
     }
 
