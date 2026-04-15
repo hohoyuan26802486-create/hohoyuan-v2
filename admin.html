@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 管理後台 V9.1 (勞健保完整版)</title>
+    <title>禾禾園 - 管理後台 V9.2 (指定月份結算版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -43,9 +43,12 @@
 <div class="container top-nav">
     <div><strong>🔑 身分：</strong> 
         <select id="adminRole" onchange="authRole()">
-            <option value="業務部主管">業務部主管</option><option value="會計部主管">會計部主管</option>
-            <option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option>
-            <option value="倉儲部主管">倉儲部主管</option><option value="人事部">人事部</option>
+            <option value="業務部主管">業務部主管</option>
+            <option value="會計部主管">會計部主管</option>
+            <option value="生產部主管">生產部主管</option>
+            <option value="運輸部主管">運輸部主管</option>
+            <option value="倉儲部主管">倉儲部主管</option>
+            <option value="人事部">人事部</option>
             <option value="副總">副總</option>
         </select>
     </div>
@@ -112,15 +115,15 @@
 
 <div id="reportBox" class="container" style="display:none;">
     <h1>📊 結算月報表</h1>
+    <p style="color: #d63384; font-size: 13px; font-weight: bold; margin-top: -10px;">※ 結算前請務必先選擇月份，系統才會精準抓取該月紀錄！</p>
     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;"> 
+        <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 2px solid #1a73e8; font-weight: bold;"> 
         <button id="calcBtn" class="btn btn-primary" onclick="calcSalary()">🧮 1. 結算最新薪資</button>
         <button class="btn btn-success" onclick="exportEx()">📥 2. 匯出 Excel 薪資表</button>
     </div>
 </div>
 
 <script>
-    // 您的專屬 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = { employees: [], leave: [], attendance: [], Salary_Summary: [] };
     let editingEmpName = null;
@@ -176,7 +179,6 @@
             const used = db.leave.filter(l => l[2]===r[0] && l[4]==='特休' && l[8]==='已生效').length;
             const safeDate = formatNiceDate(r[4], false);
             const bonus = r[6] || 0;
-            // 🌟 讀取勞健保資料 (對應表單的 H, I, J 欄)
             const labor = r[7] || 0;
             const health = r[8] || 0;
             const dep = r[9] || 0;
@@ -195,7 +197,6 @@
         }).join('');
     }
 
-    // 🌟 按下修改時，會自動帶入勞健保資料
     function startEdit(name, dept, sal, date, bonus, labor, health, dep) {
         editingEmpName = name; 
         document.getElementById('eName').value = name;
@@ -204,7 +205,6 @@
         document.getElementById('eSal').value = sal;
         document.getElementById('eDate').value = date;
         document.getElementById('eBonus').value = bonus;
-        
         document.getElementById('eLabor').value = labor;
         document.getElementById('eHealth').value = health;
         document.getElementById('eDep').value = dep;
@@ -243,9 +243,9 @@
             salary: document.getElementById('eSal').value, 
             onboardingDate: document.getElementById('eDate').value, 
             bonus: document.getElementById('eBonus').value,
-            laborIns: document.getElementById('eLabor').value,    // 勞保
-            healthIns: document.getElementById('eHealth').value,  // 健保
-            dependents: document.getElementById('eDep').value     // 眷屬
+            laborIns: document.getElementById('eLabor').value,
+            healthIns: document.getElementById('eHealth').value,
+            dependents: document.getElementById('eDep').value
         };
 
         if(!data.name || !data.salary || !data.onboardingDate) return alert("姓名、薪資與到職日必填！");
@@ -275,12 +275,17 @@
         fetchData();
     }
 
+    // 🌟 計算薪資主程式：強制攔截沒選月份的行為
     async function calcSalary() {
+        const m = document.getElementById('rMonth').value;
+        if(!m) return alert("⚠️ 請先在左側選擇要結算的「月份」（例如：2026年4月），再點擊結算！");
+
         const btn = document.getElementById('calcBtn');
         btn.innerText = "⏳ 薪資結算中..."; btn.disabled = true;
         try {
-            await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action: "calculateSalary" }) });
-            alert("✅ 薪資結算完成！現在可以放心匯出 Excel 了。");
+            // 🌟 將選好的月份傳送給 Google 雲端大腦
+            await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action: "calculateSalary", targetMonth: m }) });
+            alert(`✅ ${m} 月份薪資結算完成！現在可以放心匯出 Excel 了。`);
             fetchData(); 
         } catch (e) { alert("結算失敗，請重試！"); } 
         finally { btn.innerText = "🧮 1. 結算最新薪資"; btn.disabled = false; }
