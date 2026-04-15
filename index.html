@@ -17,14 +17,12 @@
         
         .input-group { margin-bottom: 18px; }
         .input-group label { display: block; font-size: 14px; font-weight: bold; color: #444; margin-bottom: 8px; }
-        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; background-color: white; }
         
         .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
         .radio-group label { flex: 1; text-align: center; background: #eee; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; font-weight: normal; font-size: 14px; min-width: 120px; }
         .radio-group input { display: none; }
         .radio-group input:checked + label { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; font-weight: bold; }
-
-        .hint { font-size: 12px; color: #d63384; margin-top: 8px; font-weight: bold; line-height: 1.4; }
 
         .btn-submit { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
         .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
@@ -41,7 +39,9 @@
     <div id="clockIn" class="form-content active">
         <div class="input-group">
             <label>👤 員工姓名</label>
-            <input type="text" id="attName" placeholder="請輸入您的姓名" required>
+            <select id="attName" required>
+                <option value="">⏳ 正在載入員工名單...</option>
+            </select>
         </div>
         
         <div class="input-group">
@@ -70,7 +70,6 @@
             <label>⚡ 狀態選項</label>
             <div class="radio-group" id="dynamicStatus">
                 </div>
-            <div class="hint" id="statusHint"></div>
         </div>
         
         <button id="btnAtt" class="btn-submit" onclick="submitAttendance()">送出打卡</button>
@@ -79,7 +78,9 @@
     <div id="leave" class="form-content">
         <div class="input-group">
             <label>👤 員工姓名</label>
-            <input type="text" id="lvName" placeholder="請輸入您的姓名" required>
+            <select id="lvName" required>
+                <option value="">⏳ 正在載入員工名單...</option>
+            </select>
         </div>
         
         <div class="input-group">
@@ -140,6 +141,30 @@
         document.getElementById(tabId).classList.add('active');
     }
 
+    // 🌟 新增功能：網頁載入時自動去 Google 表單抓「員工名冊」
+    async function fetchEmployees() {
+        try {
+            const res = await fetch(CONFIG_URL);
+            const db = await res.json();
+            
+            // 把第一行標題過濾掉，只留員工資料
+            const empList = db.employees.filter(r => r[0] && r[0] !== "姓名");
+            
+            let optionsHTML = '<option value="" disabled selected>👉 請選擇您的姓名</option>';
+            empList.forEach(emp => {
+                // 選項會顯示：徐偉強 (業務部)，防呆又清楚
+                optionsHTML += `<option value="${emp[0]}">${emp[0]} (${emp[1]})</option>`;
+            });
+
+            document.getElementById('attName').innerHTML = optionsHTML;
+            document.getElementById('lvName').innerHTML = optionsHTML;
+        } catch (e) {
+            console.error("無法載入員工名單");
+            document.getElementById('attName').innerHTML = '<option value="">⚠️ 網路不穩，請重新整理</option>';
+        }
+    }
+
+    // 🌟 時間防呆邏輯 (超過 16:50 才會出現兩個按鈕)
     function updateDynamicStatus() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         const container = document.getElementById('dynamicStatus');
@@ -150,7 +175,7 @@
         let html = '';
 
         if (type === '上班') {
-            if (totalMinutes <= 440) { // 🌟 07:20 (含) 以前：強迫只出現 1 個選項
+            if (totalMinutes <= 440) { // 07:20 (含) 以前：強迫只出現 1 個選項
                 html = `
                     <input type="radio" name="attStatus" id="s2" value="個人因素提早上班" checked>
                     <label for="s2">個人因素提早上班</label>
@@ -169,7 +194,7 @@
                     <input type="radio" name="attStatus" id="s4" value="經主管核准加班">
                     <label for="s4">經主管核准加班</label>
                 `;
-            } else { // 16:49 以前：顯示正常
+            } else { // 16:49 以前：顯示正常 (包含早上 7 點測試時)
                 html = `
                     <input type="radio" name="attStatus" id="s1" value="正常" checked>
                     <label for="s1">正常</label>
@@ -182,16 +207,17 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         updateDynamicStatus();
+        fetchEmployees(); // 網頁一打開就去抓員工名單
         setInterval(updateDynamicStatus, 60000); // 每分鐘檢查一次時間切換選項
     });
 
     async function submitAttendance() {
-        const name = document.getElementById('attName').value.trim();
+        const name = document.getElementById('attName').value; // 下拉選單的值
         const dept = document.getElementById('attDept').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
         const status = document.querySelector('input[name="attStatus"]:checked').value;
 
-        if (!name) return alert("⚠️ 請填寫姓名！");
+        if (!name) return alert("⚠️ 請選擇您的姓名！");
 
         const btn = document.getElementById('btnAtt');
         btn.innerText = "⏳ 傳送中...";
@@ -212,7 +238,7 @@
     }
 
     async function submitLeave() {
-        const name = document.getElementById('lvName').value.trim();
+        const name = document.getElementById('lvName').value; // 下拉選單的值
         const dept = document.getElementById('lvDept').value;
         const type = document.getElementById('lvType').value;
         const start = document.getElementById('lvStart').value;
