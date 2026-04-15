@@ -143,57 +143,46 @@
     function updateDynamicStatus() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         const container = document.getElementById('dynamicStatus');
-        const hint = document.getElementById('statusHint');
         
         const now = new Date();
         const totalMinutes = now.getHours() * 60 + now.getMinutes();
 
         let html = '';
-        let hintText = '';
 
         if (type === '上班') {
-            if (totalMinutes <= 440) { // 07:20 (含) 以前
+            if (totalMinutes <= 440) { // 🌟 07:20 (含) 以前：強迫只出現 1 個選項
                 html = `
-                    <input type="radio" name="attStatus" id="s1" value="正常">
-                    <label for="s1">正常</label>
                     <input type="radio" name="attStatus" id="s2" value="個人因素提早上班" checked>
-                    <label for="s2">個人因素提早</label>
+                    <label for="s2">個人因素提早上班</label>
                 `;
-                hintText = "※ 07:20 前打卡，請確認是否為個人因素提早。";
-            } else {
+            } else { // 07:21 以後：恢復正常
                 html = `
                     <input type="radio" name="attStatus" id="s1" value="正常" checked>
                     <label for="s1">正常</label>
                 `;
-                hintText = "";
             }
         } else if (type === '下班') {
-            if (totalMinutes >= 1010) { // 16:50 (含) 以後
+            if (totalMinutes >= 1010) { // 🌟 16:50 (含) 以後：強迫只出現 2 個選項
                 html = `
                     <input type="radio" name="attStatus" id="s3" value="個人因素延後下班" checked>
-                    <label for="s3">個人因素延後</label>
+                    <label for="s3">個人因素延後下班</label>
                     <input type="radio" name="attStatus" id="s4" value="經主管核准加班">
-                    <label for="s4">核准加班</label>
+                    <label for="s4">經主管核准加班</label>
                 `;
-                // 🌟 已經將下班後的紅字提示清空
-                hintText = ""; 
-            } else {
+            } else { // 16:49 以前：顯示正常
                 html = `
                     <input type="radio" name="attStatus" id="s1" value="正常" checked>
                     <label for="s1">正常</label>
                 `;
-                // 🌟 已經將下班後的紅字提示清空
-                hintText = ""; 
             }
         }
 
         container.innerHTML = html;
-        hint.innerText = hintText;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
         updateDynamicStatus();
-        setInterval(updateDynamicStatus, 60000); 
+        setInterval(updateDynamicStatus, 60000); // 每分鐘檢查一次時間切換選項
     });
 
     async function submitAttendance() {
