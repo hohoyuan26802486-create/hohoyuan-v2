@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 管理後台 V9.2 (指定月份結算版)</title>
+    <title>禾禾園 - 管理後台 V9.3 (PDF薪資單版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -32,7 +32,6 @@
         .bg-info { background-color: #17a2b8; }
         .bg-warning-text { background-color: #ffc107; color: #333; }
         .bg-success { background-color: #28a745; }
-        .status-text { font-weight: bold; color: #d63384; }
 
         .top-nav { background: #2c3e50; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .top-nav select { padding: 5px; border-radius: 4px; }
@@ -43,12 +42,9 @@
 <div class="container top-nav">
     <div><strong>🔑 身分：</strong> 
         <select id="adminRole" onchange="authRole()">
-            <option value="業務部主管">業務部主管</option>
-            <option value="會計部主管">會計部主管</option>
-            <option value="生產部主管">生產部主管</option>
-            <option value="運輸部主管">運輸部主管</option>
-            <option value="倉儲部主管">倉儲部主管</option>
-            <option value="人事部">人事部</option>
+            <option value="業務部主管">業務部主管</option><option value="會計部主管">會計部主管</option>
+            <option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option>
+            <option value="倉儲部主管">倉儲部主管</option><option value="人事部">人事部</option>
             <option value="副總">副總</option>
         </select>
     </div>
@@ -56,12 +52,12 @@
 </div>
 
 <div class="container">
-    <h1>📍 全公司打卡紀錄 (即時動態)</h1>
-    <div style="max-height: 400px; overflow-y: auto;">
+    <h1>📍 全公司打卡紀錄</h1>
+    <div style="max-height: 300px; overflow-y: auto;">
         <div class="table-responsive">
             <table>
-                <thead><tr><th>打卡時間</th><th>部門</th><th>姓名</th><th>類別</th><th>狀態/選項</th></tr></thead>
-                <tbody id="attendanceBody"><tr><td colspan="5" style="text-align:center;">⏳ 正在讀取雲端打卡資料...</td></tr></tbody>
+                <thead><tr><th>時間</th><th>部門</th><th>姓名</th><th>類別</th><th>狀態</th></tr></thead>
+                <tbody id="attendanceBody"></tbody>
             </table>
         </div>
     </div>
@@ -78,48 +74,40 @@
 </div>
 
 <div id="hrBox" class="container" style="display:none;">
-    <h1>👥 員工名冊管理 (薪資與勞健保)</h1>
-    <p style="color: #666; font-size: 12px; margin-top: -10px;">💡 提示：設定完勞健保後，結算薪資時會自動扣除。</p>
-    
-    <div style="background-color: #e8f0fe; border-left: 4px solid #1a73e8; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; line-height: 1.6;">
-        <strong style="color: #1a73e8; font-size: 14px;">⚖️ 勞基法特休天數時間表：</strong><br>
-        • 滿 <strong>6 個月</strong>：3 天 ｜ • 滿 <strong>1 年</strong>：7 天 ｜ • 滿 <strong>2 年</strong>：10 天<br>
-        • 滿 <strong>3 年</strong>：14 天 ｜ • 滿 <strong>5 年</strong>：15 天 ｜ • 滿 <strong>10 年以上</strong>：每多一年加 1 天 (上限 30 天)
-    </div>
-
+    <h1>👥 員工名冊管理</h1>
     <div class="form-row" id="employeeForm">
-        <div class="input-group"><label>員工姓名</label><input type="text" id="eName" placeholder="請輸入姓名"></div>
-        <div class="input-group"><label>所屬部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
-        <div class="input-group"><label>到職日 (必填)</label><input type="date" id="eDate" required></div>
-        
-        <div class="input-group"><label>月薪 (底薪)</label><input type="number" id="eSal" placeholder="如: 36000"></div>
-        <div class="input-group"><label>變動獎金</label><input type="number" id="eBonus" value="0" placeholder="如無請填0"></div>
-        
-        <div class="input-group"><label>🩺 勞保自付額</label><input type="number" id="eLabor" value="0" placeholder="如: 1100"></div>
-        <div class="input-group"><label>🏥 健保自付額</label><input type="number" id="eHealth" value="0" placeholder="如: 800"></div>
-        <div class="input-group"><label>👨‍👩‍👧 健保眷屬數</label><input type="number" id="eDep" value="0" placeholder="0"></div>
-
+        <div class="input-group"><label>姓名</label><input type="text" id="eName"></div>
+        <div class="input-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
+        <div class="input-group"><label>到職日</label><input type="date" id="eDate"></div>
+        <div class="input-group"><label>底薪</label><input type="number" id="eSal"></div>
+        <div class="input-group"><label>獎金</label><input type="number" id="eBonus" value="0"></div>
+        <div class="input-group"><label>勞保</label><input type="number" id="eLabor" value="0"></div>
+        <div class="input-group"><label>健保</label><input type="number" id="eHealth" value="0"></div>
+        <div class="input-group"><label>眷屬</label><input type="number" id="eDep" value="0"></div>
         <div class="input-group-btn">
-            <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">➕ 新增/儲存</button>
-            <button id="cancelEditBtn" class="btn btn-edit" style="display:none; margin-top:5px;" onclick="cancelEdit()">❌ 取消修改</button>
+            <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">➕ 儲存</button>
+            <button id="cancelEditBtn" class="btn btn-edit" style="display:none;" onclick="cancelEdit()">❌ 取消</button>
         </div>
     </div>
-    
     <div class="table-responsive">
         <table>
-            <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>底薪</th><th>獎金</th><th>勞保/健保/眷屬</th><th>特休(總/剩)</th><th>操作</th></tr></thead>
+            <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>薪資明細</th><th>特休</th><th>操作</th></tr></thead>
             <tbody id="empBody"></tbody>
         </table>
     </div>
 </div>
 
 <div id="reportBox" class="container" style="display:none;">
-    <h1>📊 結算月報表</h1>
-    <p style="color: #d63384; font-size: 13px; font-weight: bold; margin-top: -10px;">※ 結算前請務必先選擇月份，系統才會精準抓取該月紀錄！</p>
-    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 2px solid #1a73e8; font-weight: bold;"> 
-        <button id="calcBtn" class="btn btn-primary" onclick="calcSalary()">🧮 1. 結算最新薪資</button>
-        <button class="btn btn-success" onclick="exportEx()">📥 2. 匯出 Excel 薪資表</button>
+    <h1>📊 月報表結算中心</h1>
+    <p style="color: #d63384; font-size: 13px; font-weight: bold;">※ 請先選月份，再依照 1 → 2 → 3 的順序操作：</p>
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+        <input type="month" id="rMonth" style="padding: 10px; border: 2px solid #1a73e8; border-radius: 5px;"> 
+        
+        <button id="calcBtn" class="btn btn-primary" onclick="calcSalary()">🧮 1. 結算薪資</button>
+        
+        <button class="btn btn-success" onclick="exportEx()">📥 2. 匯出 Excel</button>
+        
+        <button id="pdfBtn" class="btn btn-warning" onclick="makePDF()">📄 3. 生成 PDF 薪資單</button>
     </div>
 </div>
 
@@ -130,30 +118,14 @@
 
     function authRole() {
         const r = document.getElementById('adminRole').value;
-        if(r==='人事部' && prompt("請輸入人事部專用密碼")!=="123") document.getElementById('adminRole').value="業務部主管";
+        if(r==='人事部' && prompt("請輸入密碼")!=="123") document.getElementById('adminRole').value="業務部主管";
         render();
     }
 
     async function fetchData() {
-        try {
-            const res = await fetch(CONFIG_URL);
-            db = await res.json();
-            render();
-        } catch (e) { alert("連線失敗，請檢查網路狀態。"); }
-    }
-
-    function formatNiceDate(dateString, includeTime = true) {
-        if (!dateString) return '';
-        let d = new Date(dateString);
-        if (isNaN(d)) return dateString; 
-        
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const standardDate = `${yyyy}-${mm}-${dd}`;
-
-        if (!includeTime) return standardDate;
-        return d.toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const res = await fetch(CONFIG_URL);
+        db = await res.json();
+        render();
     }
 
     function render() {
@@ -163,156 +135,88 @@
         document.getElementById('hrBox').style.display = isHR ? 'block' : 'none';
         document.getElementById('reportBox').style.display = (isHR || isBoss) ? 'block' : 'none';
 
-        document.getElementById('attendanceBody').innerHTML = db.attendance.filter(r => r[0] && r[0] !== "時間戳記").reverse().map(r => 
-            `<tr><td style="color:#666;">${formatNiceDate(r[0])}</td><td>${r[2]}</td><td><strong>${r[1]}</strong></td><td><span class="badge ${r[3]==='上班'?'bg-info':'bg-success'}">${r[3]}</span></td><td class="status-text">${r[4]}</td></tr>`
-        ).join('') || '<tr><td colspan="5" style="text-align:center;">目前尚無打卡紀錄</td></tr>';
+        document.getElementById('attendanceBody').innerHTML = db.attendance.filter(r => r[0] && r[0] !== "時間戳記").reverse().slice(0,50).map(r => 
+            `<tr><td>${new Date(r[0]).toLocaleString()}</td><td>${r[2]}</td><td>${r[1]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`
+        ).join('');
 
-        document.getElementById('leaveBody').innerHTML = db.leave.filter(r=>r[0] && r[0] !== "ID" && r[0] !== "單號").reverse().map(r => {
+        document.getElementById('leaveBody').innerHTML = db.leave.filter(r=>r[0] && r[0] !== "單號").reverse().map(r => {
             let next = '';
             if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核';
             else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核';
             else if(role==='副總' && r[8]==='待副總審核') next = '已生效';
-            return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatNiceDate(r[5])} ~ <br>${formatNiceDate(r[6])}</td><td>${r[4]}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning-text'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success btn" onclick="upd('${r[0]}','${next}')">同意</button> <button class="btn btn-danger btn" onclick="upd('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
-        }).join('') || '<tr><td colspan="6" style="text-align:center;">暫無待處理假單</td></tr>';
-
-        document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0] && r[0] !== "姓名").map(r => {
-            const used = db.leave.filter(l => l[2]===r[0] && l[4]==='特休' && l[8]==='已生效').length;
-            const safeDate = formatNiceDate(r[4], false);
-            const bonus = r[6] || 0;
-            const labor = r[7] || 0;
-            const health = r[8] || 0;
-            const dep = r[9] || 0;
-            
-            return `<tr>
-                <td>${r[1]}</td><td>${r[0]}</td><td>${safeDate}</td>
-                <td class="${isHR?'':'salary-hidden'}">$${r[3]}</td>
-                <td class="${isHR?'':'salary-hidden'}">$${bonus}</td>
-                <td class="${isHR?'':'salary-hidden'}">$${labor} / $${health} / ${dep}人</td>
-                <td>${r[5]} / <strong style="color:green;">${Math.max(0, r[5]-used)}</strong></td>
-                <td>
-                    <button class="btn btn-edit" onclick="startEdit('${r[0]}', '${r[1]}', '${r[3]}', '${safeDate}', '${bonus}', '${labor}', '${health}', '${dep}')">✏️ 修改</button>
-                    <button class="btn btn-danger" onclick="delEmp('${r[0]}')">🗑️</button>
-                </td>
-            </tr>`;
+            return `<tr><td>${r[3]}</td><td>${r[2]}</td><td style="font-size:11px;">${r[5]}~${r[6]}</td><td>${r[4]}</td><td>${r[8]}</td><td>${next?`<button class="btn btn-success" onclick="upd('${r[0]}','${next}')">同意</button>`:'-'}</td></tr>`;
         }).join('');
-    }
 
-    function startEdit(name, dept, sal, date, bonus, labor, health, dep) {
-        editingEmpName = name; 
-        document.getElementById('eName').value = name;
-        document.getElementById('eName').disabled = true; 
-        document.getElementById('eDept').value = dept;
-        document.getElementById('eSal').value = sal;
-        document.getElementById('eDate').value = date;
-        document.getElementById('eBonus').value = bonus;
-        document.getElementById('eLabor').value = labor;
-        document.getElementById('eHealth').value = health;
-        document.getElementById('eDep').value = dep;
-        
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.innerText = "💾 儲存修改";
-        saveBtn.className = "btn btn-warning";
-        document.getElementById('cancelEditBtn').style.display = "inline-block";
-        document.getElementById('employeeForm').scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function cancelEdit() {
-        editingEmpName = null;
-        document.getElementById('eName').value = '';
-        document.getElementById('eName').disabled = false;
-        document.getElementById('eDept').value = '業務部';
-        document.getElementById('eSal').value = '';
-        document.getElementById('eDate').value = '';
-        document.getElementById('eBonus').value = '0';
-        document.getElementById('eLabor').value = '0';
-        document.getElementById('eHealth').value = '0';
-        document.getElementById('eDep').value = '0';
-        
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.innerText = "➕ 新增員工";
-        saveBtn.className = "btn btn-primary";
-        document.getElementById('cancelEditBtn').style.display = "none";
+        document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0] && r[0] !== "姓名").map(r => 
+            `<tr><td>${r[1]}</td><td>${r[0]}</td><td>${r[4]}</td><td>$${r[3]} (保:$${r[7]}/$${r[8]})</td><td>${r[5]}天</td><td><button class="btn btn-edit" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[6]}','${r[7]}','${r[8]}','${r[9]}')">✏️</button></td></tr>`
+        ).join('');
     }
 
     async function saveEmp() {
-        const data = { 
-            action: editingEmpName ? "editEmployee" : "saveEmployee", 
-            name: document.getElementById('eName').value, 
-            dept: document.getElementById('eDept').value, 
-            type: "月薪", 
-            salary: document.getElementById('eSal').value, 
-            onboardingDate: document.getElementById('eDate').value, 
-            bonus: document.getElementById('eBonus').value,
-            laborIns: document.getElementById('eLabor').value,
-            healthIns: document.getElementById('eHealth').value,
-            dependents: document.getElementById('eDep').value
-        };
-
-        if(!data.name || !data.salary || !data.onboardingDate) return alert("姓名、薪資與到職日必填！");
-        
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.innerText = "⏳ 傳送中..."; 
-        saveBtn.disabled = true;
-        
+        const data = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, salary: document.getElementById('eSal').value, onboardingDate: document.getElementById('eDate').value, bonus: document.getElementById('eBonus').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDep').value };
         await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify(data) });
-        
-        alert(editingEmpName ? "✅ 員工資料已成功修改！" : "✅ 已成功新增員工！"); 
-        
-        cancelEdit(); 
-        fetchData();  
-        saveBtn.disabled = false;
+        alert("儲存成功"); cancelEdit(); fetchData();
     }
 
-    async function delEmp(name) {
-        if(!confirm(`⚠️ 確定要刪除員工「${name}」嗎？`)) return;
-        await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action: "deleteEmployee", name: name }) });
-        alert("🗑️ 員工已刪除"); fetchData();
+    function startEdit(name, dept, sal, date, bonus, labor, health, dep) {
+        editingEmpName = name;
+        document.getElementById('eName').value = name; document.getElementById('eName').disabled = true;
+        document.getElementById('eDept').value = dept; document.getElementById('eSal').value = sal;
+        document.getElementById('eDate').value = date; document.getElementById('eBonus').value = bonus;
+        document.getElementById('eLabor').value = labor; document.getElementById('eHealth').value = health;
+        document.getElementById('eDep').value = dep;
+        document.getElementById('saveBtn').innerText = "💾 修改"; document.getElementById('cancelEditBtn').style.display = "inline";
     }
 
-    async function upd(id, s) {
-        if(!confirm(`確認將此單改為「${s}」？`)) return;
-        await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"updateLeave", id, newStatus:s }) });
-        fetchData();
+    function cancelEdit() {
+        editingEmpName = null; document.getElementById('eName').disabled = false;
+        document.getElementById('employeeForm').querySelectorAll('input').forEach(i => i.value = (i.type==='number'?0:''));
+        document.getElementById('saveBtn').innerText = "➕ 儲存"; document.getElementById('cancelEditBtn').style.display = "none";
     }
 
-    // 🌟 計算薪資主程式：強制攔截沒選月份的行為
     async function calcSalary() {
         const m = document.getElementById('rMonth').value;
-        if(!m) return alert("⚠️ 請先在左側選擇要結算的「月份」（例如：2026年4月），再點擊結算！");
-
+        if(!m) return alert("請選月份");
         const btn = document.getElementById('calcBtn');
-        btn.innerText = "⏳ 薪資結算中..."; btn.disabled = true;
+        btn.innerText = "⏳ 結算中..."; btn.disabled = true;
+        await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action: "calculateSalary", targetMonth: m }) });
+        alert("結算完成"); btn.innerText = "🧮 1. 結算薪資"; btn.disabled = false; fetchData();
+    }
+
+    // 🌟 這是新加入的「生成 PDF」控制函數
+    async function makePDF() {
+        const m = document.getElementById('rMonth').value;
+        if(!m) return alert("⚠️ 請先選擇月份！");
+        
+        const btn = document.getElementById('pdfBtn');
+        btn.innerText = "⏳ 正在生成 PDF..."; 
+        btn.disabled = true;
+
         try {
-            // 🌟 將選好的月份傳送給 Google 雲端大腦
-            await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action: "calculateSalary", targetMonth: m }) });
-            alert(`✅ ${m} 月份薪資結算完成！現在可以放心匯出 Excel 了。`);
-            fetchData(); 
-        } catch (e) { alert("結算失敗，請重試！"); } 
-        finally { btn.innerText = "🧮 1. 結算最新薪資"; btn.disabled = false; }
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "generatePDF", targetMonth: m }) 
+            });
+            alert(`✅ ${m} 月份薪資單 PDF 已成功生成！\n請至您的 Google 雲端硬碟查看資料夾。`);
+        } catch (e) { 
+            alert("❌ 生成失敗，請確認 Apps Script 已正確部署。"); 
+        } finally { 
+            btn.innerText = "📄 3. 生成 PDF 薪資單"; 
+            btn.disabled = false; 
+        }
     }
 
     function exportEx() {
         const m = document.getElementById('rMonth').value;
-        if(!m) return alert("請先選擇月份");
-        if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("⚠️ 找不到薪資資料，請先點擊「結算最新薪資」。");
-
-        const headers = db.Salary_Summary[0];
-        const data = [];
-        for (let i = 1; i < db.Salary_Summary.length; i++) {
-            const row = db.Salary_Summary[i];
-            if (!row[0]) continue;
-            let rowData = {};
-            for (let j = 0; j < headers.length; j++) {
-                let val = row[j];
-                if (j >= 2) val = Number(val) || 0; 
-                rowData[headers[j]] = val;
-            }
-            data.push(rowData);
-        }
-        const ws = XLSX.utils.json_to_sheet(data);
+        const ws = XLSX.utils.json_to_sheet(db.Salary_Summary);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "月結薪資總表");
-        XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "薪資表");
+        XLSX.writeFile(wb, `薪資表_${m}.xlsx`);
+    }
+
+    async function upd(id, s) {
+        await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"updateLeave", id, newStatus:s }) });
+        fetchData();
     }
 
     fetchData();
