@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 管理後台 V8</title>
+    <title>禾禾園 - 管理後台 V8.1 (含特休時間表)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -77,6 +77,17 @@
 <div id="hrBox" class="container" style="display:none;">
     <h1>👥 員工名冊管理</h1>
     <p style="color: #666; font-size: 12px; margin-top: -10px;">💡 提示：輸入到職日後，系統會依照勞基法自動計算並更新特休天數，無需手動填寫。</p>
+    
+    <div style="background-color: #e8f0fe; border-left: 4px solid #1a73e8; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; font-size: 13px; line-height: 1.6;">
+        <strong style="color: #1a73e8; font-size: 14px;">⚖️ 勞基法特休天數時間表 (系統自動對照標準)：</strong><br>
+        • 滿 <strong>6 個月</strong>：3 天 ｜ • 滿 <strong>1 年</strong>：7 天 ｜ • 滿 <strong>2 年</strong>：10 天<br>
+        • 滿 <strong>3 年</strong>：14 天 ｜ • 滿 <strong>5 年</strong>：15 天 ｜ • 滿 <strong>10 年以上</strong>：每多一年加 1 天 (上限 30 天)<br>
+        <div style="background-color: #fff3cd; padding: 6px 10px; margin-top: 8px; border-radius: 4px; border: 1px solid #ffeeba;">
+            <span style="color: #856404; font-weight: bold;">💡 舊資料校正密技：</span>
+            如果下方員工的特休天數是以前手動輸入的舊資料，您只需要點擊該員工的「✏️ 修改」，然後直接按下「💾 儲存修改」，系統就會瞬間幫您重新精算成正確的法定天數！
+        </div>
+    </div>
+
     <div class="form-row" id="employeeForm">
         <div class="input-group"><label>員工姓名</label><input type="text" id="eName" placeholder="請輸入姓名"></div>
         <div class="input-group"><label>所屬部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
@@ -225,7 +236,7 @@
         
         await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify(data) });
         
-        alert(editingEmpName ? "✅ 員工資料已成功修改！" : "✅ 已成功新增員工！"); 
+        alert(editingEmpName ? "✅ 員工資料已成功修改！(特休已自動重新計算)" : "✅ 已成功新增員工！"); 
         
         cancelEdit(); 
         fetchData();  
