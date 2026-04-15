@@ -5,135 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>禾禾園 - 員工打卡與請假系統</title>
     <style>
-        /* 基礎設定 */
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f0f2f5; 
-            margin: 0; 
-            padding: 15px; 
-            display: flex; 
-            justify-content: center; 
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .app-container { background: white; width: 100%; max-width: 450px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
         
-        .app-container { 
-            background: white; 
-            width: 100%; 
-            max-width: 450px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-            overflow: hidden; 
-        }
+        .tabs { display: flex; background: #1a73e8; }
+        .tab { flex: 1; text-align: center; padding: 15px 0; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; opacity: 0.7; }
+        .tab.active { opacity: 1; border-bottom: 4px solid #fff; background: #155db1; }
         
-        /* 頁籤設計 */
-        .tabs { 
-            display: flex; 
-            background: #1a73e8; 
-        }
+        .form-content { padding: 25px 20px; display: none; }
+        .form-content.active { display: block; }
         
-        .tab { 
-            flex: 1; 
-            text-align: center; 
-            padding: 15px 0; 
-            color: white; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: 0.3s; 
-            opacity: 0.7; 
-        }
+        .input-group { margin-bottom: 18px; }
+        .input-group label { display: block; font-size: 14px; font-weight: bold; color: #444; margin-bottom: 8px; }
+        .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
         
-        .tab.active { 
-            opacity: 1; 
-            border-bottom: 4px solid #fff; 
-            background: #155db1; 
-        }
-        
-        /* 表單內容 */
-        .form-content { 
-            padding: 25px 20px; 
-            display: none; 
-        }
-        
-        .form-content.active { 
-            display: block; 
-        }
-        
-        .input-group { 
-            margin-bottom: 18px; 
-        }
-        
-        .input-group label { 
-            display: block; 
-            font-size: 14px; 
-            font-weight: bold; 
-            color: #444; 
-            margin-bottom: 8px; 
-        }
-        
-        .input-group input, 
-        .input-group select { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            box-sizing: border-box; 
-        }
-        
-        /* 單選按鈕美化 (上班/下班/正常/加班) */
-        .radio-group { 
-            display: flex; 
-            gap: 10px; 
-        }
-        
-        .radio-group label { 
-            flex: 1; 
-            text-align: center; 
-            background: #eee; 
-            padding: 12px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            border: 2px solid transparent; 
-            font-weight: normal; 
-        }
-        
-        .radio-group input { 
-            display: none; 
-        }
-        
-        .radio-group input:checked + label { 
-            background: #e8f0fe; 
-            border-color: #1a73e8; 
-            color: #1a73e8; 
-            font-weight: bold; 
-        }
+        .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .radio-group label { flex: 1; text-align: center; background: #eee; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; font-weight: normal; font-size: 14px; min-width: 120px; }
+        .radio-group input { display: none; }
+        .radio-group input:checked + label { background: #e8f0fe; border-color: #1a73e8; color: #1a73e8; font-weight: bold; }
 
-        /* 提示字 */
-        .hint { 
-            font-size: 12px; 
-            color: #d63384; 
-            margin-top: 5px; 
-            font-weight: bold; 
-        }
+        .hint { font-size: 12px; color: #d63384; margin-top: 8px; font-weight: bold; line-height: 1.4; }
 
-        /* 送出大按鈕 */
-        .btn-submit { 
-            width: 100%; 
-            padding: 15px; 
-            background: #1a73e8; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 18px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin-top: 10px; 
-            transition: 0.3s; 
-        }
-        
-        .btn-submit:disabled { 
-            background: #aaa; 
-            cursor: not-allowed; 
-        }
+        .btn-submit { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -165,22 +59,18 @@
         <div class="input-group">
             <label>⏱️ 上下班</label>
             <div class="radio-group">
-                <input type="radio" name="attType" id="typeIn" value="上班" checked>
+                <input type="radio" name="attType" id="typeIn" value="上班" checked onchange="updateDynamicStatus()">
                 <label for="typeIn">上班 (07:30)</label>
-                <input type="radio" name="attType" id="typeOut" value="下班">
+                <input type="radio" name="attType" id="typeOut" value="下班" onchange="updateDynamicStatus()">
                 <label for="typeOut">下班 (16:30)</label>
             </div>
         </div>
         
         <div class="input-group">
-            <label>⚡ 狀態 (下班才需選加班)</label>
-            <div class="radio-group">
-                <input type="radio" name="attStatus" id="statusNormal" value="正常" checked>
-                <label for="statusNormal">正常</label>
-                <input type="radio" name="attStatus" id="statusOT" value="加班">
-                <label for="statusOT">加班</label>
-            </div>
-            <div class="hint">※ 提醒：16:50 以後打卡並選擇加班，系統才會計算加班費。</div>
+            <label>⚡ 狀態選項</label>
+            <div class="radio-group" id="dynamicStatus">
+                </div>
+            <div class="hint" id="statusHint"></div>
         </div>
         
         <button id="btnAtt" class="btn-submit" onclick="submitAttendance()">送出打卡</button>
@@ -241,10 +131,8 @@
 </div>
 
 <script>
-    // 您的專屬 API 網址 (已經綁定，不用修改)
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
 
-    // 控制「打卡」與「請假」頁籤切換
     function switchTab(tabId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.form-content').forEach(c => c.classList.remove('active'));
@@ -252,7 +140,63 @@
         document.getElementById(tabId).classList.add('active');
     }
 
-    // 處理打卡資料送出
+    // 🌟 核心邏輯：自動根據時間變化選項
+    function updateDynamicStatus() {
+        const type = document.querySelector('input[name="attType"]:checked').value;
+        const container = document.getElementById('dynamicStatus');
+        const hint = document.getElementById('statusHint');
+        
+        const now = new Date();
+        const totalMinutes = now.getHours() * 60 + now.getMinutes();
+
+        let html = '';
+        let hintText = '';
+
+        if (type === '上班') {
+            if (totalMinutes <= 440) { // 07:20 (含) 以前
+                html = `
+                    <input type="radio" name="attStatus" id="s1" value="正常">
+                    <label for="s1">正常</label>
+                    <input type="radio" name="attStatus" id="s2" value="個人因素提早上班" checked>
+                    <label for="s2">個人因素提早</label>
+                `;
+                hintText = "※ 07:20 前打卡，請確認是否為個人因素提早。";
+            } else {
+                html = `
+                    <input type="radio" name="attStatus" id="s1" value="正常" checked>
+                    <label for="s1">正常</label>
+                `;
+                hintText = "";
+            }
+        } else if (type === '下班') {
+            if (totalMinutes >= 1010) { // 16:50 (含) 以後
+                html = `
+                    <input type="radio" name="attStatus" id="s3" value="個人因素延後下班" checked>
+                    <label for="s3">個人因素延後</label>
+                    <input type="radio" name="attStatus" id="s4" value="經主管核准加班">
+                    <label for="s4">核准加班</label>
+                `;
+                hintText = "※ 16:50 後打卡，若為核准加班系統才會計算加班費。";
+            } else {
+                html = `
+                    <input type="radio" name="attStatus" id="s1" value="正常" checked>
+                    <label for="s1">正常</label>
+                `;
+                hintText = "※ 16:30 - 16:50 之間下班為正常緩衝區。";
+            }
+        }
+
+        container.innerHTML = html;
+        hint.innerText = hintText;
+    }
+
+    // 頁面載入時先執行一次時間判斷
+    document.addEventListener("DOMContentLoaded", () => {
+        updateDynamicStatus();
+        // 每分鐘自動更新一次選項，防止員工網頁開著放很久
+        setInterval(updateDynamicStatus, 60000); 
+    });
+
     async function submitAttendance() {
         const name = document.getElementById('attName').value.trim();
         const dept = document.getElementById('attDept').value;
@@ -265,27 +209,20 @@
         btn.innerText = "⏳ 傳送中...";
         btn.disabled = true;
 
-        const payload = { 
-            action: "write", 
-            sheetName: "attendance", 
-            name: name, 
-            dept: dept, 
-            type: type, 
-            status: status 
-        };
+        const payload = { action: "write", sheetName: "attendance", name: name, dept: dept, type: type, status: status };
 
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
-            alert(`✅ 打卡成功！\n${name} - ${type}`);
+            alert(`✅ 打卡成功！\n${name} - ${type} (${status})`);
         } catch (e) {
             alert("❌ 連線失敗，請檢查網路。");
         } finally {
             btn.innerText = "送出打卡";
             btn.disabled = false;
+            updateDynamicStatus(); // 重置選項
         }
     }
 
-    // 處理請假資料送出
     async function submitLeave() {
         const name = document.getElementById('lvName').value.trim();
         const dept = document.getElementById('lvDept').value;
@@ -301,21 +238,12 @@
         btn.innerText = "⏳ 傳送中...";
         btn.disabled = true;
 
-        const payload = { 
-            action: "write", 
-            sheetName: "leave", 
-            name: name, 
-            dept: dept, 
-            leaveType: type, 
-            start: start, 
-            end: end, 
-            reason: reason 
-        };
+        const payload = { action: "write", sheetName: "leave", name: name, dept: dept, leaveType: type, start: start, end: end, reason: reason };
 
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
             alert(`✅ 假單送出成功！\n請等待主管審核。`);
-            document.getElementById('lvReason').value = ''; // 清空事由
+            document.getElementById('lvReason').value = ''; 
         } catch (e) {
             alert("❌ 連線失敗，請檢查網路。");
         } finally {
