@@ -26,6 +26,9 @@
 
         .btn-submit { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
         .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+        /* 🌟 解鎖按鈕的樣式 */
+        .unlock-link { font-size: 12px; color: #d63384; font-weight: bold; cursor: pointer; text-align: right; display: block; margin-top: 5px; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -42,17 +45,17 @@
             <select id="attName" required>
                 <option value="">⏳ 正在載入員工名單...</option>
             </select>
+            <div id="unlockBox" style="display:none;">
+                <span class="unlock-link" onclick="unlockDevice()">🔑 HR 解除設備綁定</span>
+            </div>
         </div>
         
         <div class="input-group">
             <label>🏢 所屬部門</label>
             <select id="attDept">
-                <option value="業務部">業務部</option>
-                <option value="會計部">會計部</option>
-                <option value="生產部">生產部</option>
-                <option value="運輸部">運輸部</option>
-                <option value="倉儲部">倉儲部</option>
-                <option value="人事部">人事部</option>
+                <option value="業務部">業務部</option><option value="會計部">會計部</option>
+                <option value="生產部">生產部</option><option value="運輸部">運輸部</option>
+                <option value="倉儲部">倉儲部</option><option value="人事部">人事部</option>
             </select>
         </div>
         
@@ -68,65 +71,19 @@
         
         <div class="input-group">
             <label>⚡ 狀態選項</label>
-            <div class="radio-group" id="dynamicStatus">
-                </div>
+            <div class="radio-group" id="dynamicStatus"></div>
         </div>
         
         <button id="btnAtt" class="btn-submit" onclick="submitAttendance()">送出打卡</button>
     </div>
 
     <div id="leave" class="form-content">
-        <div class="input-group">
-            <label>👤 員工姓名</label>
-            <select id="lvName" required>
-                <option value="">⏳ 正在載入員工名單...</option>
-            </select>
-        </div>
-        
-        <div class="input-group">
-            <label>🏢 所屬部門</label>
-            <select id="lvDept">
-                <option value="業務部">業務部</option>
-                <option value="會計部">會計部</option>
-                <option value="生產部">生產部</option>
-                <option value="運輸部">運輸部</option>
-                <option value="倉儲部">倉儲部</option>
-                <option value="人事部">人事部</option>
-            </select>
-        </div>
-        
-        <div class="input-group">
-            <label>📌 假別選擇</label>
-            <select id="lvType">
-                <option value="事假">事假 (無薪)</option>
-                <option value="病假">病假 (半薪)</option>
-                <option value="特休">特休 (全薪)</option>
-                <option value="補休">補休 (全薪)</option>
-                <option value="產假">產假 (全薪)</option>
-                <option value="公傷病假">公傷病假 (全薪)</option>
-                <option value="婚假">婚假 (全薪)</option>
-                <option value="喪假">喪假 (全薪)</option>
-                <option value="生理假">生理假 (半薪)</option>
-                <option value="家庭照顧假">家庭照顧假 (無薪)</option>
-                <option value="公假">公假 (全薪)</option>
-            </select>
-        </div>
-        
-        <div class="input-group">
-            <label>📅 開始時間</label>
-            <input type="datetime-local" id="lvStart" required>
-        </div>
-        
-        <div class="input-group">
-            <label>📅 結束時間</label>
-            <input type="datetime-local" id="lvEnd" required>
-        </div>
-        
-        <div class="input-group">
-            <label>📝 請假事由</label>
-            <input type="text" id="lvReason" placeholder="請簡述事由" required>
-        </div>
-        
+        <div class="input-group"><label>👤 員工姓名</label><select id="lvName" required><option value="">⏳ 正在載入員工名單...</option></select></div>
+        <div class="input-group"><label>🏢 所屬部門</label><select id="lvDept"><option value="業務部">業務部</option><option value="會計部">會計部</option><option value="生產部">生產部</option><option value="運輸部">運輸部</option><option value="倉儲部">倉儲部</option><option value="人事部">人事部</option></select></div>
+        <div class="input-group"><label>📌 假別選擇</label><select id="lvType"><option value="事假">事假 (無薪)</option><option value="病假">病假 (半薪)</option><option value="特休">特休 (全薪)</option><option value="補休">補休 (全薪)</option><option value="產假">產假 (全薪)</option><option value="公傷病假">公傷病假 (全薪)</option><option value="婚假">婚假 (全薪)</option><option value="喪假">喪假 (全薪)</option><option value="生理假">生理假 (半薪)</option><option value="家庭照顧假">家庭照顧假 (無薪)</option><option value="公假">公假 (全薪)</option></select></div>
+        <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart" required></div>
+        <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd" required></div>
+        <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="請簡述事由" required></div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
 </div>
@@ -141,7 +98,6 @@
         document.getElementById(tabId).classList.add('active');
     }
 
-    // 🌟 Cookie 讀取工具
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -149,12 +105,23 @@
         return null;
     }
 
-    // 🌟 Cookie 寫入工具 (設定過期時間為 10 年，幾乎等於永久綁定)
     function setCookie(name, value) {
         const d = new Date();
         d.setTime(d.getTime() + (3650 * 24 * 60 * 60 * 1000)); 
-        let expires = "expires=" + d.toUTCString();
-        document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
+        document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/";
+    }
+
+    // 🌟 HR 專屬解鎖函數
+    function unlockDevice() {
+        const pwd = prompt("🔒 請輸入人事部專用的「設備解鎖密碼」：");
+        if (pwd === "123") { // 您可以隨時在這裡修改您的解鎖密碼
+            // 透過將過期時間設定為過去，來強制刪除 Cookie
+            document.cookie = "bound_employee=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            alert("🔓 設備已成功解除綁定！這台手機現在可以重新選擇員工了。");
+            window.location.reload(); 
+        } else if (pwd !== null) {
+            alert("❌ 密碼錯誤，無法解鎖！");
+        }
     }
 
     async function fetchEmployees() {
@@ -164,29 +131,24 @@
             const empList = db.employees.filter(r => r[0] && r[0] !== "姓名");
             
             let optionsHTML = '<option value="" disabled selected>👉 請選擇您的姓名</option>';
-            empList.forEach(emp => {
-                optionsHTML += `<option value="${emp[0]}">${emp[0]} (${emp[1]})</option>`;
-            });
+            empList.forEach(emp => { optionsHTML += `<option value="${emp[0]}">${emp[0]} (${emp[1]})</option>`; });
 
             document.getElementById('attName').innerHTML = optionsHTML;
             document.getElementById('lvName').innerHTML = optionsHTML;
 
-            // 🌟 防呆：載入名單後，如果手機已經綁定，自動幫他選好名字，且不讓他改
             const boundName = getCookie('bound_employee');
             if (boundName) {
                 document.getElementById('attName').value = boundName;
-                document.getElementById('attName').disabled = true; // 鎖死下拉選單
+                document.getElementById('attName').disabled = true; 
                 
-                // 為了讓表單送出時能抓到值，偷塞一個隱藏的 input
+                // 🌟 如果設備被鎖定，顯示解鎖按鈕
+                document.getElementById('unlockBox').style.display = "block";
+                
                 const hiddenInput = document.createElement("input");
-                hiddenInput.type = "hidden";
-                hiddenInput.id = "hiddenAttName";
-                hiddenInput.value = boundName;
+                hiddenInput.type = "hidden"; hiddenInput.id = "hiddenAttName"; hiddenInput.value = boundName;
                 document.getElementById('clockIn').appendChild(hiddenInput);
             }
-
         } catch (e) {
-            console.error("無法載入員工名單");
             document.getElementById('attName').innerHTML = '<option value="">⚠️ 網路不穩，請重新整理</option>';
         }
     }
@@ -194,52 +156,37 @@
     function updateDynamicStatus() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         const container = document.getElementById('dynamicStatus');
-        const now = new Date();
-        const totalMinutes = now.getHours() * 60 + now.getMinutes();
+        const now = new Date(); const totalMinutes = now.getHours() * 60 + now.getMinutes();
         let html = '';
 
         if (type === '上班') {
-            if (totalMinutes <= 440) { 
-                html = `<input type="radio" name="attStatus" id="s2" value="個人因素提早上班" checked><label for="s2">個人因素提早上班</label>`;
-            } else { 
-                html = `<input type="radio" name="attStatus" id="s1" value="正常" checked><label for="s1">正常</label>`;
-            }
+            if (totalMinutes <= 440) html = `<input type="radio" name="attStatus" id="s2" value="個人因素提早上班" checked><label for="s2">個人因素提早上班</label>`;
+            else html = `<input type="radio" name="attStatus" id="s1" value="正常" checked><label for="s1">正常</label>`;
         } else if (type === '下班') {
-            if (totalMinutes >= 1010) { 
-                html = `<input type="radio" name="attStatus" id="s3" value="個人因素延後下班" checked><label for="s3">個人因素延後下班</label><input type="radio" name="attStatus" id="s4" value="經主管核准加班"><label for="s4">經主管核准加班</label>`;
-            } else { 
-                html = `<input type="radio" name="attStatus" id="s1" value="正常" checked><label for="s1">正常</label>`;
-            }
+            if (totalMinutes >= 1010) html = `<input type="radio" name="attStatus" id="s3" value="個人因素延後下班" checked><label for="s3">個人因素延後下班</label><input type="radio" name="attStatus" id="s4" value="經主管核准加班"><label for="s4">經主管核准加班</label>`;
+            else html = `<input type="radio" name="attStatus" id="s1" value="正常" checked><label for="s1">正常</label>`;
         }
         container.innerHTML = html;
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-        updateDynamicStatus();
-        fetchEmployees(); 
-        setInterval(updateDynamicStatus, 60000); 
+        updateDynamicStatus(); fetchEmployees(); setInterval(updateDynamicStatus, 60000); 
     });
 
     async function submitAttendance() {
-        // 🌟 防呆：先檢查隱藏欄位有沒有值（代表已綁定），沒有的話再去抓下拉選單的值
         const boundInput = document.getElementById('hiddenAttName');
         const name = boundInput ? boundInput.value : document.getElementById('attName').value;
-        
         const dept = document.getElementById('attDept').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
         const status = document.querySelector('input[name="attStatus"]:checked').value;
 
         if (!name) return alert("⚠️ 請選擇您的姓名！");
 
-        // 🌟 核心防護：檢查是否有綁定其他名字
         const boundName = getCookie('bound_employee');
-        if (boundName && boundName !== name) {
-            return alert(`🚫 警告：這支手機已綁定給「${boundName}」，無法替他人代打卡！\n如有換手機等特殊情況，請聯繫人事部重置。`);
-        }
+        if (boundName && boundName !== name) return alert(`🚫 警告：這支手機已綁定給「${boundName}」！`);
 
         const btn = document.getElementById('btnAtt');
-        btn.innerText = "⏳ 傳送中...";
-        btn.disabled = true;
+        btn.innerText = "⏳ 傳送中..."; btn.disabled = true;
 
         const payload = { action: "write", sheetName: "attendance", name: name, dept: dept, type: type, status: status };
 
@@ -247,20 +194,13 @@
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
             alert(`✅ 打卡成功！\n${name} - ${type} (${status})`);
             
-            // 🌟 第一次打卡成功後，立刻鎖死這支手機！
             if (!boundName) {
                 setCookie('bound_employee', name);
                 alert(`🔒 設備綁定成功！\n以後這支手機將專屬於您（${name}）打卡使用。`);
-                window.location.reload(); // 重新載入，讓名字鎖死
+                window.location.reload(); 
             }
-
-        } catch (e) {
-            alert("❌ 連線失敗，請檢查網路。");
-        } finally {
-            btn.innerText = "送出打卡";
-            btn.disabled = false;
-            updateDynamicStatus(); 
-        }
+        } catch (e) { alert("❌ 連線失敗，請檢查網路。"); } 
+        finally { btn.innerText = "送出打卡"; btn.disabled = false; updateDynamicStatus(); }
     }
 
     async function submitLeave() {
@@ -271,25 +211,19 @@
         const end = document.getElementById('lvEnd').value;
         const reason = document.getElementById('lvReason').value.trim();
 
-        if (!name || !start || !end || !reason) return alert("⚠️ 請將所有欄位填寫完整！");
+        if (!name || !start || !end || !reason) return alert("⚠️ 請填寫完整！");
         if (new Date(start) >= new Date(end)) return alert("⚠️ 結束時間必須晚於開始時間！");
 
         const btn = document.getElementById('btnLv');
-        btn.innerText = "⏳ 傳送中...";
-        btn.disabled = true;
+        btn.innerText = "⏳ 傳送中..."; btn.disabled = true;
 
         const payload = { action: "write", sheetName: "leave", name: name, dept: dept, leaveType: type, start: start, end: end, reason: reason };
 
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
-            alert(`✅ 假單送出成功！\n請等待主管審核。`);
-            document.getElementById('lvReason').value = ''; 
-        } catch (e) {
-            alert("❌ 連線失敗，請檢查網路。");
-        } finally {
-            btn.innerText = "送出假單";
-            btn.disabled = false;
-        }
+            alert(`✅ 假單送出成功！`); document.getElementById('lvReason').value = ''; 
+        } catch (e) { alert("❌ 連線失敗。"); } 
+        finally { btn.innerText = "送出假單"; btn.disabled = false; }
     }
 </script>
 </body>
