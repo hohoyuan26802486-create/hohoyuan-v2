@@ -10,8 +10,8 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .app-container { background: white; width: 100%; max-width: 450px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
-        .tabs { display: flex; background: #1a73e8; overflow-x: auto; white-space: nowrap; }
-        .tab { flex: 1; text-align: center; padding: 15px 10px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; opacity: 0.7; font-size: 14px;}
+        .tabs { display: flex; background: #1a73e8; }
+        .tab { flex: 1; text-align: center; padding: 15px 10px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; opacity: 0.7; font-size: 15px;}
         .tab.active { opacity: 1; border-bottom: 4px solid #fff; background: #155db1; }
         .form-content { padding: 25px 20px; display: none; }
         .form-content.active { display: block; }
@@ -34,7 +34,6 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab('clockIn')">📍 打卡</div>
         <div class="tab" onclick="switchTab('leave')">📝 請假</div>
-        <div class="tab" onclick="switchTab('purchaseTab')">💰 採購</div>
         <div class="tab" onclick="switchTab('proofTab')">📎 補件</div>
     </div>
 
@@ -65,15 +64,6 @@
             <div class="hint">※ 若當下無法提供證明，可先送出假單，日後至「📎 補件」上傳。</div>
         </div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
-    </div>
-
-    <div id="purchaseTab" class="form-content">
-        <div class="input-group"><label>👤 業務姓名</label><select id="pcName"></select></div>
-        <div class="input-group"><label>🏢 出貨對象 (客戶名稱)</label><input type="text" id="pcTarget" placeholder="例如：台積電"></div>
-        <div class="input-group"><label>📦 採購項目</label><input type="text" id="pcItem" placeholder="例如：零件 A x 5"></div>
-        <div class="input-group"><label>💵 採購金額</label><input type="number" id="pcAmount" placeholder="金額"></div>
-        <div class="input-group"><label>📸 收據照片 (必填)</label><input type="file" id="pcFile" accept="image/*" capture="camera"></div>
-        <button id="btnPc" class="btn-submit" onclick="submitPurchase()">送出採購報帳</button>
     </div>
 
     <div id="proofTab" class="form-content">
@@ -123,11 +113,11 @@
             let optionsHTML = '<option value="" disabled selected>👉 請選擇您的姓名</option>';
             empList.forEach(emp => { optionsHTML += `<option value="${emp[0]}">${emp[0]} (${emp[1]})</option>`; });
 
-            ['attName', 'lvName', 'pcName', 'prfName'].forEach(id => document.getElementById(id).innerHTML = optionsHTML);
+            ['attName', 'lvName', 'prfName'].forEach(id => document.getElementById(id).innerHTML = optionsHTML);
 
             const boundName = getCookie('bound_employee');
             if (boundName) {
-                ['attName', 'lvName', 'pcName', 'prfName'].forEach(id => {
+                ['attName', 'lvName', 'prfName'].forEach(id => {
                     let el = document.getElementById(id);
                     el.value = boundName;
                     el.disabled = true;
@@ -137,19 +127,16 @@
                 hiddenInput.type = "hidden"; hiddenInput.id = "hiddenAttName"; hiddenInput.value = boundName;
                 document.getElementById('clockIn').appendChild(hiddenInput);
                 
-                // 自動幫員工載入需要補件的假單
                 setTimeout(loadPendingProofs, 500);
             }
         } catch (e) { console.error("連線失敗"); }
     }
 
-    // 🌟 尋找並載入「待補件」的假單
     function loadPendingProofs() {
         if (!globalDB || !globalDB.leave) return;
         const name = getCookie('bound_employee') || document.getElementById('prfName').value;
         const sel = document.getElementById('prfSelect');
         
-        // 篩選出該員工，且照片欄位(第10欄, index 9)不是網址的假單
         const pending = globalDB.leave.filter(r => r[2] === name && (!r[9] || !String(r[9]).includes('http')));
         
         if (pending.length === 0) {
@@ -165,7 +152,6 @@
         }
     }
 
-    // 🌟 執行照片補件
     async function submitProof() {
         const fileInput = document.getElementById('prfFile');
         const name = getCookie('bound_employee') || document.getElementById('prfName').value;
@@ -252,25 +238,6 @@
         const payload = { action: "write", sheetName: "leave", name, dept, leaveType: type, start, end, reason, imageFile: img };
         try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("✅ 假單已送出。"); location.reload(); } 
         catch (e) { alert("連線失敗"); document.getElementById('btnLv').innerText = "送出假單"; document.getElementById('btnLv').disabled = false; }
-    }
-
-    async function submitPurchase() {
-        const fileInput = document.getElementById('pcFile');
-        const name = document.getElementById('hiddenAttName') ? document.getElementById('hiddenAttName').value : document.getElementById('pcName').value;
-        const target = document.getElementById('pcTarget').value.trim();
-        const item = document.getElementById('pcItem').value.trim();
-        const amount = document.getElementById('pcAmount').value.trim();
-
-        if (!target || !item || !amount) return alert("請填寫完整！");
-        if (fileInput.files.length === 0) return alert("⚠️ 採購必須附上照片！");
-
-        const btn = document.getElementById('btnPc'); btn.innerText = "⏳ 上傳中..."; btn.disabled = true;
-        const reader = new FileReader(); reader.readAsDataURL(fileInput.files[0]);
-        reader.onload = async () => {
-            const payload = { action: "writePurchase", name, dept: "業務部", target, item, amount, imageFile: reader.result };
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
-            alert("✅ 採購單已送出！"); location.reload();
-        };
     }
 </script>
 </body>
