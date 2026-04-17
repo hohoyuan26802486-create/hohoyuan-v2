@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V12.2</title>
+    <title>禾禾園 - 專業管理後台 V12.3 (UI優化版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
-        .container { max-width: 1300px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .container { max-width: 1350px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h1 { color: #333; font-size: 18px; border-left: 5px solid #1a73e8; padding-left: 10px; margin-bottom: 15px; }
         .table-responsive { width: 100%; overflow-x: auto; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
@@ -20,17 +20,32 @@
         .leave-remain { color: #d63384; font-weight: bold; font-size: 16px; }
         .leave-total { color: #777; font-size: 12px; }
 
+        /* 🌟 證明文件按鈕調整顏色，看起來不那麼亮 (更深、更柔和的藍色) */
         .proof-btn { 
-            display: inline-block; background: #007bff; color: white !important; padding: 8px 12px;
-            border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px;
+            display: inline-block; 
+            background: #0056b3; /* 更深的藍色 */
+            color: white !important; 
+            padding: 8px 12px;
+            border-radius: 6px; 
+            text-decoration: none; 
+            font-weight: bold; 
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0,86,179,0.3);
         }
+        .proof-btn:hover {
+            background: #004494; /* 懸停時更深 */
+        }
+        .no-proof { color: #ccc; font-size: 14px; }
 
         .form-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #eee; padding: 15px; border-radius: 8px;}
+        
+        /* 🌟 員工管理輸入框編排優化，底薪和變動獎金放一起 */
         .input-group { display: flex; flex-direction: column; flex: 1 1 120px; }
+        .salary-row { display: flex; gap: 10px; flex: 1 1 100%; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px; }
         .input-group label { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; }
         .input-group input, .input-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; font-size: 14px; transition: 0.3s; }
-        .btn-primary { background: #1a73e8; } .btn-success { background: #28a745; } .btn-danger { background: #dc3545; } .btn-edit { background: #6c757d; }
+        .btn-primary { background: #1a73e8; } .btn-success { background: #28a745; } .btn-danger { background: #dc3545; } .btn-edit { background: #6c757d; } .btn-warning { background: #ff9800; }
         .badge { padding: 5px 10px; border-radius: 4px; font-size: 13px; color: white; font-weight: bold; }
         .top-nav { background: #2c3e50; color: white; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; }
     </style>
@@ -52,19 +67,23 @@
         <div class="input-group"><label>姓名</label><input type="text" id="eName"></div>
         <div class="input-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
         <div class="input-group"><label>到職日</label><input type="date" id="eDate"></div>
-        <div class="input-group"><label>底薪</label><input type="number" id="eSal"></div>
-        <div class="input-group"><label>勞保</label><input type="number" id="eLabor" value="0"></div>
-        <div class="input-group"><label>健保</label><input type="number" id="eHealth" value="0"></div>
-        <div class="input-group"><label>健保眷屬</label><input type="number" id="eDependents" value="0"></div>
-        <div class="input-group"><label>變動獎金</label><input type="number" id="eBonus" value="0"></div>
-        <div class="input-group-btn" style="display:flex; align-items:flex-end;">
+        
+        <div class="salary-row">
+            <div class="input-group" style="flex: 1;"><label>底薪</label><input type="number" id="eSal"></div>
+            <div class="input-group" style="flex: 1;"><label>變動獎金</label><input type="number" id="eBonus" value="0"></div>
+            <div class="input-group" style="flex: 1;"><label>勞保</label><input type="number" id="eLabor" value="0"></div>
+            <div class="input-group" style="flex: 1;"><label>健保</label><input type="number" id="eHealth" value="0"></div>
+            <div class="input-group" style="flex: 1;"><label>健保眷屬</label><input type="number" id="eDependents" value="0"></div>
+        </div>
+
+        <div class="input-group-btn" style="display:flex; align-items:flex-end; flex: 1 1 100%; margin-top: 10px;">
             <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">➕ 儲存設定</button>
             <button id="cancelEditBtn" class="btn btn-edit" style="display:none; margin-left:5px;" onclick="cancelEdit()">❌ 取消</button>
         </div>
     </div>
     <div class="table-responsive">
         <table>
-            <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>🌟 特休天數</th><th>薪資 / 變動獎金</th><th>⚖️ 勞保/健保(眷)</th><th>操作</th></tr></thead>
+            <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>🌟 特休天數</th><th>底薪 / 變動獎金</th><th>⚖️ 勞保/健保(眷)</th><th>操作</th></tr></thead>
             <tbody id="empBody"></tbody>
         </table>
     </div>
@@ -80,13 +99,16 @@
     </div>
 </div>
 
-<div id="reportBox" class="container" style="display:none;">
-    <h1>📊 薪資結算與報表</h1>
-    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-        <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 2px solid #1a73e8;"> 
+<div id="reportBox" class="container" style="display:none; background: #fdfdfd; border: 2px solid #e0e0e0;">
+    <h1>📊 薪資結算與報表匯出</h1>
+    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap; padding: 10px;">
+        <div style="display:flex; align-items:center; gap:5px;">
+            <span style="font-weight:bold;">選取月份：</span>
+            <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 2px solid #1a73e8;"> 
+        </div>
         <button class="btn btn-primary" onclick="calcSalary()">🧮 1. 結算最新薪資</button>
         <button class="btn btn-success" onclick="exportExcel()">📥 2. 匯出 Excel 報表</button>
-        <button class="btn btn-warning" onclick="makePDF()">📄 3. 生成 PDF 薪資單</button>
+        <button id="pdfBtn" class="btn btn-warning" onclick="makePDF()">📄 3. 生成 PDF 薪資單</button>
     </div>
 </div>
 
@@ -124,7 +146,10 @@
                 <td><span class="leave-remain">剩 ${totalLeave - usedLeave} 天</span><br><span class="leave-total">(總計 ${totalLeave} 天)</span></td>
                 <td><span class="ins-highlight">$${r[3]}</span><br><span style="color:green; font-size:12.5px; font-weight:bold;">變動獎金: $${r[6]||0}</span></td>
                 <td><span class="ins-label">勞:</span><span class="ins-highlight">$${r[7]||0}</span><br><span class="ins-label">健:</span><span class="ins-highlight">$${r[8]||0}</span><span class="ins-label">(${r[9]||0}口)</span></td>
-                <td><button class="btn btn-edit" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[7]}','${r[8]}','${r[9]}','${r[6]}')">修改</button></td></tr>`;
+                <td>
+                    <button class="btn btn-edit" style="padding:5px 10px;" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[7]}','${r[8]}','${r[9]}','${r[6]}')">✏️ 修改</button>
+                    <button class="btn btn-danger" style="padding:5px 10px;" onclick="delEmp('${r[0]}')">🗑️</button>
+                </td></tr>`;
             }).join('');
         }
 
@@ -134,14 +159,18 @@
                 if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核'; 
                 else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; 
                 else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
-                let proofHTML = (r[9] && String(r[9]).includes('http')) ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看單據</a>` : `<span style="color:#ccc;">無</span>`;
-                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatTime(r[5])}<br>~ ${formatTime(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge" style="background-color:${r[8]==='已生效'?'#28a745':'#17a2b8'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" style="padding:5px 8px;" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" style="padding:5px 8px;" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
+                
+                // 🌟 使用更柔和的藍色按鈕
+                let proofHTML = (r[9] && String(r[9]).includes('http')) ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看單據</a>` : `<span class="no-proof">無</span>`;
+                
+                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatTime(r[5])}<br>~ ${formatTime(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-info'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" style="padding:5px 8px;" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" style="padding:5px 8px;" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
             }).join('');
         }
     }
 
+    // 🌟 匯出 Excel
     function exportExcel() {
-        if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("請先結算");
+        if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("請先進行結算再匯出！");
         const month = document.getElementById('rMonth').value || "月報表";
         const ws = XLSX.utils.aoa_to_sheet(db.Salary_Summary);
         const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "薪資結算");
@@ -154,13 +183,24 @@
         if(date) { let d = new Date(date); document.getElementById('eDate').value = d.toISOString().split('T')[0]; }
         document.getElementById('eLabor').value = labor; document.getElementById('eHealth').value = health;
         document.getElementById('eDependents').value = dependents; document.getElementById('eBonus').value = bonus;
-        document.getElementById('saveBtn').innerText = "💾 確認修改"; document.getElementById('cancelEditBtn').style.display = "inline-block"; window.scrollTo(0,0);
+        document.getElementById('saveBtn').innerText = "💾 確認修改"; document.getElementById('cancelEditBtn').style.display = "inline-block";
+        window.scrollTo(0,0);
     }
     function cancelEdit() { editingEmpName = null; document.getElementById('employeeForm').querySelectorAll('input').forEach(i => { i.value = (i.type==='number'?0:''); i.disabled=false; }); document.getElementById('saveBtn').innerText = "➕ 儲存設定"; document.getElementById('cancelEditBtn').style.display = "none"; }
-    async function saveEmp() { const d = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, onboardingDate: document.getElementById('eDate').value, salary: document.getElementById('eSal').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDependents').value, bonus: document.getElementById('eBonus').value }; await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)}); alert("成功"); cancelEdit(); fetchData(); }
+    async function saveEmp() { 
+        const d = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, onboardingDate: document.getElementById('eDate').value, salary: document.getElementById('eSal').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDependents').value, bonus: document.getElementById('eBonus').value };
+        await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)}); alert("成功"); cancelEdit(); fetchData();
+    }
     async function updLv(id, s) { if(confirm(`改為${s}?`)) { await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"updateLeave",id,newStatus:s})}); fetchData(); } }
     async function calcSalary() { const m=document.getElementById('rMonth').value; if(!m) return alert("選月份"); await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"calculateSalary",targetMonth:m})}); alert("結算完成"); fetchData(); }
-    async function makePDF() { const m=document.getElementById('rMonth').value; if(!m) return alert("選月份"); await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"generatePDF",targetMonth:m})}); alert("PDF已生成"); }
+    
+    // 🌟 生成 PDF 薪資單
+    async function makePDF() { 
+        const m=document.getElementById('rMonth').value; 
+        if(!m) return alert("請選擇月份"); 
+        await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify({action:"generatePDF", targetMonth:m})}); 
+        alert("PDF 薪資單已生成至雲端硬碟！"); 
+    }
     fetchData();
 </script>
 </body>
