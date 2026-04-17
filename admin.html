@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 管理後台 V10.1 (純淨出勤版)</title>
+    <title>禾禾園 - 管理後台 V10.2 (文件通訊版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -20,19 +20,17 @@
         .input-group label { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; }
         .input-group input, .input-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         .input-group-btn { display: flex; flex-direction: column; justify-content: flex-end; flex: 1 1 120px; }
-        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.3s; }
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.3s; text-decoration: none; display: inline-block; }
         .btn-primary { background-color: #1a73e8; }
+        .btn-info { background-color: #17a2b8; }
         .btn-warning { background-color: #ff9800; color: white; }
         .btn-success { background-color: #28a745; }
         .btn-danger { background-color: #dc3545; }
         .btn-edit { background-color: #6c757d; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
-        .bg-info { background-color: #17a2b8; }
         .bg-warning-text { background-color: #ffc107; color: #333; }
         .bg-success { background-color: #28a745; }
         .top-nav { background: #2c3e50; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .receipt-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; transition: 0.2s; }
-        .receipt-thumb:hover { transform: scale(1.5); }
     </style>
 </head>
 <body>
@@ -148,8 +146,9 @@
                 else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; 
                 else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
                 
+                // 🌟 改用「按鈕」來解決 PDF 破圖的問題
                 let proofHTML = (r[9] && String(r[9]).includes('http')) 
-                    ? `<a href="${r[9]}" target="_blank"><img src="${r[9]}" class="receipt-thumb"></a>` 
+                    ? `<a href="${r[9]}" target="_blank" class="btn btn-info">📎 點擊查看</a>` 
                     : `<span style="color:#dc3545; font-size:12px;">待補</span>`;
                 
                 return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning-text'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
