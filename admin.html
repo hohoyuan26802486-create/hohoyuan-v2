@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 完整版管理後台 (特休修復版)</title>
+    <title>禾禾園 - 完整管理後台 V11.4</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -17,8 +17,8 @@
         .input-group { display: flex; flex-direction: column; flex: 1 1 120px; }
         .input-group label { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; }
         .input-group input, .input-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.3s; }
-        .btn-primary { background: #1a73e8; } .btn-success { background: #28a745; } .btn-danger { background: #dc3545; } .btn-edit { background: #6c757d; }
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.3s; text-decoration: none; display: inline-block; }
+        .btn-primary { background: #1a73e8; } .btn-success { background: #28a745; } .btn-danger { background: #dc3545; } .btn-edit { background: #6c757d; } .btn-warning { background: #ff9800; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
         .bg-info { background-color: #17a2b8; } .bg-success { background-color: #28a745; }
         .top-nav { background: #2c3e50; color: white; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; }
@@ -36,7 +36,7 @@
 </div>
 
 <div id="hrBox" class="container" style="display:none;">
-    <h1>👥 員工名冊管理 (含獎金與特休自動換算)</h1>
+    <h1>👥 員工名冊管理</h1>
     <div class="form-row" id="employeeForm">
         <div class="input-group"><label>姓名</label><input type="text" id="eName"></div>
         <div class="input-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
@@ -70,11 +70,12 @@
 </div>
 
 <div id="reportBox" class="container" style="display:none;">
-    <h1>📊 薪資結算報表</h1>
-    <div style="display: flex; gap: 10px;">
-        <input type="month" id="rMonth"> 
-        <button class="btn btn-primary" onclick="calcSalary()">結算薪資</button>
-        <button class="btn btn-success" onclick="makePDF()">生成 PDF 薪資單</button>
+    <h1>📊 薪資結算與報表匯出</h1>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 2px solid #1a73e8; font-weight: bold;"> 
+        <button class="btn btn-primary" onclick="calcSalary()">🧮 1. 結算最新薪資</button>
+        <button class="btn btn-success" onclick="exportExcel()">📥 2. 匯出 Excel 報表</button>
+        <button class="btn btn-warning" onclick="makePDF()">📄 3. 生成 PDF 薪資單</button>
     </div>
 </div>
 
@@ -82,7 +83,6 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = {}; let editingEmpName = null;
 
-    // 🌟 修復日期顯示
     function formatTime(timeStr) {
         if (!timeStr) return "";
         const d = new Date(timeStr);
@@ -108,17 +108,13 @@
         if(db.employees) {
             document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]!=="姓名").map(r => `
                 <tr>
-                    <td>${r[1]}</td>
-                    <td><strong>${r[0]}</strong></td>
+                    <td>${r[1]}</td><td><strong>${r[0]}</strong></td>
                     <td style="font-size:12px;">${formatTime(r[4]).split(' ')[0]}</td>
                     <td style="color:blue; font-weight:bold;">${r[5] || 0} 天</td>
-                    <td>$${r[3]}</td>
-                    <td style="color:green;">$${r[6]||0}</td>
-                    <td style="font-size:12px;">勞:$${r[7]||0} / 健:$${r[8]||0} (${r[9]||0}口)</td>
-                    <td>
-                        <button class="btn btn-edit" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[7]}','${r[8]}','${r[9]}','${r[6]}')">✏️</button>
-                        <button class="btn btn-danger" onclick="delEmp('${r[0]}')">🗑️</button>
-                    </td>
+                    <td>$${r[3]}</td><td style="color:green;">$${r[6]||0}</td>
+                    <td style="font-size:12px;">勞:$${r[7]||0}/健:$${r[8]||0}(${r[9]||0}口)</td>
+                    <td><button class="btn btn-edit" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[7]}','${r[8]}','${r[9]}','${r[6]}')">✏️</button>
+                    <button class="btn btn-danger" onclick="delEmp('${r[0]}')">🗑️</button></td>
                 </tr>
             `).join('');
         }
@@ -129,11 +125,20 @@
                 if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核'; 
                 else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; 
                 else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
-                let timeRange = `${formatTime(r[5])}<br>～ ${formatTime(r[6])}`;
                 let proofHTML = (r[9] && String(r[9]).includes('http')) ? `<a href="${r[9]}" target="_blank" style="color:#1a73e8; font-weight:bold;">📎 查看</a>` : `無`;
-                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${timeRange}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-info'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
+                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatTime(r[5])}<br>~ ${formatTime(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-info'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
             }).join('');
         }
+    }
+
+    // 🌟 匯出 Excel 的功能
+    function exportExcel() {
+        if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("請先進行結算再匯出！");
+        const month = document.getElementById('rMonth').value || "月報表";
+        const ws = XLSX.utils.aoa_to_sheet(db.Salary_Summary);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "薪資結算");
+        XLSX.writeFile(wb, `禾禾園薪資結算_${month}.xlsx`);
     }
 
     function startEdit(name, dept, sal, date, labor, health, dependents, bonus) {
@@ -149,24 +154,13 @@
 
     function cancelEdit() { editingEmpName = null; document.getElementById('employeeForm').querySelectorAll('input').forEach(i => { i.value = (i.type==='number'?0:''); i.disabled=false; }); document.getElementById('saveBtn').innerText = "➕ 儲存員工事宜"; document.getElementById('cancelEditBtn').style.display = "none"; }
     async function saveEmp() { 
-        const d = {
-            action: editingEmpName ? "editEmployee" : "saveEmployee",
-            name: document.getElementById('eName').value,
-            dept: document.getElementById('eDept').value,
-            onboardingDate: document.getElementById('eDate').value,
-            salary: document.getElementById('eSal').value,
-            laborIns: document.getElementById('eLabor').value,
-            healthIns: document.getElementById('eHealth').value,
-            dependents: document.getElementById('eDependents').value,
-            bonus: document.getElementById('eBonus').value
-        };
-        await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)});
-        alert("成功！"); cancelEdit(); fetchData();
+        const d = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, onboardingDate: document.getElementById('eDate').value, salary: document.getElementById('eSal').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDependents').value, bonus: document.getElementById('eBonus').value };
+        await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)}); alert("成功"); cancelEdit(); fetchData();
     }
     async function updLv(id, s) { if(confirm(`改為${s}?`)) { await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"updateLeave",id,newStatus:s})}); fetchData(); } }
     async function delEmp(n) { if(confirm(`刪除${n}?`)) { await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"deleteEmployee",name:n})}); fetchData(); } }
-    async function calcSalary() { const m=document.getElementById('rMonth').value; await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"calculateSalary",targetMonth:m})}); alert("結算完成"); fetchData(); }
-    async function makePDF() { const m=document.getElementById('rMonth').value; await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"generatePDF",targetMonth:m})}); alert("PDF已生成"); }
+    async function calcSalary() { const m=document.getElementById('rMonth').value; if(!m) return alert("選月份"); await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"calculateSalary",targetMonth:m})}); alert("結算完成"); fetchData(); }
+    async function makePDF() { const m=document.getElementById('rMonth').value; if(!m) return alert("選月份"); await fetch(CONFIG_URL,{method:'POST',body:JSON.stringify({action:"generatePDF",targetMonth:m})}); alert("PDF已生成"); }
     fetchData();
 </script>
 </body>
