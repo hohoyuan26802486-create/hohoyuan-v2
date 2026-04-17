@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業版管理後台 V12.1</title>
+    <title>禾禾園 - 專業管理後台 V12.2</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -14,34 +14,23 @@
         th, td { border: 1px solid #ddd; padding: 12px 10px; text-align: left; }
         th { background-color: #f8f9fa; font-weight: bold; white-space: nowrap; }
         
-        /* 🌟 勞健保數字大一點加粗 */
         .ins-highlight { font-size: 17px; font-weight: bold; color: #000; }
         .ins-label { font-size: 12px; color: #666; font-weight: normal; }
         
-        /* 🌟 特休餘額顯示樣式 */
         .leave-remain { color: #d63384; font-weight: bold; font-size: 16px; }
         .leave-total { color: #777; font-size: 12px; }
 
-        /* 🌟 證明文件按鈕放大 (關鍵修改) */
         .proof-btn { 
-            display: inline-block;
-            background: #007bff;
-            color: white !important;
-            padding: 8px 12px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 16px; /* 這裡調大了字體 */
-            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+            display: inline-block; background: #007bff; color: white !important; padding: 8px 12px;
+            border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px;
         }
-        .no-proof { color: #ccc; font-size: 14px; }
 
         .form-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; background: #eee; padding: 15px; border-radius: 8px;}
         .input-group { display: flex; flex-direction: column; flex: 1 1 120px; }
         .input-group label { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; }
         .input-group input, .input-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; font-size: 14px; transition: 0.3s; }
-        .btn-primary { background: #1a73e8; } .btn-success { background: #28a745; } .btn-danger { background: #dc3545; } .btn-edit { background: #6c757d; } .btn-warning { background: #ff9800; }
+        .btn-primary { background: #1a73e8; } .btn-success { background: #28a745; } .btn-danger { background: #dc3545; } .btn-edit { background: #6c757d; }
         .badge { padding: 5px 10px; border-radius: 4px; font-size: 13px; color: white; font-weight: bold; }
         .top-nav { background: #2c3e50; color: white; display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; }
     </style>
@@ -75,7 +64,7 @@
     </div>
     <div class="table-responsive">
         <table>
-            <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>🌟 特休天數</th><th>薪資/獎金</th><th>⚖️ 勞保/健保(眷)</th><th>操作</th></tr></thead>
+            <thead><tr><th>部門</th><th>姓名</th><th>到職日</th><th>🌟 特休天數</th><th>薪資 / 變動獎金</th><th>⚖️ 勞保/健保(眷)</th><th>操作</th></tr></thead>
             <tbody id="empBody"></tbody>
         </table>
     </div>
@@ -133,7 +122,7 @@
                 const usedLeave = db.leave.filter(l => l[2] === r[0] && l[4] === "特休" && l[8] === "已生效").length;
                 return `<tr><td>${r[1]}</td><td><strong>${r[0]}</strong></td><td style="font-size:12px;">${formatTime(r[4]).split(' ')[0]}</td>
                 <td><span class="leave-remain">剩 ${totalLeave - usedLeave} 天</span><br><span class="leave-total">(總計 ${totalLeave} 天)</span></td>
-                <td><span class="ins-highlight">$${r[3]}</span><br><span style="color:green; font-size:12px;">獎金:$${r[6]||0}</span></td>
+                <td><span class="ins-highlight">$${r[3]}</span><br><span style="color:green; font-size:12.5px; font-weight:bold;">變動獎金: $${r[6]||0}</span></td>
                 <td><span class="ins-label">勞:</span><span class="ins-highlight">$${r[7]||0}</span><br><span class="ins-label">健:</span><span class="ins-highlight">$${r[8]||0}</span><span class="ins-label">(${r[9]||0}口)</span></td>
                 <td><button class="btn btn-edit" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[7]}','${r[8]}','${r[9]}','${r[6]}')">修改</button></td></tr>`;
             }).join('');
@@ -145,18 +134,12 @@
                 if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核'; 
                 else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; 
                 else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
-                
-                // 🌟 放大證明文件按鈕
-                let proofHTML = (r[9] && String(r[9]).includes('http')) 
-                    ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看單據</a>` 
-                    : `<span class="no-proof">無</span>`;
-                
-                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatTime(r[5])}<br>~ ${formatTime(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-info'}" style="background-color:${r[8]==='已生效'?'#28a745':'#17a2b8'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" style="padding:5px 8px;" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" style="padding:5px 8px;" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
+                let proofHTML = (r[9] && String(r[9]).includes('http')) ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看單據</a>` : `<span style="color:#ccc;">無</span>`;
+                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatTime(r[5])}<br>~ ${formatTime(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge" style="background-color:${r[8]==='已生效'?'#28a745':'#17a2b8'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" style="padding:5px 8px;" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" style="padding:5px 8px;" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
             }).join('');
         }
     }
 
-    // 其餘邏輯不變... (saveEmp, calcSalary 等)
     function exportExcel() {
         if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("請先結算");
         const month = document.getElementById('rMonth').value || "月報表";
