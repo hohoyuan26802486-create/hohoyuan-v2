@@ -47,6 +47,11 @@
             </div>
         </div>
         <div class="input-group"><label>⚡ 狀態選項</label><div class="radio-group" id="dynamicStatus"></div></div>
+        
+        <div id="unlockBox" style="display:none; text-align:right; margin-bottom:10px;">
+            <span style="font-size: 12px; color: #d63384; font-weight: bold; cursor: pointer; text-decoration: underline;" onclick="unlockDevice()">🔑 HR 解除設備綁定</span>
+        </div>
+
         <button id="btnAtt" class="btn-submit" onclick="submitAttendance()">送出打卡</button>
     </div>
 
@@ -99,9 +104,21 @@
         if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
         return null;
     }
+    
     function setCookie(name, value) {
         const d = new Date(); d.setTime(d.getTime() + (3650 * 24 * 60 * 60 * 1000)); 
         document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/";
+    }
+
+    // HR 解鎖
+    function unlockDevice() {
+        if (prompt("🔒 請輸入人事部解鎖密碼：") === "123") {
+            document.cookie = "bound_employee=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            alert("🔓 設備已成功解除綁定！");
+            window.location.reload(); 
+        } else {
+            alert("❌ 密碼錯誤！");
+        }
     }
 
     async function fetchEmployees() {
@@ -123,13 +140,18 @@
                     el.disabled = true;
                 });
                 
+                document.getElementById('unlockBox').style.display = "block";
+                
                 const hiddenInput = document.createElement("input");
                 hiddenInput.type = "hidden"; hiddenInput.id = "hiddenAttName"; hiddenInput.value = boundName;
                 document.getElementById('clockIn').appendChild(hiddenInput);
                 
                 setTimeout(loadPendingProofs, 500);
             }
-        } catch (e) { console.error("連線失敗"); }
+        } catch (e) { 
+            console.error("連線失敗"); 
+            document.getElementById('attName').innerHTML = '<option value="">⚠️ 連線失敗，請重新整理</option>';
+        }
     }
 
     function loadPendingProofs() {
