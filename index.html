@@ -58,31 +58,19 @@
     <div id="leave" class="form-content">
         <div class="input-group"><label>👤 員工姓名</label><select id="lvName"></select></div>
         <div class="input-group"><label>🏢 所屬部門</label><select id="lvDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>人事部</option></select></div>
-        
         <div class="input-group">
             <label>📌 假別選擇</label>
             <select id="lvType">
-                <option value="事假">事假 (無薪)</option>
-                <option value="病假">病假 (半薪)</option>
-                <option value="生理假">生理假 (半薪)</option>
-                <option value="家庭照顧假">家庭照顧假 (無薪)</option>
-                <option value="特休">特休 (全薪)</option>
-                <option value="補休">補休 (全薪)</option>
-                <option value="婚假">婚假 (全薪)</option>
-                <option value="喪假">喪假 (全薪)</option>
-                <option value="產假">產假 (全薪)</option>
-                <option value="公傷病假">公傷病假 (全薪)</option>
-                <option value="公假">公假 (全薪)</option>
+                <option value="事假">事假 (無薪)</option><option value="病假">病假 (半薪)</option><option value="生理假">生理假 (半薪)</option><option value="家庭照顧假">家庭照顧假 (無薪)</option><option value="特休">特休 (全薪)</option><option value="補休">補休 (全薪)</option><option value="婚假">婚假 (全薪)</option><option value="喪假">喪假 (全薪)</option><option value="產假">產假 (全薪)</option><option value="公傷病假">公傷病假 (全薪)</option><option value="公假">公假 (全薪)</option>
             </select>
         </div>
-
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart" required></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd" required></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="請簡述事由" required></div>
         
         <div class="input-group">
-            <label>📸 請假證明 (選填)</label>
-            <input type="file" id="lvFile" accept="image/*" capture="camera">
+            <label>📸 請假證明 (支援拍照/照片/PDF檔案)</label>
+            <input type="file" id="lvFile" accept="image/*,application/pdf">
             <div class="hint">※ 若當下無法提供證明，可先送出假單，日後至「📎 補件」上傳。</div>
         </div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
@@ -92,13 +80,11 @@
         <div class="input-group"><label>👤 員工姓名</label><select id="prfName" onchange="loadPendingProofs()"></select></div>
         <div class="input-group">
             <label>📝 選擇缺憑證的假單</label>
-            <select id="prfSelect">
-                <option value="">請先選擇上方姓名...</option>
-            </select>
+            <select id="prfSelect"><option value="">請先選擇上方姓名...</option></select>
         </div>
         <div class="input-group">
-            <label>📸 上傳診斷證明 / 收據</label>
-            <input type="file" id="prfFile" accept="image/*" capture="camera">
+            <label>📸 上傳診斷證明 (支援拍照/照片/PDF檔案)</label>
+            <input type="file" id="prfFile" accept="image/*,application/pdf">
         </div>
         <button id="btnPrf" class="btn-submit" onclick="submitProof()">送出補件</button>
     </div>
@@ -121,13 +107,11 @@
         if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
         return null;
     }
-    
     function setCookie(name, value) {
         const d = new Date(); d.setTime(d.getTime() + (3650 * 24 * 60 * 60 * 1000)); 
         document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/";
     }
 
-    // HR 解鎖
     function unlockDevice() {
         if (prompt("🔒 請輸入人事部解鎖密碼：") === "123") {
             document.cookie = "bound_employee=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
@@ -151,12 +135,7 @@
 
             const boundName = getCookie('bound_employee');
             if (boundName) {
-                ['attName', 'lvName', 'prfName'].forEach(id => {
-                    let el = document.getElementById(id);
-                    el.value = boundName;
-                    el.disabled = true;
-                });
-                
+                ['attName', 'lvName', 'prfName'].forEach(id => { let el = document.getElementById(id); el.value = boundName; el.disabled = true; });
                 document.getElementById('unlockBox').style.display = "block";
                 
                 const hiddenInput = document.createElement("input");
@@ -175,7 +154,6 @@
         if (!globalDB || !globalDB.leave) return;
         const name = getCookie('bound_employee') || document.getElementById('prfName').value;
         const sel = document.getElementById('prfSelect');
-        
         const pending = globalDB.leave.filter(r => r[2] === name && (!r[9] || !String(r[9]).includes('http')));
         
         if (pending.length === 0) {
@@ -184,30 +162,32 @@
         } else {
             sel.disabled = false;
             sel.innerHTML = pending.map(r => {
-                let d = new Date(r[5]);
-                let shortDate = `${d.getMonth()+1}/${d.getDate()}`;
+                let d = new Date(r[5]); let shortDate = `${d.getMonth()+1}/${d.getDate()}`;
                 return `<option value="${r[0]}">${shortDate} - ${r[4]} (${r[7]})</option>`;
             }).join('');
         }
     }
 
+    // 🌟 將檔名 (fileName) 傳送給後端
     async function submitProof() {
         const fileInput = document.getElementById('prfFile');
         const name = getCookie('bound_employee') || document.getElementById('prfName').value;
         const leaveId = document.getElementById('prfSelect').value;
 
         if (!leaveId) return alert("⚠️ 沒有選擇假單，或目前無需補件。");
-        if (fileInput.files.length === 0) return alert("⚠️ 請拍照或上傳您的證明文件！");
+        if (fileInput.files.length === 0) return alert("⚠️ 請選擇您的證明文件！");
 
         const btn = document.getElementById('btnPrf');
         btn.innerText = "⏳ 上傳中..."; btn.disabled = true;
 
         const file = fileInput.files[0];
+        const fileName = file.name; // 取得原始檔名
+        
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = async () => {
             const base64 = reader.result;
-            const payload = { action: "uploadLeaveProof", id: leaveId, name: name, imageFile: base64 };
+            const payload = { action: "uploadLeaveProof", id: leaveId, name: name, imageFile: base64, fileName: fileName };
             try {
                 await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
                 alert("✅ 證明文件補交成功！主管已收到通知。");
@@ -266,15 +246,18 @@
         const btn = document.getElementById('btnLv'); btn.innerText = "⏳ 傳送中..."; btn.disabled = true;
         
         if (fileInput.files.length > 0) {
-            const reader = new FileReader(); reader.readAsDataURL(fileInput.files[0]);
-            reader.onload = async () => { sendLeaveData(name, dept, type, start, end, reason, reader.result); };
+            const file = fileInput.files[0];
+            const fileName = file.name; // 🌟 取得原始檔名
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = async () => { sendLeaveData(name, dept, type, start, end, reason, reader.result, fileName); };
         } else {
-            sendLeaveData(name, dept, type, start, end, reason, "");
+            sendLeaveData(name, dept, type, start, end, reason, "", "");
         }
     }
 
-    async function sendLeaveData(name, dept, type, start, end, reason, img) {
-        const payload = { action: "write", sheetName: "leave", name, dept, leaveType: type, start, end, reason, imageFile: img };
+    async function sendLeaveData(name, dept, type, start, end, reason, img, fileName) {
+        // 🌟 將檔名 (fileName) 一併傳送
+        const payload = { action: "write", sheetName: "leave", name, dept, leaveType: type, start, end, reason, imageFile: img, fileName: fileName };
         try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("✅ 假單已送出。"); location.reload(); } 
         catch (e) { alert("連線失敗"); document.getElementById('btnLv').innerText = "送出假單"; document.getElementById('btnLv').disabled = false; }
     }
