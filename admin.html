@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 管理後台 V10.2 (文件通訊版)</title>
+    <title>禾禾園 - 管理後台 V10.5</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
@@ -38,8 +38,13 @@
 <div class="container top-nav">
     <div><strong>🔑 身分：</strong> 
         <select id="adminRole" onchange="authRole()">
-            <option value="業務部主管">業務部主管</option><option value="會計部">會計部</option>
-            <option value="人事部">人事部</option><option value="副總">副總</option>
+            <option value="業務部主管">業務部主管</option>
+            <option value="生產部主管">生產部主管</option>
+            <option value="運輸部主管">運輸部主管</option>
+            <option value="倉儲部主管">倉儲部主管</option>
+            <option value="會計部">會計部</option>
+            <option value="人事部">人事部</option>
+            <option value="副總">副總</option>
         </select>
     </div>
     <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
@@ -47,7 +52,6 @@
 
 <div id="missingProofBox" class="container alert-container" style="display:none;">
     <h1 class="alert-title">⚠️ 缺憑證追蹤清單 (一鍵催繳)</h1>
-    <p style="font-size:13px; color:#666; margin-top:-10px;">系統自動篩選出「尚未上傳照片」的假單，結算薪資前請務必清空此區塊。</p>
     <div class="table-responsive">
         <table>
             <thead><tr><th>部門</th><th>姓名</th><th>申請日</th><th>假別</th><th>起訖時間</th><th>狀態</th><th>操作</th></tr></thead>
@@ -70,7 +74,12 @@
     <h1>👥 員工名冊管理</h1>
     <div class="form-row" id="employeeForm">
         <div class="input-group"><label>姓名</label><input type="text" id="eName"></div>
-        <div class="input-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
+        <div class="input-group"><label>部門</label>
+            <select id="eDept">
+                <option>業務部</option><option>會計部</option><option>生產部</option>
+                <option>運輸部</option><option>倉儲部</option><option>人事部</option>
+            </select>
+        </div>
         <div class="input-group"><label>到職日</label><input type="date" id="eDate"></div>
         <div class="input-group"><label>底薪</label><input type="number" id="eSal"></div>
         <div class="input-group"><label>勞保</label><input type="number" id="eLabor" value="0"></div>
@@ -110,60 +119,38 @@
     }
 
     function formatNiceDate(dStr, time=true) {
-        if(!dStr) return '';
-        let d = new Date(dStr); if(isNaN(d)) return dStr;
+        if(!dStr) return ''; let d = new Date(dStr); if(isNaN(d)) return dStr;
         return time ? d.toLocaleString('zh-TW', {hour12:false}) : d.toLocaleDateString('zh-TW');
     }
 
-    async function fetchData() {
-        try { const res = await fetch(CONFIG_URL); db = await res.json(); render(); } 
-        catch (e) { alert("連線失敗。"); }
-    }
+    async function fetchData() { try { const res = await fetch(CONFIG_URL); db = await res.json(); render(); } catch (e) { alert("連線失敗。"); } }
 
     function render() {
         const role = document.getElementById('adminRole').value;
         const isHR = role === '人事部' || role === '副總';
-        
         document.getElementById('hrBox').style.display = isHR ? 'block' : 'none';
         document.getElementById('reportBox').style.display = isHR ? 'block' : 'none';
         document.getElementById('missingProofBox').style.display = isHR ? 'block' : 'none';
 
         if (db.leave) {
             const missingLeaves = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號" && (!r[9] || !String(r[9]).includes('http')));
-            document.getElementById('missingProofBody').innerHTML = missingLeaves.reverse().map(r => `
-                <tr>
-                    <td>${r[3]}</td><td><strong>${r[2]}</strong></td><td>${formatNiceDate(r[1], false)}</td>
-                    <td style="color:#dc3545; font-weight:bold;">${r[4]}</td>
-                    <td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td>
-                    <td><span class="badge bg-warning-text">待補件</span></td>
-                    <td><button class="btn btn-danger" onclick="remindProof('${r[2]}', '${r[3]}', '${r[4]}', '${formatNiceDate(r[1], false)}')">🔔 傳LINE催繳</button></td>
-                </tr>
-            `).join('') || '<tr><td colspan="7" style="text-align:center; color:green;">🎉 讚！目前所有假單都已附上證明。</td></tr>';
+            document.getElementById('missingProofBody').innerHTML = missingLeaves.reverse().map(r => `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td>${formatNiceDate(r[1], false)}</td><td style="color:#dc3545; font-weight:bold;">${r[4]}</td><td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td><td><span class="badge bg-warning-text">待補件</span></td><td><button class="btn btn-danger" onclick="remindProof('${r[2]}', '${r[3]}', '${r[4]}', '${formatNiceDate(r[1], false)}')">🔔 傳LINE催繳</button></td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center; color:green;">🎉 讚！目前所有假單都已附上證明。</td></tr>';
 
             document.getElementById('leaveBody').innerHTML = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號").reverse().map(r => {
                 let next = ''; 
-                if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核'; 
-                else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; 
-                else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
-                
-                // 🌟 改用「按鈕」來解決 PDF 破圖的問題
-                let proofHTML = (r[9] && String(r[9]).includes('http')) 
-                    ? `<a href="${r[9]}" target="_blank" class="btn btn-info">📎 點擊查看</a>` 
-                    : `<span style="color:#dc3545; font-size:12px;">待補</span>`;
-                
+                if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核'; else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
+                let proofHTML = (r[9] && String(r[9]).includes('http')) ? `<a href="${r[9]}" target="_blank" class="btn btn-info">📎 點擊查看</a>` : `<span style="color:#dc3545; font-size:12px;">待補</span>`;
                 return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning-text'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
             }).join('');
         }
-
         if(db.employees) { document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]!=="姓名").map(r => `<tr><td>${r[1]}</td><td>${r[0]}</td><td>$${r[3]}</td><td>$${r[7]||0}/$${r[8]||0}</td><td><button class="btn btn-danger" onclick="delEmp('${r[0]}')">🗑️</button></td></tr>`).join(''); }
     }
 
     async function remindProof(name, dept, type, dateStr) {
-        if(!confirm(`⚠️ 確定要發送 LINE 通知，催促「${name}」補交 ${dateStr} 的 ${type} 證明嗎？`)) return;
+        if(!confirm(`⚠️ 確定發送 LINE 催繳通知給「${name}」嗎？`)) return;
         await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "remindProof", name: name, dept: dept, leaveType: type, date: dateStr }) });
-        alert(`✅ 催繳通知已成功發送至 LINE 群組！`);
+        alert(`✅ 催繳通知已成功發送！`);
     }
-
     async function updLv(id, s) { if(confirm(`確認改為「${s}」？`)) { await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"updateLeave", id, newStatus:s }) }); fetchData(); } }
     async function delEmp(n) { if(confirm(`確定刪除 ${n}？`)) { await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"deleteEmployee", name:n }) }); fetchData(); } }
     function startEdit(n, dp, s, dt, l, h, dep) { /* 略 */ } function cancelEdit() { /* 略 */ } async function saveEmp() { /* 略 */ }
