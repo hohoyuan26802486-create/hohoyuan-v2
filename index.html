@@ -3,36 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V13.1</title>
+    <title>禾禾園 - 考勤系統 V13.2</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .app-container { background: white; width: 100%; max-width: 480px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        
+        /* 分頁標籤樣式 */
         .tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
         .tab { flex: 1; text-align: center; padding: 18px 10px; color: #5f6368; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 16px;}
         .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: #f8faff; }
+        
         .form-content { padding: 25px; display: none; }
         .form-content.active { display: block; }
         
+        /* 統一輸入框樣式，修復跑位問題 */
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; font-size: 14px; font-weight: 600; color: #3c4043; margin-bottom: 8px; }
-        .input-group select, .input-group input { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
+        .input-group select, .input-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #dadce0; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            background-color: white;
+            box-sizing: border-box; 
+            outline: none;
+            -webkit-appearance: none; /* 修復 iOS 樣式 */
+            appearance: none;
+        }
         
+        /* 上下班切換與狀態按鈕 */
         .type-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
         .type-toggle label { flex: 1; text-align: center; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; background: #f8f9fa; }
         .type-toggle input { display: none; }
         .type-toggle input:checked + label { background: var(--primary); color: white; border-color: var(--primary); }
 
         .status-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-        .status-btn { flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; text-align: center; font-size: 14px; cursor: pointer; background: #f8f9fa; font-weight: 600; }
+        .status-btn { flex: 1; min-width: 140px; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; text-align: center; font-size: 14px; cursor: pointer; background: #f8f9fa; font-weight: 600; }
         .status-btn.selected { background: #e8f0fe; border-color: var(--primary); color: var(--primary); }
 
-        .gps-box { padding: 12px; border-radius: 10px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 20px; transition: 0.3s; display: none; }
+        /* GPS 狀態 */
+        .gps-box { padding: 12px; border-radius: 10px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 20px; display: none; }
         .gps-ok { background: #e6fffa; color: #234e52; border: 1px solid #38b2ac; display: block; }
         .gps-fail { background: #fff5f5; color: #742a2a; border: 1px solid #feb2b2; display: block; }
 
-        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
+        .btn-submit:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+        
         #unlockLink { text-align: right; margin-bottom: 10px; }
         #unlockLink a { font-size: 12px; color: var(--danger); text-decoration: none; font-weight: bold; }
     </style>
@@ -68,16 +86,23 @@
 
     <div id="leave" class="form-content">
         <div class="input-group"><label>👤 員工姓名</label><select id="lvName"></select></div>
-        <div class="input-group"><label>📌 假別選擇</label>
-            <select id="lvType">
-                <option value="事假">事假</option><option value="病假">病假</option>
-                <option value="生理假">生理假</option><option value="特休">特休</option>
-                <option value="公假">公假</option><option value="其他">其他</option>
+        <div class="input-group">
+            <label>📌 假別選擇</label>
+            <select id="lvType" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 12px auto;">
+                <option value="事假">事假</option>
+                <option value="病假">病假</option>
+                <option value="生理假">生理假</option>
+                <option value="特休">特休</option>
+                <option value="公假">公假</option>
+                <option value="婚假">婚假</option>
+                <option value="喪假">喪假</option>
+                <option value="產假">產假</option>
+                <option value="其他">其他</option>
             </select>
         </div>
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
-        <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="請填寫簡要原因"></div>
+        <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="填寫簡要原因"></div>
         <div class="input-group"><label>📸 證明照片 (選填)</label><input type="file" id="lvFile" accept="image/*"></div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
@@ -114,13 +139,13 @@
 
         if (type === "上班") {
             statusBox.style.display = "block";
-            if (time < 440) addStatusBtn("個人因素提早上班", true); // 07:20前
-            else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true); // 07:20-07:30
-            else addStatusBtn("遲到", true); // 07:30後
+            if (time < 440) addStatusBtn("個人因素提早上班", true);
+            else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
+            else addStatusBtn("遲到", true);
             updateGPSUI();
         } else {
             statusBox.style.display = "none";
-            if (time >= 1010) { // 16:50後
+            if (time >= 1010) { 
                 addStatusBtn("因個人因素延後下班", true);
                 addStatusBtn("經主管核准加班", false);
             } else { addStatusBtn("正常下班", true); }
@@ -155,24 +180,22 @@
             document.getElementById('attName').innerHTML = opts;
             document.getElementById('lvName').innerHTML = opts;
             document.getElementById('prfName').innerHTML = opts;
-            
             const bound = getCookie('bound_user');
             if(bound) document.getElementById('attName').value = bound;
         } catch (e) { console.error("資料讀取失敗"); }
     }
 
     function unlockDevice() {
-        if (prompt("🔐 請輸入 HR 解鎖密碼：") === "456") {
+        if (prompt("🔐 HR 密碼：") === "456") {
             document.cookie = "bound_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            alert("🔓 已解除鎖定，請重新選擇姓名！"); location.reload();
-        } else { alert("❌ 密碼錯誤！"); }
+            alert("🔓 已解除鎖定"); location.reload();
+        } else { alert("❌ 密碼錯誤"); }
     }
 
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const bound = getCookie('bound_user');
-        if (bound && bound !== name) return alert("⚠️ 此手機已鎖定員工：" + bound);
-        
+        if (bound && bound !== name) return alert("⚠️ 手機已鎖定：" + bound);
         const btn = document.getElementById('btnAtt'); btn.innerText = "⏳..."; btn.disabled = true;
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name, type: document.querySelector('input[name="attType"]:checked').value, status: selectedStatus }) });
@@ -183,11 +206,12 @@
 
     async function submitLeave() {
         const file = document.getElementById('lvFile').files[0];
+        const btn = document.getElementById('btnLv'); btn.innerText = "⏳..."; btn.disabled = true;
         const p = { action: "write", sheetName: "leave", name: document.getElementById('lvName').value, leaveType: document.getElementById('lvType').value, start: document.getElementById('lvStart').value, end: document.getElementById('lvEnd').value, reason: document.getElementById('lvReason').value };
         if (file) {
             const r = new FileReader(); r.readAsDataURL(file);
-            r.onload = async () => { p.imageFile = r.result; p.fileName = file.name; await send(p); };
-        } else await send(p);
+            r.onload = async () => { p.imageFile = r.result; p.fileName = file.name; await sendData(p); };
+        } else await sendData(p);
     }
 
     function loadPendingProofs() {
@@ -202,12 +226,13 @@
         const file = document.getElementById('prfFile').files[0];
         if (!file) return alert("請選照片");
         const r = new FileReader(); r.readAsDataURL(file);
+        const btn = document.getElementById('btnPrf'); btn.innerText = "⏳..."; btn.disabled = true;
         r.onload = async () => {
-            await send({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name });
+            await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name });
         };
     }
 
-    async function send(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 成功！"); location.reload(); } catch (e) { alert("失敗"); } }
+    async function sendData(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 成功！"); location.reload(); } catch (e) { alert("失敗"); location.reload(); } }
 
     function switchTab(id) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
