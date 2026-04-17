@@ -58,7 +58,24 @@
     <div id="leave" class="form-content">
         <div class="input-group"><label>👤 員工姓名</label><select id="lvName"></select></div>
         <div class="input-group"><label>🏢 所屬部門</label><select id="lvDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>人事部</option></select></div>
-        <div class="input-group"><label>📌 假別選擇</label><select id="lvType"><option value="病假">病假 (半薪)</option><option value="事假">事假 (無薪)</option><option value="特休">特休 (全薪)</option></select></div>
+        
+        <div class="input-group">
+            <label>📌 假別選擇</label>
+            <select id="lvType">
+                <option value="事假">事假 (無薪)</option>
+                <option value="病假">病假 (半薪)</option>
+                <option value="生理假">生理假 (半薪)</option>
+                <option value="家庭照顧假">家庭照顧假 (無薪)</option>
+                <option value="特休">特休 (全薪)</option>
+                <option value="補休">補休 (全薪)</option>
+                <option value="婚假">婚假 (全薪)</option>
+                <option value="喪假">喪假 (全薪)</option>
+                <option value="產假">產假 (全薪)</option>
+                <option value="公傷病假">公傷病假 (全薪)</option>
+                <option value="公假">公假 (全薪)</option>
+            </select>
+        </div>
+
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart" required></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd" required></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="請簡述事由" required></div>
