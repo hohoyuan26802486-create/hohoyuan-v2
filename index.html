@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3209/3209935.png">
     <title>禾禾園 - 員工系統</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -15,7 +18,6 @@
         .input-group { margin-bottom: 18px; }
         .input-group label { display: block; font-size: 14px; font-weight: bold; color: #444; margin-bottom: 8px; }
         .input-group input, .input-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; background-color: white; }
-        .hint { font-size: 12px; color: #d63384; font-weight: bold; margin-top: 5px;}
         .btn-submit { width: 100%; padding: 15px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
         .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -30,7 +32,6 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab('clockIn')">📍 打卡</div>
         <div class="tab" onclick="switchTab('leave')">📝 請假</div>
-        <div class="tab" onclick="switchTab('proofTab')">📎 補件</div>
     </div>
 
     <div id="clockIn" class="form-content active">
@@ -48,6 +49,7 @@
             </div>
         </div>
         <div class="input-group"><label>⚡ 狀態選項</label><div class="radio-group" id="dynamicStatus"></div></div>
+        
         <div id="unlockBox" style="display:none; text-align:right; margin-bottom:10px;"><span style="font-size: 12px; color: #d63384; font-weight: bold; cursor: pointer; text-decoration: underline;" onclick="unlockDevice()">🔑 HR 解除設備綁定</span></div>
         <button id="btnAtt" class="btn-submit" onclick="submitAttendance()">送出打卡</button>
     </div>
@@ -73,28 +75,13 @@
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart" required></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd" required></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="請簡述事由" required></div>
-        <div class="input-group">
-            <label>📸 請假證明 (支援拍照/照片/PDF檔案)</label>
-            <input type="file" id="lvFile" accept="image/*,application/pdf">
-            <div class="hint">※ 若當下無法提供證明，可先送出假單，日後至「📎 補件」上傳。</div>
-        </div>
+        
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
-    </div>
-
-    <div id="proofTab" class="form-content">
-        <div class="input-group"><label>👤 員工姓名</label><select id="prfName" onchange="loadPendingProofs()"></select></div>
-        <div class="input-group"><label>📝 選擇缺憑證的假單</label><select id="prfSelect"><option value="">請先選擇上方姓名...</option></select></div>
-        <div class="input-group">
-            <label>📸 上傳診斷證明 (支援拍照/照片/PDF檔案)</label>
-            <input type="file" id="prfFile" accept="image/*,application/pdf">
-        </div>
-        <button id="btnPrf" class="btn-submit" onclick="submitProof()">送出補件</button>
     </div>
 </div>
 
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
-    let globalDB = null;
 
     function switchTab(tabId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -119,57 +106,20 @@
 
     async function fetchEmployees() {
         try {
-            const res = await fetch(CONFIG_URL); globalDB = await res.json();
-            const empList = globalDB.employees.filter(r => r[0] && r[0] !== "姓名");
+            const res = await fetch(CONFIG_URL); const data = await res.json();
+            const empList = data.employees.filter(r => r[0] && r[0] !== "姓名");
             let optionsHTML = '<option value="" disabled selected>👉 請選擇您的姓名</option>';
             empList.forEach(emp => { optionsHTML += `<option value="${emp[0]}">${emp[0]} (${emp[1]})</option>`; });
-            ['attName', 'lvName', 'prfName'].forEach(id => document.getElementById(id).innerHTML = optionsHTML);
+            ['attName', 'lvName'].forEach(id => document.getElementById(id).innerHTML = optionsHTML);
 
             const boundName = getCookie('bound_employee');
             if (boundName) {
-                ['attName', 'lvName', 'prfName'].forEach(id => { let el = document.getElementById(id); el.value = boundName; el.disabled = true; });
+                ['attName', 'lvName'].forEach(id => { let el = document.getElementById(id); el.value = boundName; el.disabled = true; });
                 document.getElementById('unlockBox').style.display = "block";
                 const hiddenInput = document.createElement("input"); hiddenInput.type = "hidden"; hiddenInput.id = "hiddenAttName"; hiddenInput.value = boundName;
                 document.getElementById('clockIn').appendChild(hiddenInput);
-                setTimeout(loadPendingProofs, 500);
             }
         } catch (e) { document.getElementById('attName').innerHTML = '<option value="">⚠️ 連線失敗，請重新整理</option>'; }
-    }
-
-    function loadPendingProofs() {
-        if (!globalDB || !globalDB.leave) return;
-        const name = getCookie('bound_employee') || document.getElementById('prfName').value;
-        const sel = document.getElementById('prfSelect');
-        const pending = globalDB.leave.filter(r => r[2] === name && (!r[9] || !String(r[9]).includes('http')));
-        
-        if (pending.length === 0) {
-            sel.innerHTML = '<option value="">🎉 您目前沒有需要補件的假單</option>'; sel.disabled = true;
-        } else {
-            sel.disabled = false;
-            sel.innerHTML = pending.map(r => {
-                let d = new Date(r[5]); let shortDate = `${d.getMonth()+1}/${d.getDate()}`;
-                return `<option value="${r[0]}">${shortDate} - ${r[4]} (${r[7]})</option>`;
-            }).join('');
-        }
-    }
-
-    async function submitProof() {
-        const fileInput = document.getElementById('prfFile');
-        const name = getCookie('bound_employee') || document.getElementById('prfName').value;
-        const leaveId = document.getElementById('prfSelect').value;
-        if (!leaveId) return alert("⚠️ 沒有選擇假單，或目前無需補件。");
-        if (fileInput.files.length === 0) return alert("⚠️ 請選擇您的證明文件！");
-
-        const btn = document.getElementById('btnPrf'); btn.innerText = "⏳ 上傳中..."; btn.disabled = true;
-        const file = fileInput.files[0]; const fileName = file.name; 
-        const reader = new FileReader(); reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const payload = { action: "uploadLeaveProof", id: leaveId, name: name, imageFile: reader.result, fileName: fileName };
-            try {
-                await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
-                alert("✅ 證明文件補交成功！主管已收到通知。"); location.reload();
-            } catch (e) { alert("上傳失敗請重試。"); btn.disabled = false; btn.innerText = "送出補件"; }
-        };
     }
 
     function updateDynamicStatus() {
@@ -204,7 +154,6 @@
     }
 
     async function submitLeave() {
-        const fileInput = document.getElementById('lvFile');
         const name = document.getElementById('hiddenAttName') ? document.getElementById('hiddenAttName').value : document.getElementById('lvName').value;
         const dept = document.getElementById('lvDept').value;
         const type = document.getElementById('lvType').value;
@@ -215,15 +164,8 @@
         if (!name || !start || !end || !reason) return alert("⚠️ 請填寫完整！");
 
         const btn = document.getElementById('btnLv'); btn.innerText = "⏳ 傳送中..."; btn.disabled = true;
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0]; const fileName = file.name; 
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = async () => { sendLeaveData(name, dept, type, start, end, reason, reader.result, fileName); };
-        } else { sendLeaveData(name, dept, type, start, end, reason, "", ""); }
-    }
-
-    async function sendLeaveData(name, dept, type, start, end, reason, img, fileName) {
-        const payload = { action: "write", sheetName: "leave", name, dept, leaveType: type, start, end, reason, imageFile: img, fileName: fileName };
+        
+        const payload = { action: "write", sheetName: "leave", name, dept, leaveType: type, start, end, reason };
         try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("✅ 假單已送出。"); location.reload(); } 
         catch (e) { alert("連線失敗"); document.getElementById('btnLv').innerText = "送出假單"; document.getElementById('btnLv').disabled = false; }
     }

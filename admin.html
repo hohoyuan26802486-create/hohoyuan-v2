@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 管理後台 V10.5</title>
+    <title>禾禾園 - 穩定還原版後台</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 15px; margin: 0; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h1 { color: #333; font-size: 18px; border-left: 5px solid #1a73e8; padding-left: 10px; margin-bottom: 15px; }
-        .alert-container { border-left: 5px solid #dc3545; background-color: #fff8f8; }
-        .alert-title { color: #dc3545; }
         .table-responsive { width: 100%; overflow-x: auto; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 800px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; white-space: nowrap; }
@@ -20,14 +18,14 @@
         .input-group label { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; }
         .input-group input, .input-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
         .input-group-btn { display: flex; flex-direction: column; justify-content: flex-end; flex: 1 1 120px; }
-        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.3s; text-decoration: none; display: inline-block; }
+        .btn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 13px; transition: 0.3s; }
         .btn-primary { background-color: #1a73e8; }
-        .btn-info { background-color: #17a2b8; }
-        .btn-warning { background-color: #ff9800; color: white; }
         .btn-success { background-color: #28a745; }
+        .btn-warning { background-color: #ff9800; color: white; }
         .btn-danger { background-color: #dc3545; }
         .btn-edit { background-color: #6c757d; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; color: white; font-weight: bold; }
+        .bg-info { background-color: #17a2b8; }
         .bg-warning-text { background-color: #ffc107; color: #333; }
         .bg-success { background-color: #28a745; }
         .top-nav { background: #2c3e50; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -50,21 +48,23 @@
     <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
 </div>
 
-<div id="missingProofBox" class="container alert-container" style="display:none;">
-    <h1 class="alert-title">⚠️ 缺憑證追蹤清單 (一鍵催繳)</h1>
-    <div class="table-responsive">
-        <table>
-            <thead><tr><th>部門</th><th>姓名</th><th>申請日</th><th>假別</th><th>起訖時間</th><th>狀態</th><th>操作</th></tr></thead>
-            <tbody id="missingProofBody"></tbody>
-        </table>
+<div class="container">
+    <h1>📍 全公司打卡紀錄</h1>
+    <div style="max-height: 400px; overflow-y: auto;">
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>打卡時間</th><th>部門</th><th>姓名</th><th>類別</th><th>狀態</th></tr></thead>
+                <tbody id="attendanceBody"></tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <div class="container">
-    <h1>📝 員工假單總表 (含證明文件)</h1>
+    <h1>📝 待處理假單</h1>
     <div class="table-responsive">
         <table>
-            <thead><tr><th>部門</th><th>姓名</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>操作</th></tr></thead>
+            <thead><tr><th>部門</th><th>姓名</th><th>起訖時間</th><th>假別</th><th>狀態</th><th>操作</th></tr></thead>
             <tbody id="leaveBody"></tbody>
         </table>
     </div>
@@ -103,7 +103,7 @@
         <input type="month" id="rMonth" style="padding: 8px; border-radius: 4px; border: 2px solid #1a73e8; font-weight: bold;"> 
         <button id="calcBtn" class="btn btn-primary" onclick="calcSalary()">🧮 1. 結算最新薪資</button>
         <button class="btn btn-success" onclick="exportEx()">📥 2. 匯出 Excel</button>
-        <button id="pdfBtn" class="btn btn-warning" onclick="makePDF()">📄 3. 生成 PDF 薪資單</button>
+        <button id="pdfBtn" class="btn btn-warning" onclick="makePDF()">📄 3. 生成 PDF 薪薪單</button>
     </div>
 </div>
 
@@ -128,29 +128,27 @@
     function render() {
         const role = document.getElementById('adminRole').value;
         const isHR = role === '人事部' || role === '副總';
+        
         document.getElementById('hrBox').style.display = isHR ? 'block' : 'none';
         document.getElementById('reportBox').style.display = isHR ? 'block' : 'none';
-        document.getElementById('missingProofBox').style.display = isHR ? 'block' : 'none';
+
+        if(db.attendance) {
+            document.getElementById('attendanceBody').innerHTML = db.attendance.filter(r => r[0] && r[0] !== "時間戳記").reverse().slice(0,100).map(r => `<tr><td style="color:#666;">${formatNiceDate(r[0])}</td><td>${r[2]}</td><td><strong>${r[1]}</strong></td><td><span class="badge ${r[3]==='上班'?'bg-info':'bg-success'}">${r[3]}</span></td><td style="font-weight: bold; color: #d63384;">${r[4]}</td></tr>`).join('');
+        }
 
         if (db.leave) {
-            const missingLeaves = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號" && (!r[9] || !String(r[9]).includes('http')));
-            document.getElementById('missingProofBody').innerHTML = missingLeaves.reverse().map(r => `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td>${formatNiceDate(r[1], false)}</td><td style="color:#dc3545; font-weight:bold;">${r[4]}</td><td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td><td><span class="badge bg-warning-text">待補件</span></td><td><button class="btn btn-danger" onclick="remindProof('${r[2]}', '${r[3]}', '${r[4]}', '${formatNiceDate(r[1], false)}')">🔔 傳LINE催繳</button></td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center; color:green;">🎉 讚！目前所有假單都已附上證明。</td></tr>';
-
             document.getElementById('leaveBody').innerHTML = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號").reverse().map(r => {
                 let next = ''; 
                 if(role.includes(r[3]) && r[8]==='待主管審核') next = '待人事審核'; else if(role==='人事部' && r[8]==='待人事審核') next = '待副總審核'; else if(role==='副總' && r[8]==='待副總審核') next = '已生效'; 
-                let proofHTML = (r[9] && String(r[9]).includes('http')) ? `<a href="${r[9]}" target="_blank" class="btn btn-info">📎 點擊查看</a>` : `<span style="color:#dc3545; font-size:12px;">待補</span>`;
-                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td><td>${r[4]}</td><td>${proofHTML}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning-text'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
+                return `<tr><td>${r[3]}</td><td><strong>${r[2]}</strong></td><td style="font-size:12px;">${formatNiceDate(r[5])}~<br>${formatNiceDate(r[6])}</td><td>${r[4]}</td><td><span class="badge ${r[8]==='已生效'?'bg-success':'bg-warning-text'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">同意</button> <button class="btn btn-danger" onclick="updLv('${r[0]}','已退件')">退件</button>`:'-'}</td></tr>`;
             }).join('');
         }
-        if(db.employees) { document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]!=="姓名").map(r => `<tr><td>${r[1]}</td><td>${r[0]}</td><td>$${r[3]}</td><td>$${r[7]||0}/$${r[8]||0}</td><td><button class="btn btn-danger" onclick="delEmp('${r[0]}')">🗑️</button></td></tr>`).join(''); }
+        
+        if(db.employees) { 
+            document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]!=="姓名").map(r => `<tr><td>${r[1]}</td><td>${r[0]}</td><td>$${r[3]}</td><td>$${r[7]||0}/$${r[8]||0}</td><td><button class="btn btn-danger" onclick="delEmp('${r[0]}')">🗑️</button></td></tr>`).join(''); 
+        }
     }
 
-    async function remindProof(name, dept, type, dateStr) {
-        if(!confirm(`⚠️ 確定發送 LINE 催繳通知給「${name}」嗎？`)) return;
-        await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "remindProof", name: name, dept: dept, leaveType: type, date: dateStr }) });
-        alert(`✅ 催繳通知已成功發送！`);
-    }
     async function updLv(id, s) { if(confirm(`確認改為「${s}」？`)) { await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"updateLeave", id, newStatus:s }) }); fetchData(); } }
     async function delEmp(n) { if(confirm(`確定刪除 ${n}？`)) { await fetch(CONFIG_URL, { method:'POST', body:JSON.stringify({ action:"deleteEmployee", name:n }) }); fetchData(); } }
     function startEdit(n, dp, s, dt, l, h, dep) { /* 略 */ } function cancelEdit() { /* 略 */ } async function saveEmp() { /* 略 */ }
