@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V13.6</title>
+    <title>禾禾園 - 專業管理後台 V13.7</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -33,14 +33,24 @@
         .input-group label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
         .input-group input, .input-group select { padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; outline:none; }
         
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-warning { background: var(--warning); color: white; }
         .btn-edit { background: white; border: 1px solid #dadce0; color: var(--text-main); }
         .btn-edit:hover { background: #f8f9fa; }
         
-        .top-nav { background: #202124; color: white; display: flex; justify-content: space-between; align-items: center; padding: 12px 25px; border-radius: 12px; margin-bottom: 20px; }
+        /* 🌟 優化：頂部導覽列與手機版專屬排版 */
+        .top-nav { background: #202124; color: white; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; gap: 15px; }
+        .nav-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .top-nav { flex-direction: column; align-items: stretch; text-align: center; padding: 15px; }
+            .nav-actions { display: flex; width: 100%; justify-content: space-between; gap: 10px; margin-top: 5px; }
+            .nav-actions select { flex: 1; min-width: 100px; }
+            .nav-actions button { flex: 1; min-width: 120px; white-space: nowrap; }
+        }
         
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
@@ -53,8 +63,8 @@
 
 <div class="container top-nav">
     <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統</div>
-    <div style="display:flex; gap:10px;">
-        <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:8px; border-radius:6px; outline:none;">
+    <div class="nav-actions">
+        <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:10px; border-radius:6px; outline:none; font-size:14px;">
             <option value="業務部主管">業務部主管</option>
             <option value="生產部主管">生產部主管</option>
             <option value="運輸部主管">運輸部主管</option>
@@ -102,7 +112,6 @@
 </div>
 
 <script>
-    // 🌟 這裡放回了您真正的後台網址！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = {}; let editingEmpName = null;
 
@@ -116,7 +125,6 @@
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    // 權限控制
     function authRole() {
         const r = document.getElementById('adminRole').value;
         if((r==='人事部' || r==='會計部' || r==='副總') && prompt("請輸入管理員密碼")!=="123") {
@@ -164,26 +172,14 @@
         }
     }
 
-    // 🌟 防止轉圈圈的防呆設計
     async function updLv(id, s) {
         if(!confirm(`確認核准狀態為：${s} ？`)) return;
         showLoading("核准處理中，請稍候...");
-        
-        const timeout = setTimeout(() => {
-            hideLoading();
-            alert("⚠️ 伺服器回應較慢，已為您解除等待。請重按「同步」確認狀態。");
-        }, 15000);
-
+        const timeout = setTimeout(() => { hideLoading(); alert("⚠️ 伺服器回應較慢，已為您解除等待。請重按「同步」確認狀態。"); }, 15000);
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })});
-            clearTimeout(timeout);
-            await fetchData();
-            alert("✅ 審核完成！");
-        } catch (e) {
-            clearTimeout(timeout);
-            hideLoading();
-            alert("發生錯誤，請重試");
-        }
+            clearTimeout(timeout); await fetchData(); alert("✅ 審核完成！");
+        } catch (e) { clearTimeout(timeout); hideLoading(); alert("發生錯誤，請重試"); }
     }
 
     function startEdit(name, dept, sal, date, labor, health, dependents, bonus) {
@@ -208,19 +204,45 @@
         showLoading("儲存資料中...");
         const d = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, onboardingDate: document.getElementById('eDate').value, salary: document.getElementById('eSal').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDependents').value, bonus: document.getElementById('eBonus').value };
         await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)}); 
-        cancelEdit();
-        await fetchData(); 
+        cancelEdit(); await fetchData(); 
     }
 
-    async function calcSalary() { const m=document.getElementById('rMonth').value; if(!m) return alert("請先選取月份"); showLoading("正在結算薪資..."); await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify({action:"calculateSalary", targetMonth:m})}); await fetchData(); alert("結算完成"); }
-    function exportExcel() {
-        if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("請先點擊「結算薪資」");
-        const month = document.getElementById('rMonth').value || "報表";
-        const ws = XLSX.utils.aoa_to_sheet(db.Salary_Summary);
-        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "薪資結算");
-        XLSX.writeFile(wb, `禾禾園薪資結算_${month}.xlsx`);
+    async function calcSalary() { 
+        const m = document.getElementById('rMonth').value; 
+        if(!m) return alert("請先選取月份！"); 
+        showLoading("正在進行薪資大結算，請稍候...");
+        const timeout = setTimeout(() => { hideLoading(); alert("⚠️ 運算時間較長，請稍後再按「同步雲端資料」確認是否完成。"); }, 20000); 
+        try {
+            await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify({action:"calculateSalary", targetMonth:m})}); 
+            clearTimeout(timeout); await fetchData(); alert("✅ 結算完成！"); 
+        } catch (e) { clearTimeout(timeout); hideLoading(); alert("❌ 結算發生錯誤，請重試。"); }
     }
-    async function makePDF() { const m=document.getElementById('rMonth').value; if(!m) return alert("請先選取月份"); showLoading("PDF生成中..."); await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify({action:"generatePDF", targetMonth:m})}); hideLoading(); alert("已存至雲端"); }
+    
+    function exportExcel() {
+        if (!db.Salary_Summary || db.Salary_Summary.length <= 1) return alert("請先點擊「結算薪資」產生資料喔！");
+        showLoading("正在打包 Excel 檔案...");
+        setTimeout(() => {
+            try {
+                const month = document.getElementById('rMonth').value || "報表";
+                const ws = XLSX.utils.aoa_to_sheet(db.Salary_Summary);
+                const wb = XLSX.utils.book_new(); 
+                XLSX.utils.book_append_sheet(wb, ws, "薪資結算");
+                XLSX.writeFile(wb, `禾禾園薪資結算_${month}.xlsx`);
+            } catch (e) { alert("匯出失敗，請確認資料是否完整。"); } 
+            finally { hideLoading(); }
+        }, 800); 
+    }
+
+    async function makePDF() { 
+        const m = document.getElementById('rMonth').value; 
+        if(!m) return alert("請先選取月份！"); 
+        showLoading("正在全自動生成 PDF 薪資單...");
+        const timeout = setTimeout(() => { hideLoading(); alert("⚠️ PDF 生成數量較多，大腦還在背景努力中，請稍後至雲端硬碟查看！"); }, 25000); 
+        try {
+            await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify({action:"generatePDF", targetMonth:m})}); 
+            clearTimeout(timeout); hideLoading(); alert("✅ PDF 薪資單已全數存至雲端硬碟！"); 
+        } catch(e) { clearTimeout(timeout); hideLoading(); alert("❌ 生成失敗，請重試。"); }
+    }
     
     fetchData();
 </script>
