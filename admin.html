@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V13.7</title>
+    <title>禾禾園 - 專業管理後台 V13.8</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -40,7 +40,6 @@
         .btn-edit { background: white; border: 1px solid #dadce0; color: var(--text-main); }
         .btn-edit:hover { background: #f8f9fa; }
         
-        /* 🌟 優化：頂部導覽列與手機版專屬排版 */
         .top-nav { background: #202124; color: white; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; gap: 15px; }
         .nav-actions { display: flex; gap: 10px; flex-wrap: wrap; }
         
@@ -87,7 +86,7 @@
         <div class="input-group"><label>變動獎金</label><input type="number" id="eBonus" value="0"></div>
         <div class="input-group"><label>勞保</label><input type="number" id="eLabor" value="0"></div>
         <div class="input-group"><label>健保</label><input type="number" id="eHealth" value="0"></div>
-        <div class="input-group"><label>眷屬口數</label><input type="number" id="eDependents" value="0"></div>
+        <div class="input-group"><label>健保眷屬</label><input type="number" id="eDependents" value="0"></div>
         <div style="display:flex; align-items:flex-end;">
             <button id="saveBtn" class="btn btn-primary" onclick="saveEmp()">💾 儲存設定</button>
             <button id="cancelBtn" class="btn btn-edit" style="display:none; margin-left:10px;" onclick="cancelEdit()">❌ 取消</button>
