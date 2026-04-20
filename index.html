@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V13.2</title>
+    <title>禾禾園 - 考勤系統 V13.9</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .app-container { background: white; width: 100%; max-width: 480px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
         
-        /* 分頁標籤樣式 */
         .tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
         .tab { flex: 1; text-align: center; padding: 18px 10px; color: #5f6368; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 16px;}
         .tab.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: #f8faff; }
@@ -17,23 +16,15 @@
         .form-content { padding: 25px; display: none; }
         .form-content.active { display: block; }
         
-        /* 統一輸入框樣式，修復跑位問題 */
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; font-size: 14px; font-weight: 600; color: #3c4043; margin-bottom: 8px; }
         .input-group select, .input-group input { 
-            width: 100%; 
-            padding: 12px; 
-            border: 1px solid #dadce0; 
-            border-radius: 10px; 
-            font-size: 16px; 
-            background-color: white;
-            box-sizing: border-box; 
-            outline: none;
-            -webkit-appearance: none; /* 修復 iOS 樣式 */
-            appearance: none;
+            width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; font-size: 16px; 
+            background-color: white; box-sizing: border-box; outline: none; -webkit-appearance: none; appearance: none;
         }
+        /* 鎖死時的樣式 */
+        select:disabled { background-color: #e9ecef; color: #6c757d; font-weight: bold; cursor: not-allowed; opacity: 1; }
         
-        /* 上下班切換與狀態按鈕 */
         .type-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
         .type-toggle label { flex: 1; text-align: center; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; background: #f8f9fa; }
         .type-toggle input { display: none; }
@@ -43,7 +34,6 @@
         .status-btn { flex: 1; min-width: 140px; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; text-align: center; font-size: 14px; cursor: pointer; background: #f8f9fa; font-weight: 600; }
         .status-btn.selected { background: #e8f0fe; border-color: var(--primary); color: var(--primary); }
 
-        /* GPS 狀態 */
         .gps-box { padding: 12px; border-radius: 10px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 20px; display: none; }
         .gps-ok { background: #e6fffa; color: #234e52; border: 1px solid #38b2ac; display: block; }
         .gps-fail { background: #fff5f5; color: #742a2a; border: 1px solid #feb2b2; display: block; }
@@ -89,15 +79,7 @@
         <div class="input-group">
             <label>📌 假別選擇</label>
             <select id="lvType" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 12px auto;">
-                <option value="事假">事假</option>
-                <option value="病假">病假</option>
-                <option value="生理假">生理假</option>
-                <option value="特休">特休</option>
-                <option value="公假">公假</option>
-                <option value="婚假">婚假</option>
-                <option value="喪假">喪假</option>
-                <option value="產假">產假</option>
-                <option value="其他">其他</option>
+                <option value="事假">事假</option><option value="病假">病假</option><option value="生理假">生理假</option><option value="特休">特休</option><option value="公假">公假</option><option value="婚假">婚假</option><option value="喪假">喪假</option><option value="產假">產假</option><option value="其他">其他</option>
             </select>
         </div>
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
@@ -119,9 +101,6 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; const ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
-
-    function setCookie(n, v) { const d = new Date(); d.setTime(d.getTime() + (3650*24*60*60*1000)); document.cookie = n + "=" + v + ";expires=" + d.toUTCString() + ";path=/"; }
-    function getCookie(n) { const v = `; ${document.cookie}`; const p = v.split(`; ${n}=`); if (p.length === 2) return p.pop().split(';').shift(); return null; }
 
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371;
@@ -177,31 +156,43 @@
         try {
             const res = await fetch(CONFIG_URL); globalDB = await res.json();
             const opts = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "").map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
-            document.getElementById('attName').innerHTML = opts;
-            document.getElementById('lvName').innerHTML = opts;
-            document.getElementById('prfName').innerHTML = opts;
-            const bound = getCookie('bound_user');
-            if(bound) document.getElementById('attName').value = bound;
+            
+            const attSelect = document.getElementById('attName');
+            const lvSelect = document.getElementById('lvName');
+            const prfSelect = document.getElementById('prfName');
+            
+            attSelect.innerHTML = opts; lvSelect.innerHTML = opts; prfSelect.innerHTML = opts;
+            
+            // 🌟 升級版：讀取 LocalStorage 超級鎖
+            const bound = localStorage.getItem('bound_user');
+            if(bound) {
+                // 自動帶入名字，並且設為 disabled (變灰且無法點擊)
+                attSelect.value = bound; attSelect.disabled = true;
+                lvSelect.value = bound; lvSelect.disabled = true;
+                prfSelect.value = bound; prfSelect.disabled = true;
+            }
         } catch (e) { console.error("資料讀取失敗"); }
     }
 
     function unlockDevice() {
         if (prompt("🔐 HR 密碼：") === "456") {
-            document.cookie = "bound_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            alert("🔓 已解除鎖定"); location.reload();
+            localStorage.removeItem('bound_user'); // 移除超級鎖
+            alert("🔓 已解除鎖定，現在可以選擇其他人了！"); 
+            location.reload();
         } else { alert("❌ 密碼錯誤"); }
     }
 
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
-        const bound = getCookie('bound_user');
-        if (bound && bound !== name) return alert("⚠️ 手機已鎖定：" + bound);
+        const bound = localStorage.getItem('bound_user');
+        
         const btn = document.getElementById('btnAtt'); btn.innerText = "⏳..."; btn.disabled = true;
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name, type: document.querySelector('input[name="attType"]:checked').value, status: selectedStatus }) });
-            if (!bound) setCookie('bound_user', name);
+            // 🌟 第一次打卡成功後，啟動超級鎖
+            if (!bound) localStorage.setItem('bound_user', name);
             alert("✅ 打卡成功！"); location.reload();
-        } catch (e) { alert("失敗"); btn.disabled = false; }
+        } catch (e) { alert("失敗，請確認網路"); btn.disabled = false; btn.innerText = "送出打卡"; }
     }
 
     async function submitLeave() {
