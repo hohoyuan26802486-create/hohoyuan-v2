@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V14.1</title>
+    <title>禾禾園 - 考勤系統 V14.2</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -16,13 +16,17 @@
         .form-content { padding: 25px; display: none; }
         .form-content.active { display: block; }
         
+        /* 🌟 頭像區塊樣式 */
+        .avatar-container { text-align: center; margin-bottom: 20px; }
+        .avatar-img { width: 85px; height: 85px; border-radius: 50%; background: #e8f0fe; padding: 5px; box-shadow: 0 4px 12px rgba(26,115,232,0.15); border: 2px solid white; transition: 0.3s ease-in-out; }
+        
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; font-size: 14px; font-weight: 600; color: #3c4043; margin-bottom: 8px; }
         .input-group select, .input-group input { 
             width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; font-size: 16px; 
             background-color: white; box-sizing: border-box; outline: none; -webkit-appearance: none; appearance: none;
         }
-        select:disabled { background-color: #e9ecef; color: #6c757d; font-weight: bold; cursor: not-allowed; opacity: 1; }
+        select:disabled { background-color: #e9ecef; color: #6c757d; font-weight: bold; cursor: not-allowed; opacity: 1; border-color: #ced4da; }
         
         .type-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
         .type-toggle label { flex: 1; text-align: center; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; cursor: pointer; font-weight: 600; transition: 0.2s; background: #f8f9fa; }
@@ -54,7 +58,11 @@
     </div>
 
     <div id="clockIn" class="form-content active">
-        <div class="input-group"><label>👤 員工姓名</label><select id="attName"></select></div>
+        <div class="avatar-container">
+            <img id="attAvatar" class="avatar-img" src="https://api.dicebear.com/8.x/adventurer-neutral/svg?seed=禾禾園打卡" alt="大頭貼">
+        </div>
+
+        <div class="input-group"><label>👤 員工姓名</label><select id="attName" onchange="syncAvatar(this.value)"></select></div>
         <div id="unlockLink"><a href="#" onclick="unlockDevice()">🔑 解除手機鎖定 (HR 專用)</a></div>
         
         <div class="type-toggle">
@@ -79,7 +87,11 @@
     </div>
 
     <div id="leave" class="form-content">
-        <div class="input-group"><label>👤 員工姓名</label><select id="lvName"></select></div>
+        <div class="avatar-container">
+            <img id="lvAvatar" class="avatar-img" src="https://api.dicebear.com/8.x/adventurer-neutral/svg?seed=禾禾園請假" alt="大頭貼">
+        </div>
+
+        <div class="input-group"><label>👤 員工姓名</label><select id="lvName" onchange="syncAvatar(this.value)"></select></div>
         <div class="input-group">
             <label>📌 假別選擇</label>
             <select id="lvType" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 12px auto;">
@@ -94,7 +106,11 @@
     </div>
 
     <div id="proofTab" class="form-content">
-        <div class="input-group"><label>👤 員工姓名</label><select id="prfName" onchange="loadPendingProofs()"></select></div>
+        <div class="avatar-container">
+            <img id="prfAvatar" class="avatar-img" src="https://api.dicebear.com/8.x/adventurer-neutral/svg?seed=禾禾園補件" alt="大頭貼">
+        </div>
+
+        <div class="input-group"><label>👤 員工姓名</label><select id="prfName" onchange="syncAvatar(this.value); loadPendingProofs();"></select></div>
         <div class="input-group"><label>📝 選擇缺件假單</label><select id="prfSelect"><option value="">讀取中...</option></select></div>
         <div class="input-group"><label>📸 上傳證明照片</label><input type="file" id="prfFile" accept="image/*"></div>
         <button id="btnPrf" class="btn-submit" onclick="submitProof()">送出補件</button>
@@ -105,6 +121,22 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; const ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
+
+    // 🌟 同步大頭貼魔法：根據姓名產生專屬卡通圖像
+    function syncAvatar(name) {
+        if(!name) return;
+        const seed = encodeURIComponent(name);
+        const avatarUrl = `https://api.dicebear.com/8.x/adventurer-neutral/svg?seed=${seed}&backgroundColor=e8f0fe`;
+        
+        // 同步三個分頁的頭像與下拉選單，確保一致性
+        document.getElementById('attAvatar').src = avatarUrl;
+        document.getElementById('lvAvatar').src = avatarUrl;
+        document.getElementById('prfAvatar').src = avatarUrl;
+
+        document.getElementById('attName').value = name;
+        document.getElementById('lvName').value = name;
+        document.getElementById('prfName').value = name;
+    }
 
     function getDistance(lat1, lon1, lat2, lon2) {
         const R = 6371;
@@ -118,7 +150,6 @@
         const statusBox = document.getElementById('gpsStatusBox');
         const list = document.getElementById('statusList');
         
-        // 切換上下班時，預設隱藏加班原因框
         document.getElementById('overtimeBox').style.display = "none";
         document.getElementById('overtimeReason').value = "";
 
@@ -146,7 +177,6 @@
         div.className = isSelected ? "status-btn selected" : "status-btn";
         div.innerText = txt;
         
-        // 🌟 自動選取時，也要判斷是否顯示加班原因框
         if(isSelected) {
             selectedStatus = txt;
             document.getElementById('overtimeBox').style.display = (txt === "經主管核准加班") ? "block" : "none";
@@ -155,8 +185,6 @@
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); selectedStatus = txt;
-            
-            // 🌟 點擊時，動態顯示或隱藏加班原因框
             document.getElementById('overtimeBox').style.display = (txt === "經主管核准加班") ? "block" : "none";
         };
         document.getElementById('statusList').appendChild(div);
@@ -184,6 +212,9 @@
                 document.getElementById('attName').value = bound; document.getElementById('attName').disabled = true;
                 document.getElementById('lvName').value = bound; document.getElementById('lvName').disabled = true;
                 document.getElementById('prfName').value = bound; document.getElementById('prfName').disabled = true;
+                syncAvatar(bound); // 🌟 啟動時如果被鎖定，直接顯示該員工頭像
+            } else {
+                syncAvatar(document.getElementById('attName').value); // 🌟 未鎖定時顯示第一個人的頭像
             }
             loadPendingProofs();
         } catch (e) { console.error("資料讀取失敗"); }
@@ -202,7 +233,6 @@
         const bound = localStorage.getItem('bound_user');
         const overtimeReason = document.getElementById('overtimeReason').value;
         
-        // 🌟 防呆設計：如果是選加班，但沒寫原因，就擋下來
         if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) {
             return alert("⚠️ 請務必填寫「加班事由」，主管才能進行核准喔！");
         }
@@ -212,12 +242,8 @@
             await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ 
-                    action: "write", 
-                    sheetName: "attendance", 
-                    name: name, 
-                    type: document.querySelector('input[name="attType"]:checked').value, 
-                    status: selectedStatus,
-                    reason: overtimeReason  // 🌟 將原因一起送給大腦
+                    action: "write", sheetName: "attendance", name: name, 
+                    type: document.querySelector('input[name="attType"]:checked').value, status: selectedStatus, reason: overtimeReason
                 }) 
             });
             if (!bound) localStorage.setItem('bound_user', name);
@@ -242,11 +268,9 @@
         const sel = document.getElementById('prfSelect');
         
         if (pending.length === 0) { 
-            sel.innerHTML = '<option value="">🎉 目前沒有需要補件的假單</option>'; 
-            sel.disabled = true; 
+            sel.innerHTML = '<option value="">🎉 目前沒有需要補件的假單</option>'; sel.disabled = true; 
         } else { 
-            sel.innerHTML = pending.map(r => `<option value="${r[0]}">${String(r[5]).split('T')[0]} - ${r[4]}</option>`).join(''); 
-            sel.disabled = false; 
+            sel.innerHTML = pending.map(r => `<option value="${r[0]}">${String(r[5]).split('T')[0]} - ${r[4]}</option>`).join(''); sel.disabled = false; 
         }
     }
 
