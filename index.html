@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V14.4</title>
+    <title>禾禾園 - 考勤系統 V14.6</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -82,9 +82,12 @@
         <div class="input-group"><label>👤 員工姓名</label><select id="lvName" onchange="syncName(this.value)"></select></div>
         <div class="input-group">
             <label>📌 假別選擇</label>
-            <select id="lvType" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 12px auto;">
+            <select id="lvType" onchange="handleLeaveTypeChange()" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 12px auto;">
                 <option value="事假">事假</option><option value="病假">病假</option><option value="生理假">生理假</option><option value="特休">特休</option><option value="公假">公假</option><option value="婚假">婚假</option><option value="喪假">喪假</option><option value="產假">產假</option><option value="其他">其他</option>
             </select>
+            <div id="annualLeaveBox" style="display: none; margin-top: 10px; padding: 12px; background: #e8f0fe; border-radius: 8px; border: 1px solid #aecbfa; color: #1a73e8; font-size: 14px; font-weight: bold;">
+                🏖️ 目前特休餘額：<span id="annualLeaveCount" style="color: #d93025; font-size: 18px;">-</span> 天
+            </div>
         </div>
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
@@ -111,6 +114,31 @@
         document.getElementById('attName').value = name;
         document.getElementById('lvName').value = name;
         document.getElementById('prfName').value = name;
+        handleLeaveTypeChange(); 
+    }
+
+    function handleLeaveTypeChange() {
+        const type = document.getElementById('lvType').value;
+        const box = document.getElementById('annualLeaveBox');
+        if(!box) return; // 防呆安全檢查
+
+        if (type === '特休') {
+            box.style.display = 'block';
+            updateAnnualLeave(document.getElementById('lvName').value);
+        } else {
+            box.style.display = 'none';
+        }
+    }
+
+    function updateAnnualLeave(name) {
+        if (!globalDB || !globalDB.employees || !globalDB.leave) return;
+        const emp = globalDB.employees.find(r => r[0] === name);
+        if (!emp) return;
+        const totalLeave = Number(emp[5]) || 0; 
+        const usedLeave = globalDB.leave.filter(r => r[2] === name && r[4] === "特休" && r[8] === "已生效").length;
+        const remain = totalLeave - usedLeave;
+        const countSpan = document.getElementById('annualLeaveCount');
+        if(countSpan) countSpan.innerText = remain;
     }
 
     function getDistance(lat1, lon1, lat2, lon2) {
@@ -121,30 +149,38 @@
     }
 
     function handleTypeChange() {
-        const type = document.querySelector('input[name="attType"]:checked').value;
-        const statusBox = document.getElementById('gpsStatusBox');
-        const list = document.getElementById('statusList');
-        
-        document.getElementById('overtimeBox').style.display = "none";
-        document.getElementById('overtimeReason').value = "";
+        try {
+            const typeInput = document.querySelector('input[name="attType"]:checked');
+            if(!typeInput) return;
+            const type = typeInput.value;
+            
+            const statusBox = document.getElementById('gpsStatusBox');
+            const list = document.getElementById('statusList');
+            const overtimeBox = document.getElementById('overtimeBox');
+            const overtimeReason = document.getElementById('overtimeReason');
+            
+            if(overtimeBox) overtimeBox.style.display = "none";
+            if(overtimeReason) overtimeReason.value = "";
 
-        const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
-        list.innerHTML = "";
+            const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
+            if(list) list.innerHTML = "";
 
-        if (type === "上班") {
-            statusBox.style.display = "block";
-            if (time < 440) addStatusBtn("個人因素提早上班", true);
-            else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
-            else addStatusBtn("遲到", true);
-            updateGPSUI();
-        } else {
-            statusBox.style.display = "none";
-            if (time >= 1010) { 
-                addStatusBtn("因個人因素延後下班", true);
-                addStatusBtn("經主管核准加班", false);
-            } else { addStatusBtn("正常下班", true); }
-            document.getElementById('btnAtt').disabled = false;
-        }
+            if (type === "上班") {
+                if(statusBox) statusBox.style.display = "block";
+                if (time < 440) addStatusBtn("個人因素提早上班", true);
+                else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
+                else addStatusBtn("遲到", true);
+                updateGPSUI();
+            } else {
+                if(statusBox) statusBox.style.display = "none";
+                if (time >= 1010) { 
+                    addStatusBtn("因個人因素延後下班", true);
+                    addStatusBtn("經主管核准加班", false);
+                } else { addStatusBtn("正常下班", true); }
+                const btnAtt = document.getElementById('btnAtt');
+                if(btnAtt) btnAtt.disabled = false;
+            }
+        } catch(e) { console.error("狀態切換發生錯誤:", e); }
     }
 
     function addStatusBtn(txt, isSelected) {
@@ -154,20 +190,25 @@
         
         if(isSelected) {
             selectedStatus = txt;
-            document.getElementById('overtimeBox').style.display = (txt === "經主管核准加班") ? "block" : "none";
+            const overtimeBox = document.getElementById('overtimeBox');
+            if(overtimeBox) overtimeBox.style.display = (txt === "經主管核准加班") ? "block" : "none";
         }
 
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); selectedStatus = txt;
-            document.getElementById('overtimeBox').style.display = (txt === "經主管核准加班") ? "block" : "none";
+            const overtimeBox = document.getElementById('overtimeBox');
+            if(overtimeBox) overtimeBox.style.display = (txt === "經主管核准加班") ? "block" : "none";
         };
-        document.getElementById('statusList').appendChild(div);
+        const statusList = document.getElementById('statusList');
+        if(statusList) statusList.appendChild(div);
     }
 
     function updateGPSUI() {
         const box = document.getElementById('gpsStatusBox');
         const btn = document.getElementById('btnAtt');
+        if(!box || !btn) return;
+        
         if (userLat === null) { box.innerText = "🛰️ 定位中..."; box.className = "gps-box gps-fail"; btn.disabled = true; } 
         else if (isWithinRange) { box.innerText = "✅ 進入打卡範圍"; box.className = "gps-box gps-ok"; btn.disabled = false; } 
         else { box.innerText = "❌ 距離太遠，請回公司"; box.className = "gps-box gps-fail"; btn.disabled = true; }
@@ -206,7 +247,7 @@
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const bound = localStorage.getItem('bound_user');
-        const overtimeReason = document.getElementById('overtimeReason').value;
+        const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
         
         if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) {
             return alert("⚠️ 請務必填寫「加班事由」，主管才能進行核准喔！");
@@ -220,4 +261,80 @@
                     action: "write", 
                     sheetName: "attendance", 
                     name: name, 
-                    type: document.querySelector
+                    type: document.querySelector('input[name="attType"]:checked').value, 
+                    status: selectedStatus, 
+                    reason: overtimeReason,
+                    lat: userLat, 
+                    lon: userLon 
+                }) 
+            });
+            if (!bound) localStorage.setItem('bound_user', name);
+            alert("✅ 打卡成功！"); location.reload();
+        } catch (e) { alert("失敗，請確認網路"); btn.disabled = false; btn.innerText = "送出打卡"; }
+    }
+
+    async function submitLeave() {
+        const leaveType = document.getElementById('lvType').value;
+        if (leaveType === "特休") {
+            const remainText = document.getElementById('annualLeaveCount').innerText;
+            if (remainText !== "-" && Number(remainText) <= 0) {
+                return alert("⚠️ 您的特休天數已經不足囉！請選擇其他假別，或洽詢人事部。");
+            }
+        }
+
+        const file = document.getElementById('lvFile').files[0];
+        const btn = document.getElementById('btnLv'); btn.innerText = "⏳..."; btn.disabled = true;
+        const p = { action: "write", sheetName: "leave", name: document.getElementById('lvName').value, leaveType: leaveType, start: document.getElementById('lvStart').value, end: document.getElementById('lvEnd').value, reason: document.getElementById('lvReason').value };
+        if (file) {
+            const r = new FileReader(); r.readAsDataURL(file);
+            r.onload = async () => { p.imageFile = r.result; p.fileName = file.name; await sendData(p); };
+        } else await sendData(p);
+    }
+
+    function loadPendingProofs() {
+        const name = document.getElementById('prfName').value;
+        if (!globalDB || !globalDB.leave) return;
+        const pending = globalDB.leave.filter(r => r[2] === name && r[4] !== "特休" && (!r[9] || !String(r[9]).includes('http')));
+        const sel = document.getElementById('prfSelect');
+        if(!sel) return;
+
+        if (pending.length === 0) { 
+            sel.innerHTML = '<option value="">🎉 目前沒有需要補件的假單</option>'; sel.disabled = true; 
+        } else { 
+            sel.innerHTML = pending.map(r => `<option value="${r[0]}">${String(r[5]).split('T')[0]} - ${r[4]}</option>`).join(''); sel.disabled = false; 
+        }
+    }
+
+    async function submitProof() {
+        const file = document.getElementById('prfFile').files[0];
+        if (!file) return alert("請先選擇照片檔案！");
+        const r = new FileReader(); r.readAsDataURL(file);
+        const btn = document.getElementById('btnPrf'); btn.innerText = "上傳中⏳..."; btn.disabled = true;
+        r.onload = async () => {
+            await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name });
+        };
+    }
+
+    async function sendData(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 處理成功！"); location.reload(); } catch (e) { alert("發生錯誤，請確認網路連線"); location.reload(); } }
+
+    function switchTab(id) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form-content').forEach(c => c.classList.remove('active'));
+        event.currentTarget.classList.add('active'); document.getElementById(id).classList.add('active');
+    }
+
+    window.onload = () => {
+        fetchEmployees();
+        handleTypeChange();
+        if(navigator.geolocation) {
+            navigator.geolocation.watchPosition(pos => {
+                userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+                isWithinRange = getDistance(userLat, userLon, TARGET_LAT, TARGET_LON) <= ALLOWED_DIST;
+                const typeInput = document.querySelector('input[name="attType"]:checked');
+                if(typeInput && typeInput.value === "上班") updateGPSUI();
+            }, null, { enableHighAccuracy: true });
+        }
+    };
+</script>
+</body>
+</html>
