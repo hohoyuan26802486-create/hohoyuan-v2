@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V13.9</title>
+    <title>禾禾園 - 考勤系統 V14.0</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -22,7 +22,6 @@
             width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; font-size: 16px; 
             background-color: white; box-sizing: border-box; outline: none; -webkit-appearance: none; appearance: none;
         }
-        /* 鎖死時的樣式 */
         select:disabled { background-color: #e9ecef; color: #6c757d; font-weight: bold; cursor: not-allowed; opacity: 1; }
         
         .type-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -91,7 +90,7 @@
 
     <div id="proofTab" class="form-content">
         <div class="input-group"><label>👤 員工姓名</label><select id="prfName" onchange="loadPendingProofs()"></select></div>
-        <div class="input-group"><label>📝 選擇缺件假單</label><select id="prfSelect"><option value="">請先選擇姓名...</option></select></div>
+        <div class="input-group"><label>📝 選擇缺件假單</label><select id="prfSelect"><option value="">讀取中...</option></select></div>
         <div class="input-group"><label>📸 上傳證明照片</label><input type="file" id="prfFile" accept="image/*"></div>
         <button id="btnPrf" class="btn-submit" onclick="submitProof()">送出補件</button>
     </div>
@@ -163,20 +162,21 @@
             
             attSelect.innerHTML = opts; lvSelect.innerHTML = opts; prfSelect.innerHTML = opts;
             
-            // 🌟 升級版：讀取 LocalStorage 超級鎖
             const bound = localStorage.getItem('bound_user');
             if(bound) {
-                // 自動帶入名字，並且設為 disabled (變灰且無法點擊)
                 attSelect.value = bound; attSelect.disabled = true;
                 lvSelect.value = bound; lvSelect.disabled = true;
                 prfSelect.value = bound; prfSelect.disabled = true;
             }
+            // 🌟 修正：資料載入完畢後，強制執行一次抓取假單的動作
+            loadPendingProofs();
+
         } catch (e) { console.error("資料讀取失敗"); }
     }
 
     function unlockDevice() {
         if (prompt("🔐 HR 密碼：") === "456") {
-            localStorage.removeItem('bound_user'); // 移除超級鎖
+            localStorage.removeItem('bound_user'); 
             alert("🔓 已解除鎖定，現在可以選擇其他人了！"); 
             location.reload();
         } else { alert("❌ 密碼錯誤"); }
@@ -189,7 +189,6 @@
         const btn = document.getElementById('btnAtt'); btn.innerText = "⏳..."; btn.disabled = true;
         try {
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name, type: document.querySelector('input[name="attType"]:checked').value, status: selectedStatus }) });
-            // 🌟 第一次打卡成功後，啟動超級鎖
             if (!bound) localStorage.setItem('bound_user', name);
             alert("✅ 打卡成功！"); location.reload();
         } catch (e) { alert("失敗，請確認網路"); btn.disabled = false; btn.innerText = "送出打卡"; }
@@ -207,23 +206,33 @@
 
     function loadPendingProofs() {
         const name = document.getElementById('prfName').value;
-        const pending = globalDB.leave.filter(r => r[2] === name && (!r[9] || !String(r[9]).includes('http')));
+        if (!globalDB || !globalDB.leave) return;
+
+        // 🌟 修正：抓出該員工，且不是特休，且尚未上傳照片的假單
+        const pending = globalDB.leave.filter(r => r[2] === name && r[4] !== "特休" && (!r[9] || !String(r[9]).includes('http')));
         const sel = document.getElementById('prfSelect');
-        if (pending.length === 0) { sel.innerHTML = '<option value="">🎉 無需補件</option>'; sel.disabled = true; } 
-        else { sel.innerHTML = pending.map(r => `<option value="${r[0]}">${r[1].split('T')[0]} - ${r[4]}</option>`).join(''); sel.disabled = false; }
+        
+        if (pending.length === 0) { 
+            sel.innerHTML = '<option value="">🎉 目前沒有需要補件的假單</option>'; 
+            sel.disabled = true; 
+        } else { 
+            // 顯示：請假日期(r[5]) - 假別(r[4])
+            sel.innerHTML = pending.map(r => `<option value="${r[0]}">${String(r[5]).split('T')[0]} - ${r[4]}</option>`).join(''); 
+            sel.disabled = false; 
+        }
     }
 
     async function submitProof() {
         const file = document.getElementById('prfFile').files[0];
-        if (!file) return alert("請選照片");
+        if (!file) return alert("請先選擇照片檔案！");
         const r = new FileReader(); r.readAsDataURL(file);
-        const btn = document.getElementById('btnPrf'); btn.innerText = "⏳..."; btn.disabled = true;
+        const btn = document.getElementById('btnPrf'); btn.innerText = "上傳中⏳..."; btn.disabled = true;
         r.onload = async () => {
             await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name });
         };
     }
 
-    async function sendData(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 成功！"); location.reload(); } catch (e) { alert("失敗"); location.reload(); } }
+    async function sendData(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 處理成功！"); location.reload(); } catch (e) { alert("發生錯誤，請確認網路連線"); location.reload(); } }
 
     function switchTab(id) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
