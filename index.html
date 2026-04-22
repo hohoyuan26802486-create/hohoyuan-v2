@@ -105,7 +105,9 @@
 </div>
 
 <script>
+    // 🌟 您提供的最新 Google Apps Script URL
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
+    
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; const ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
 
@@ -120,7 +122,7 @@
     function handleLeaveTypeChange() {
         const type = document.getElementById('lvType').value;
         const box = document.getElementById('annualLeaveBox');
-        if(!box) return; // 防呆安全檢查
+        if(!box) return;
 
         if (type === '特休') {
             box.style.display = 'block';
@@ -153,14 +155,10 @@
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return;
             const type = typeInput.value;
-            
             const statusBox = document.getElementById('gpsStatusBox');
             const list = document.getElementById('statusList');
             const overtimeBox = document.getElementById('overtimeBox');
-            const overtimeReason = document.getElementById('overtimeReason');
-            
             if(overtimeBox) overtimeBox.style.display = "none";
-            if(overtimeReason) overtimeReason.value = "";
 
             const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
             if(list) list.innerHTML = "";
@@ -180,25 +178,23 @@
                 const btnAtt = document.getElementById('btnAtt');
                 if(btnAtt) btnAtt.disabled = false;
             }
-        } catch(e) { console.error("狀態切換發生錯誤:", e); }
+        } catch(e) { console.error(e); }
     }
 
     function addStatusBtn(txt, isSelected) {
         const div = document.createElement('div');
         div.className = isSelected ? "status-btn selected" : "status-btn";
         div.innerText = txt;
-        
         if(isSelected) {
             selectedStatus = txt;
-            const overtimeBox = document.getElementById('overtimeBox');
-            if(overtimeBox) overtimeBox.style.display = (txt === "經主管核准加班") ? "block" : "none";
+            const ob = document.getElementById('overtimeBox');
+            if(ob) ob.style.display = (txt === "經主管核准加班") ? "block" : "none";
         }
-
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); selectedStatus = txt;
-            const overtimeBox = document.getElementById('overtimeBox');
-            if(overtimeBox) overtimeBox.style.display = (txt === "經主管核准加班") ? "block" : "none";
+            const ob = document.getElementById('overtimeBox');
+            if(ob) ob.style.display = (txt === "經主管核准加班") ? "block" : "none";
         };
         const statusList = document.getElementById('statusList');
         if(statusList) statusList.appendChild(div);
@@ -208,7 +204,6 @@
         const box = document.getElementById('gpsStatusBox');
         const btn = document.getElementById('btnAtt');
         if(!box || !btn) return;
-        
         if (userLat === null) { box.innerText = "🛰️ 定位中..."; box.className = "gps-box gps-fail"; btn.disabled = true; } 
         else if (isWithinRange) { box.innerText = "✅ 進入打卡範圍"; box.className = "gps-box gps-ok"; btn.disabled = false; } 
         else { box.innerText = "❌ 距離太遠，請回公司"; box.className = "gps-box gps-fail"; btn.disabled = true; }
@@ -218,73 +213,47 @@
         try {
             const res = await fetch(CONFIG_URL); globalDB = await res.json();
             const opts = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "").map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
-            
             document.getElementById('attName').innerHTML = opts; 
             document.getElementById('lvName').innerHTML = opts; 
             document.getElementById('prfName').innerHTML = opts;
-            
             const bound = localStorage.getItem('bound_user');
             if(bound) {
                 document.getElementById('attName').value = bound; document.getElementById('attName').disabled = true;
                 document.getElementById('lvName').value = bound; document.getElementById('lvName').disabled = true;
                 document.getElementById('prfName').value = bound; document.getElementById('prfName').disabled = true;
                 syncName(bound); 
-            } else {
-                syncName(document.getElementById('attName').value); 
-            }
+            } else { syncName(document.getElementById('attName').value); }
             loadPendingProofs();
-        } catch (e) { console.error("資料讀取失敗"); }
+        } catch (e) { console.error(e); }
     }
 
     function unlockDevice() {
         if (prompt("🔐 HR 密碼：") === "456") {
-            localStorage.removeItem('bound_user'); 
-            alert("🔓 已解除鎖定，現在可以選擇其他人了！"); 
-            location.reload();
+            localStorage.removeItem('bound_user'); alert("🔓 已解除鎖定"); location.reload();
         } else { alert("❌ 密碼錯誤"); }
     }
 
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
-        const bound = localStorage.getItem('bound_user');
         const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
-        
-        if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) {
-            return alert("⚠️ 請務必填寫「加班事由」，主管才能進行核准喔！");
-        }
-        
+        if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return alert("⚠️ 請填寫加班事由");
         const btn = document.getElementById('btnAtt'); btn.innerText = "⏳..."; btn.disabled = true;
         try {
-            await fetch(CONFIG_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ 
-                    action: "write", 
-                    sheetName: "attendance", 
-                    name: name, 
-                    type: document.querySelector('input[name="attType"]:checked').value, 
-                    status: selectedStatus, 
-                    reason: overtimeReason,
-                    lat: userLat, 
-                    lon: userLon 
-                }) 
-            });
-            if (!bound) localStorage.setItem('bound_user', name);
+            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name, type: document.querySelector('input[name="attType"]:checked').value, status: selectedStatus, reason: overtimeReason, lat: userLat, lon: userLon }) });
+            if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
             alert("✅ 打卡成功！"); location.reload();
-        } catch (e) { alert("失敗，請確認網路"); btn.disabled = false; btn.innerText = "送出打卡"; }
+        } catch (e) { alert("連線失敗"); btn.disabled = false; btn.innerText = "送出打卡"; }
     }
 
     async function submitLeave() {
         const leaveType = document.getElementById('lvType').value;
         if (leaveType === "特休") {
-            const remainText = document.getElementById('annualLeaveCount').innerText;
-            if (remainText !== "-" && Number(remainText) <= 0) {
-                return alert("⚠️ 您的特休天數已經不足囉！請選擇其他假別，或洽詢人事部。");
-            }
+            const remain = Number(document.getElementById('annualLeaveCount').innerText);
+            if (remain <= 0) return alert("⚠️ 特休天數不足");
         }
-
         const file = document.getElementById('lvFile').files[0];
         const btn = document.getElementById('btnLv'); btn.innerText = "⏳..."; btn.disabled = true;
-        const p = { action: "write", sheetName: "leave", name: document.getElementById('lvName').value, leaveType: leaveType, start: document.getElementById('lvStart').value, end: document.getElementById('lvEnd').value, reason: document.getElementById('lvReason').value };
+        const p = { action: "write", sheetName: "leave", name: document.getElementById('lvName').value, leaveType, start: document.getElementById('lvStart').value, end: document.getElementById('lvEnd').value, reason: document.getElementById('lvReason').value };
         if (file) {
             const r = new FileReader(); r.readAsDataURL(file);
             r.onload = async () => { p.imageFile = r.result; p.fileName = file.name; await sendData(p); };
@@ -297,25 +266,19 @@
         const pending = globalDB.leave.filter(r => r[2] === name && r[4] !== "特休" && (!r[9] || !String(r[9]).includes('http')));
         const sel = document.getElementById('prfSelect');
         if(!sel) return;
-
-        if (pending.length === 0) { 
-            sel.innerHTML = '<option value="">🎉 目前沒有需要補件的假單</option>'; sel.disabled = true; 
-        } else { 
-            sel.innerHTML = pending.map(r => `<option value="${r[0]}">${String(r[5]).split('T')[0]} - ${r[4]}</option>`).join(''); sel.disabled = false; 
-        }
+        if (pending.length === 0) { sel.innerHTML = '<option value="">🎉 目前無補件需求</option>'; sel.disabled = true; } 
+        else { sel.innerHTML = pending.map(r => `<option value="${r[0]}">${String(r[5]).split('T')[0]} - ${r[4]}</option>`).join(''); sel.disabled = false; }
     }
 
     async function submitProof() {
         const file = document.getElementById('prfFile').files[0];
-        if (!file) return alert("請先選擇照片檔案！");
+        if (!file) return alert("請選擇照片");
         const r = new FileReader(); r.readAsDataURL(file);
         const btn = document.getElementById('btnPrf'); btn.innerText = "上傳中⏳..."; btn.disabled = true;
-        r.onload = async () => {
-            await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name });
-        };
+        r.onload = async () => { await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name }); };
     }
 
-    async function sendData(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 處理成功！"); location.reload(); } catch (e) { alert("發生錯誤，請確認網路連線"); location.reload(); } }
+    async function sendData(p) { try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 處理成功！"); location.reload(); } catch (e) { alert("網路錯誤"); location.reload(); } }
 
     function switchTab(id) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -324,8 +287,7 @@
     }
 
     window.onload = () => {
-        fetchEmployees();
-        handleTypeChange();
+        fetchEmployees(); handleTypeChange();
         if(navigator.geolocation) {
             navigator.geolocation.watchPosition(pos => {
                 userLat = pos.coords.latitude; userLon = pos.coords.longitude;
