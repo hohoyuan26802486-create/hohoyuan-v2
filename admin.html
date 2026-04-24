@@ -199,11 +199,25 @@
         document.getElementById('cancelBtn').style.display = "none";
     }
 
+    // 🌟 加裝防當機安全網的儲存功能
     async function saveEmp() { 
         showLoading("儲存資料中...");
         const d = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, onboardingDate: document.getElementById('eDate').value, salary: document.getElementById('eSal').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDependents').value, bonus: document.getElementById('eBonus').value };
-        await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)}); 
-        cancelEdit(); await fetchData(); 
+        
+        try {
+            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(d)}); 
+            const text = await res.text();
+            if(text === "Success") {
+                alert("✅ 員工資料儲存成功！");
+            } else {
+                alert("❌ 儲存失敗：" + text);
+            }
+        } catch(e) {
+            alert("❌ 連線異常！請確認後台大腦是否已成功『發布為新版本』。");
+        }
+        
+        cancelEdit(); 
+        await fetchData(); 
     }
 
     async function calcSalary() { 
