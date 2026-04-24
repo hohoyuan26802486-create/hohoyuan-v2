@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V16.1</title>
+    <title>禾禾園 - 考勤系統 V16.2</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -92,7 +92,13 @@
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="填寫簡要原因"></div>
-        <div class="input-group"><label>📸 證明照片 (選填)</label><input type="file" id="lvFile" accept="image/*"></div>
+        <div class="input-group">
+            <label>📸 證明照片 (選填)</label>
+            <input type="file" id="lvFile" accept="image/*">
+            <div style="margin-top: 10px; padding: 12px; background-color: #fce8e6; border-left: 4px solid #d93025; border-radius: 8px; font-size: 13.5px; color: #d93025; font-weight: bold; line-height: 1.5;">
+                ⚠️ 溫馨提醒：<br>如請假需附上相關資料時，請於 3 天內附上（或事後至上方「補件」區上傳），逾期視同作廢！謝謝！
+            </div>
+        </div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
 
@@ -105,7 +111,7 @@
 </div>
 
 <script>
-    // ✅ 網址已經完美鎖定，絕對正確！
+    // ✅ 網址鎖定
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; const ALLOWED_DIST = 1.0; 
@@ -233,7 +239,6 @@
         } else { alert("❌ 密碼錯誤"); }
     }
 
-    // 🌟 V16.1 核心手術區：加入重複打卡攔截邏輯
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
@@ -254,12 +259,10 @@
             const result = await response.text();
 
             if (result === "Duplicate") {
-                // ⚠️ 成功攔截重複打卡
                 alert(`⚠️ 系統溫馨提示：\n${name}，您今天已經打過【${type}】卡囉！\n(系統已自動攔截，不會重複紀錄)`);
                 btn.disabled = false;
                 btn.innerText = "送出打卡";
             } else if (result === "Success") {
-                // ✅ 正常打卡
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
                 alert("✅ 打卡成功！辛苦了！"); 
                 location.reload();
@@ -284,10 +287,16 @@
         const file = document.getElementById('lvFile').files[0];
         const btn = document.getElementById('btnLv'); btn.innerText = "⏳..."; btn.disabled = true;
         const p = { action: "write", sheetName: "leave", name: document.getElementById('lvName').value, leaveType, start: document.getElementById('lvStart').value, end: document.getElementById('lvEnd').value, reason: document.getElementById('lvReason').value };
+        
+        // 🌟 這裡就是送出假單後的強制彈出提示詞！
+        const successMessage = "✅ 假單已成功送出！請等待主管審核。\n\n⚠️ 溫馨提醒：\n如請假需附上相關資料時，請於 3 天內附上，逾期視同作廢！謝謝！";
+
         if (file) {
             const r = new FileReader(); r.readAsDataURL(file);
-            r.onload = async () => { p.imageFile = r.result; p.fileName = file.name; await sendData(p); };
-        } else await sendData(p);
+            r.onload = async () => { p.imageFile = r.result; p.fileName = file.name; await sendData(p, successMessage); };
+        } else {
+            await sendData(p, successMessage);
+        }
     }
 
     function loadPendingProofs() {
@@ -305,15 +314,19 @@
         if (!file) return alert("請選擇照片");
         const r = new FileReader(); r.readAsDataURL(file);
         const btn = document.getElementById('btnPrf'); btn.innerText = "上傳中⏳..."; btn.disabled = true;
-        r.onload = async () => { await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name }); };
+        
+        r.onload = async () => { 
+            await sendData({ action: "uploadLeaveProof", id: document.getElementById('prfSelect').value, name: document.getElementById('prfName').value, imageFile: r.result, fileName: file.name }, "✅ 證明照片補件成功！"); 
+        };
     }
 
-    async function sendData(p) { 
+    // 🌟 修改了送出邏輯，讓它可以吃我們自訂的提示詞
+    async function sendData(p, customSuccessMessage = "✅ 處理成功！") { 
         try { 
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text();
             if (text === "Success") {
-                alert("✅ 處理成功！"); 
+                alert(customSuccessMessage); 
             } else {
                 alert("❌ 處理發生異常：" + text);
             }
