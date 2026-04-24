@@ -3,33 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.1</title>
+    <title>禾禾園 - 業務神速報價系統 V1.4</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f1f3f4; color: var(--text-main); padding: 20px; margin: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f1f3f4; padding: 20px; margin: 0; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px; }
-        
         .top-nav { background: #202124; color: white; display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-outline { background: white; color: #555; border: 1px solid #ddd; }
-        
         .form-row { display: flex; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px;}
         .input-group { display: flex; flex-direction: column; flex: 1; }
         .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
-        .input-group input { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 10px; }
-        th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; color: #555; }
-        td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        .quote-input { width: 90%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
-        
-        .profit-badge { background: #e8f0fe; color: #1a73e8; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; text-align: right; }
+        .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .quote-input { width: 90%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+        .profit-badge { background: #e8f0fe; color: #1a73e8; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; }
         .profit-warning { background: #fce8e6; color: #d93025; border: 1px solid #d93025; }
-        
+        .level-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; background: #1a73e8; color: white; font-size: 14px; margin-left: 10px; }
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -40,21 +36,22 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 業務報價與毛利系統</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業五級報價系統</div>
     <div style="display:flex; gap:10px;">
         <button class="btn btn-outline" onclick="exportHistory()">📥 匯出 Excel 報價總表</button>
-        <button class="btn btn-primary" onclick="fetchData()">🔄 同步商品庫</button>
+        <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料 (商品+客戶)</button>
     </div>
 </div>
 
 <div class="container">
     <div class="form-row">
         <div class="input-group" style="flex: 2;">
-            <label>👤 客戶名稱 / 公司抬頭 (必填)</label>
-            <input type="text" id="qClient" placeholder="輸入客戶名稱...">
+            <label>👤 選擇客戶 <span id="currentLevel" class="level-badge" style="display:none;"></span></label>
+            <input list="clientList" id="qClient" placeholder="輸入或選擇客戶..." onchange="detectClientLevel(this.value)">
+            <datalist id="clientList"></datalist>
         </div>
         <div class="input-group" style="flex: 3;">
-            <label>🔍 搜尋並加入商品 (料號或品名)</label>
+            <label>🔍 加入商品 (自動套用業態公式)</label>
             <input list="productList" id="qSearch" placeholder="搜尋商品..." onchange="addQuoteItem(this.value)">
             <datalist id="productList"></datalist>
         </div>
@@ -63,51 +60,73 @@
     <div style="overflow-x: auto;">
         <table>
             <thead>
-                <tr>
-                    <th>品名規格</th><th style="width:100px;">數量</th><th style="width:120px;">單價(售)</th>
-                    <th style="width:100px;">稅金</th><th>備註</th><th>小計含稅</th><th style="color:#d93025;">單位成本</th><th>操作</th>
-                </tr>
+                <tr><th>品名規格</th><th>數量</th><th>單價(售)</th><th>小計</th><th>操作</th></tr>
             </thead>
             <tbody id="quoteBody"></tbody>
         </table>
     </div>
 
     <div style="display:flex; justify-content: flex-end; align-items: center; margin-top: 30px; gap: 30px;">
-        <div id="profitDisplay" class="profit-badge">請加入商品...</div>
-        <div style="font-size: 26px; font-weight: bold; color: #333;">總計：NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span></div>
+        <div id="profitDisplay" class="profit-badge">請先選擇客戶...</div>
+        <div style="font-size: 26px; font-weight: bold;">總計：NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span></div>
     </div>
 
     <div style="text-align: right; margin-top: 30px;">
-        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px;" onclick="saveQuote()">🚀 一鍵生成 PDF 報價單</button>
+        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px;" onclick="saveQuote()">🚀 產生 PDF 報價單</button>
     </div>
 </div>
 
 <script>
-    // ✅ 您的大腦網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
-    let db = {}; let quoteCart = []; 
+    let db = {}; let quoteCart = []; let selectedClientLevel = 'E'; // 預設帶入E(中央廚房)或其他
+
+    // 🌟 禾禾園專屬的五類客戶定價公式
+    const PRICING_RULES = {
+        'A': { name: '中餐宴會', markup: 1.08 },
+        'B': { name: '一般中餐', markup: 1.10 },
+        'C': { name: '西餐連鎖', markup: 1.12 },
+        'D': { name: '西餐', markup: 1.15 },
+        'E': { name: '中央廚房', markup: 1.05 }
+    };
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
     async function fetchData() { 
-        showLoading("資料同步中...");
+        showLoading("載入商品與客戶名單...");
         try { 
             const res = await fetch(CONFIG_URL); db = await res.json(); 
-            initProductList();
-        } catch(e) { alert("連線失敗"); } 
-        finally { hideLoading(); }
+            initLists();
+        } catch(e) { alert("連線失敗，請稍後再試。"); } finally { hideLoading(); }
     }
 
-    function initProductList() {
-        if(!db.Products) return;
-        const datalist = document.getElementById('productList'); datalist.innerHTML = "";
-        for(let i=1; i<db.Products.length; i++) {
-            let row = db.Products[i];
-            if(row[0] && row[1]) {
-                let opt = document.createElement('option');
-                opt.value = `${row[0]} - ${row[1]}`; datalist.appendChild(opt);
+    function initLists() {
+        if(db.Products) {
+            const pList = document.getElementById('productList'); pList.innerHTML = "";
+            for(let i=1; i<db.Products.length; i++) {
+                let r = db.Products[i]; if(r[0]) { let o = document.createElement('option'); o.value = `${r[0]} - ${r[1]}`; pList.appendChild(o); }
             }
+        }
+        if(db.Customers) {
+            const cList = document.getElementById('clientList'); cList.innerHTML = "";
+            for(let i=1; i<db.Customers.length; i++) {
+                let r = db.Customers[i]; if(r[0]) { let o = document.createElement('option'); o.value = r[0]; cList.appendChild(o); }
+            }
+        }
+    }
+
+    function detectClientLevel(name) {
+        if(!db.Customers) return;
+        const client = db.Customers.find(r => r[0] === name);
+        if(client) {
+            selectedClientLevel = client[1] || 'E'; // 找不到對應標籤就預設為中央廚房或您想要的底線
+            const rule = PRICING_RULES[selectedClientLevel] || PRICING_RULES['E'];
+            document.getElementById('currentLevel').innerText = rule.name;
+            document.getElementById('currentLevel').style.display = "inline-block";
+            recalculateCartPrices();
+        } else {
+            selectedClientLevel = 'E';
+            document.getElementById('currentLevel').style.display = "none";
         }
     }
 
@@ -116,48 +135,61 @@
         let itemNo = searchValue.split(" - ")[0];
         let product = db.Products.find(r => r[0] == itemNo);
         if(product) {
-            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: Number(product[3]) || 0, taxRate: Number(product[4]) || 0, qty: 1, price: 0, remark: product[5] || "" });
+            let cost = Number(product[3]) || 0;
+            let rule = PRICING_RULES[selectedClientLevel] || PRICING_RULES['E'];
+            let autoPrice = Math.round(cost * rule.markup);
+
+            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, price: autoPrice });
             document.getElementById('qSearch').value = ""; renderCart();
         }
     }
 
-    function removeQuoteItem(id) { quoteCart = quoteCart.filter(item => item.id !== id); renderCart(); }
-    function updateCart(id, field, value) { let item = quoteCart.find(i => i.id === id); if(item) { item[field] = value; renderCart(); } }
+    function recalculateCartPrices() {
+        let rule = PRICING_RULES[selectedClientLevel] || PRICING_RULES['E'];
+        quoteCart.forEach(item => { item.price = Math.round(item.cost * rule.markup); });
+        renderCart();
+    }
 
     function renderCart() {
         let tbody = document.getElementById('quoteBody');
         let totalSales = 0, totalCost = 0;
         tbody.innerHTML = quoteCart.map(item => {
-            let taxAmt = Math.round(item.qty * item.price * (item.taxRate / 100));
-            let subtotal = (item.qty * item.price) + taxAmt;
-            let itemCost = item.qty * item.cost;
-            totalSales += subtotal; totalCost += itemCost;
-            return `<tr><td><b>${item.name}</b><br><small>${item.spec}</small></td><td><input type="number" class="quote-input" value="${item.qty}" min="1" onchange="updateCart(${item.id}, 'qty', Number(this.value))"></td><td><input type="number" class="quote-input" value="${item.price}" min="0" onchange="updateCart(${item.id}, 'price', Number(this.value))"></td><td>${taxAmt}</td><td><input type="text" class="quote-input" value="${item.remark}" onchange="updateCart(${item.id}, 'remark', this.value)"></td><td><b>${subtotal}</b></td><td style="color:#d93025;">${item.cost}</td><td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td></tr>`;
+            let subtotal = item.qty * item.price;
+            totalSales += subtotal; totalCost += (item.qty * item.cost);
+            return `<tr><td><b>${item.name}</b></td><td><input type="number" class="quote-input" value="${item.qty}" onchange="updateCart(${item.id}, 'qty', Number(this.value))"></td><td><input type="number" class="quote-input" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))"></td><td><b>${subtotal}</b></td><td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td></tr>`;
         }).join('');
+        
         document.getElementById('qTotalSales').innerText = totalSales;
         let profit = totalSales - totalCost;
         let margin = totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
+        let rule = PRICING_RULES[selectedClientLevel] || PRICING_RULES['E'];
+        
         let profitBox = document.getElementById('profitDisplay');
-        profitBox.innerHTML = `總成本：$${totalCost} | 預估毛利：$${profit} (${margin}%)`;
-        if(margin < 15 && totalSales > 0) profitBox.classList.add('profit-warning'); else profitBox.classList.remove('profit-warning');
+        profitBox.innerHTML = `業態：${rule.name} | 利潤：$${profit} (${margin}%)`;
+        
+        // 5% 毛利警戒線 (因為央廚毛利較低，將紅字警告線調低至低於5%才警告)
+        if(margin < 5 && totalSales > 0) profitBox.classList.add('profit-warning');
+        else profitBox.classList.remove('profit-warning');
     }
+
+    function updateCart(id, field, value) { let item = quoteCart.find(i => i.id === id); if(item) { item[field] = value; renderCart(); } }
+    function removeQuoteItem(id) { quoteCart = quoteCart.filter(i => i.id !== id); renderCart(); }
 
     async function saveQuote() {
         let client = document.getElementById('qClient').value.trim();
-        if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶並加入商品");
-        showLoading("正在產生 PDF...");
-        let formattedItems = quoteCart.map(item => ({ name: item.name, spec: item.spec, qty: item.qty, price: item.price, tax: Math.round(item.qty * item.price * (item.taxRate / 100)), subtotal: Math.round((item.qty * item.price) * (1 + (item.taxRate / 100))), remark: item.remark }));
+        if(!client || quoteCart.length === 0) return alert("⚠️ 請選擇客戶與商品");
+        showLoading("產生 PDF 中...");
         let totalSales = Number(document.getElementById('qTotalSales').innerText);
-        let totalCost = quoteCart.reduce((sum, item) => sum + (item.qty * item.cost), 0);
-        const payload = { action: "saveQuotation", clientName: client, totalSales: totalSales, totalCost: totalCost, grossProfit: totalSales - totalCost, margin: ((totalSales - totalCost)/totalSales*100).toFixed(1), items: formattedItems };
+        let totalCost = quoteCart.reduce((sum, i) => sum + (i.qty * i.cost), 0);
+        const p = { action: "saveQuotation", clientName: client, totalSales: totalSales, totalCost: totalCost, grossProfit: totalSales-totalCost, margin: ((totalSales-totalCost)/totalSales*100).toFixed(1), items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, price: i.price, subtotal: i.qty*i.price })) };
         try {
-            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(payload)}); 
+            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); 
             const text = await res.text();
-            if(text.startsWith("Success")) { alert("✅ 報價單成功！"); window.open(text.split("|")[1], '_blank'); quoteCart = []; renderCart(); }
+            if(text.startsWith("Success")) { window.open(text.split("|")[1], '_blank'); quoteCart=[]; renderCart(); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🌟 新增功能：匯出 Excel 報價總表
+    // 匯出 Excel 報價總表功能
     function exportHistory() {
         if (!db.Quotations || db.Quotations.length <= 1) return alert("⚠️ 雲端尚無報價紀錄，請先同步或建立報價單。");
         showLoading("正在打包 Excel 檔案...");
