@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.15</title>
+    <title>禾禾園 - 業務神速報價系統 V1.16</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -15,25 +15,25 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: #fbc02d; color: #333; }
         .btn-outline { background: white; color: #555; border: 1px solid #ddd; }
         .control-panel { display: flex; gap: 15px; margin-bottom: 15px; background: #e8f0fe; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); }
         .form-row { display: flex; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px; border: 1px solid #eee;}
         .input-group { display: flex; flex-direction: column; flex: 1; }
         .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
-        
-        /* 🌟 恢復明顯的小幫手樣式 */
         .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none;}
+        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
         .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
         .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; width: 100%; }
-        .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; }
+        .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
+        .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
         .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
+        .profit-warning { background: #fce8e6; color: #d93025; border: 1px solid #d93025; }
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -44,15 +44,19 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.15</div>
-    <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.16</div>
+    <div style="display:flex; gap:10px;">
+        <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
+        <button class="btn btn-outline" onclick="exportHistory()">📥 匯出報價紀錄</button>
+        <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
+    </div>
 </div>
 
 <div class="container">
     <div class="control-panel">
         <div class="input-group">
             <label>⚙️ 手動指定客戶等級</label>
-            <select id="qLevel" onchange="recalculateCartPrices()">
+            <select id="qLevel" onchange="inputChanged()">
                 <option value="A">A - 中餐宴會 (未稅 8%)</option>
                 <option value="B">B - 一般中餐 (未稅 10%)</option>
                 <option value="C">C - 西餐連鎖 (未稅 12%)</option>
@@ -62,7 +66,7 @@
         </div>
         <div class="input-group">
             <label>🧾 稅金計算方式</label>
-            <select id="qTaxType" onchange="recalculateCartPrices()">
+            <select id="qTaxType" onchange="inputChanged()">
                 <option value="未稅" selected>未稅報價 (結帳外加 5%)</option>
                 <option value="含稅">含稅報價 (單價直接含稅)</option>
             </select>
@@ -80,18 +84,18 @@
     <div class="form-row">
         <div class="input-group" style="flex: 2;">
             <label>👤 客戶名稱 (必填)</label>
-            <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="detectClientLevel(this.value)">
+            <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="clientChanged(this.value)">
             <datalist id="clientList"></datalist>
         </div>
         
         <div class="input-group" style="flex: 1;">
             <label>💼 負責業務</label>
-            <select id="qSalesName">
+            <select id="qSalesName" onchange="saveDraft()">
                 <option value="洪文斗">洪文斗</option>
                 <option value="葉慈潤">葉慈潤</option>
                 <option value="徐偉強">徐偉強</option>
                 <option value="蔡政達">蔡政達</option>
-                <option value="公司業務部">公司業務部</option>
+                <option value="公司業務部" selected>公司業務部</option>
             </select>
         </div>
 
@@ -112,7 +116,8 @@
     </div>
 
     <div style="display:flex; justify-content: space-between; align-items: flex-end; margin-top: 30px;">
-        <div id="profitDisplay" class="profit-badge">請加入商品...</div>
+        <div id="profitDisplay" class="profit-badge" style="text-align: left; max-width: 400px;">請加入商品...</div>
+        
         <div style="text-align: right;">
             <div id="taxDetailBlock" style="color: #555; font-size: 16px; margin-bottom: 10px; display: none;">
                 銷售合計：NT$ <span id="spanCartSum">0</span><br>
@@ -122,7 +127,8 @@
         </div>
     </div>
 
-    <div style="text-align: right; margin-top: 30px;">
+    <div style="display:flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+        <button class="btn btn-warning" style="font-size: 16px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
         <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px;" onclick="saveQuote()">🚀 產生 PDF 報價單</button>
     </div>
 </div>
@@ -131,44 +137,74 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     let db = {}; let quoteCart = []; 
 
-    const SALES_MOBILES = {
-        '洪文斗': '0912631569',
-        '葉慈潤': '0906126091',
-        '徐偉強': '0983500675',
-        '蔡政達': '0960005486',
-        '公司業務部': '02-26802486'
-    };
-
-    const SALES_EMAILS = {
-        '洪文斗': '',
-        '葉慈潤': '',
-        '徐偉強': '',
-        '蔡政達': 'alan03081228@gmail.com',
-        '公司業務部': ''
-    };
-
+    const SALES_MOBILES = { '洪文斗': '0912631569', '葉慈潤': '0906126091', '徐偉強': '0983500675', '蔡政達': '0960005486', '公司業務部': '02-26802486' };
+    const SALES_EMAILS = { '洪文斗': '', '葉慈潤': '', '徐偉強': '', '蔡政達': 'alan03081228@gmail.com', '公司業務部': '' };
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
     const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋'];
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    // 🌟 確保就算沒輸入也能看清楚原本的位置
+    // 🌟 斷電防護：自動存檔功能
+    function saveDraft() {
+        const draft = {
+            client: document.getElementById('qClient').value,
+            salesName: document.getElementById('qSalesName').value,
+            level: document.getElementById('qLevel').value,
+            taxType: document.getElementById('qTaxType').value,
+            cart: quoteCart
+        };
+        localStorage.setItem('hohoyuan_quote_draft', JSON.stringify(draft));
+        
+        let now = new Date();
+        document.getElementById('saveStatus').innerText = `已自動存檔 (${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()})`;
+    }
+
+    // 🌟 斷電防護：讀取存檔功能
+    function loadDraft() {
+        const saved = localStorage.getItem('hohoyuan_quote_draft');
+        if(saved) {
+            try {
+                const draft = JSON.parse(saved);
+                if(draft.client) document.getElementById('qClient').value = draft.client;
+                if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName;
+                if(draft.level) document.getElementById('qLevel').value = draft.level;
+                if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
+                if(draft.cart) quoteCart = draft.cart;
+                renderCart(false); // 不觸發重複存檔
+                document.getElementById('saveStatus').innerText = "已恢復上次未完成的報價單";
+            } catch(e) {}
+        }
+    }
+
+    // 🌟 業務專用：清空畫面開新單
+    function clearDraft() {
+        if(confirm("確定要清空目前畫面上的所有資料，準備打下一張新單嗎？")) {
+            quoteCart = [];
+            document.getElementById('qClient').value = "";
+            document.getElementById('calcGrams').value = "";
+            document.getElementById('calcResult').value = "";
+            localStorage.removeItem('hohoyuan_quote_draft');
+            document.getElementById('saveStatus').innerText = "";
+            renderCart();
+        }
+    }
+
     function quickCalc() {
         let g = document.getElementById('calcGrams').value;
-        if (!g || g <= 0) { 
-            document.getElementById('calcResult').value = ""; 
-            return; 
-        }
+        if (!g || g <= 0) { document.getElementById('calcResult').value = ""; return; }
         let jin = (g / 600).toFixed(3).replace(/\.?0+$/, ''); 
         let kg = (g / 1000).toFixed(3).replace(/\.?0+$/, '');
-        // 將值填入文字框內
         document.getElementById('calcResult').value = `【 ${jin} 斤 】或【 ${kg} 公斤 】`;
     }
 
     async function fetchData() { 
         showLoading("資料載入中...");
-        try { const res = await fetch(CONFIG_URL); db = await res.json(); initLists(); } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+        try { 
+            const res = await fetch(CONFIG_URL); db = await res.json(); 
+            initLists();
+            loadDraft(); // 載入完畢後，嘗試恢復上次打到一半的資料
+        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     function initLists() {
@@ -184,6 +220,16 @@
                 let r = db.Customers[i]; if(r[0]) { let o = document.createElement('option'); o.value = r[0]; cList.appendChild(o); }
             }
         }
+    }
+
+    function clientChanged(name) {
+        detectClientLevel(name);
+        saveDraft();
+    }
+
+    function inputChanged() {
+        recalculateCartPrices();
+        saveDraft();
     }
 
     function detectClientLevel(name) {
@@ -217,7 +263,7 @@
         renderCart();
     }
 
-    function renderCart() {
+    function renderCart(doSave = true) {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
         let cartSum = 0, totalCost = 0;
@@ -234,7 +280,9 @@
         document.getElementById('totalLabel').innerText = (taxType === "未稅") ? "總計 (含稅)：" : "總計：";
         let pureRev = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
         let profit = pureRev - totalCost;
-        document.getElementById('profitDisplay').innerHTML = `純利潤：$${profit} (${pureRev>0?((profit/pureRev)*100).toFixed(1):0}%)`;
+        document.getElementById('profitDisplay').innerHTML = `⚠️ 毛利計算已自動排除營業稅<br>本次總成本：$${totalCost} | 預估純利潤：$${profit} (${pureRev>0?((profit/pureRev)*100).toFixed(1):0}%)`;
+        
+        if (doSave) saveDraft(); // 畫面變更時自動存檔
     }
 
     function updateCart(id, field, value) { let item = quoteCart.find(i => i.id === id); if(item) { item[field] = value; renderCart(); } }
@@ -244,7 +292,7 @@
         let client = document.getElementById('qClient').value.trim();
         let salesName = document.getElementById('qSalesName').value;
         if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶並加入商品");
-        showLoading("產生 PDF...");
+        showLoading("產生 PDF 中...");
         let cartSum = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.price), 0);
         let taxAmt = (document.getElementById('qTaxType').value === "未稅") ? Math.round(cartSum * 0.05) : 0;
         let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
@@ -266,7 +314,17 @@
             items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, subtotal: Math.round(i.qty*i.price) })) 
         };
         
-        try { const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); const text = await res.text(); if(text.startsWith("Success")) { window.open(text.split("|")[1], '_blank'); quoteCart=[]; renderCart(); } } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+        try { 
+            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); 
+            const text = await res.text(); 
+            if(text.startsWith("Success")) { 
+                window.open(text.split("|")[1], '_blank'); 
+                
+                // 🌟 改良：不自動清空，保留畫面讓業務方便修改！
+                alert("✅ 報價單 PDF 已成功產生並彈出視窗！\n\n【貼心提醒】\n畫面資料已為您保留。若客戶要加減品項，可直接在此修改數量後，再次按下『產生 PDF』開立新單。\n\n若要打下一位客戶的報價單，請點擊畫面左下角的『🧹 清空畫面』按鈕。");
+                
+            } else { alert("❌ 系統錯誤：" + text); }
+        } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
     fetchData();
 </script>
