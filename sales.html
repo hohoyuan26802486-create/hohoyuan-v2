@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.11</title>
+    <title>禾禾園 - 業務神速報價系統 V1.14</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -16,30 +16,20 @@
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-outline { background: white; color: #555; border: 1px solid #ddd; }
-        
         .control-panel { display: flex; gap: 15px; margin-bottom: 15px; background: #e8f0fe; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); }
         .form-row { display: flex; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px; border: 1px solid #eee;}
         .input-group { display: flex; flex-direction: column; flex: 1; }
         .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
-        
-        /* 🌟 換算小幫手專屬樣式 */
         .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
-        .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
-        
+        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        
         .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
         .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; width: 100%; }
-        .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
-        .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
-        
+        .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; }
         .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
-        .profit-warning { background: #fce8e6; color: #d93025; border: 1px solid #d93025; }
-        
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -50,17 +40,14 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.11</div>
-    <div style="display:flex; gap:10px;">
-        <button class="btn btn-outline" onclick="exportHistory()">📥 匯出報價紀錄</button>
-        <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
-    </div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.14</div>
+    <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
 </div>
 
 <div class="container">
     <div class="control-panel">
         <div class="input-group">
-            <label>⚙️ 手動指定客戶等級 (會改變預設公式)</label>
+            <label>⚙️ 手動指定客戶等級</label>
             <select id="qLevel" onchange="recalculateCartPrices()">
                 <option value="A">A - 中餐宴會 (未稅 8%)</option>
                 <option value="B">B - 一般中餐 (未稅 10%)</option>
@@ -70,31 +57,41 @@
             </select>
         </div>
         <div class="input-group">
-            <label>🧾 稅金計算方式 (⚠️ 切換時會重新計算下方單價)</label>
+            <label>🧾 稅金計算方式</label>
             <select id="qTaxType" onchange="recalculateCartPrices()">
-                <option value="未稅" selected>未稅報價 (單價不含稅，結帳外加 5%)</option>
+                <option value="未稅" selected>未稅報價 (結帳外加 5%)</option>
                 <option value="含稅">含稅報價 (單價直接含稅)</option>
             </select>
         </div>
     </div>
 
     <div class="helper-row">
-        <div style="font-weight:bold; color:#f57f17; font-size:16px;">⚖️ 散裝換算小幫手：</div>
-        <div style="color:#555; font-size:14px;">客人喊公克數？直接輸入 ➔</div>
-        <input type="number" id="calcGrams" class="helper-input" placeholder="例如: 150" oninput="quickCalc()">
-        <div style="font-weight:bold; color:#555; font-size:16px;">g = </div>
-        <input type="text" id="calcResult" placeholder="此處自動顯示小數點" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:300px; outline:none;">
+        <div style="font-weight:bold; color:#f57f17;">⚖️ 換算小幫手：</div>
+        <input type="number" id="calcGrams" class="helper-input" placeholder="公克" oninput="quickCalc()">
+        <div id="calcResult" style="font-weight:bold; color:#d93025; font-size:16px;"></div>
     </div>
 
     <div class="form-row">
         <div class="input-group" style="flex: 2;">
             <label>👤 客戶名稱 (必填)</label>
-            <input list="clientList" id="qClient" placeholder="輸入客戶名稱..." onchange="detectClientLevel(this.value)">
+            <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="detectClientLevel(this.value)">
             <datalist id="clientList"></datalist>
         </div>
-        <div class="input-group" style="flex: 3;">
-            <label>🔍 加入商品 (自動帶入公式價)</label>
-            <input list="productList" id="qSearch" placeholder="搜尋料號或品名..." onchange="addQuoteItem(this.value)">
+        
+        <div class="input-group" style="flex: 1;">
+            <label>💼 負責業務</label>
+            <select id="qSalesName">
+                <option value="洪文斗">洪文斗</option>
+                <option value="葉慈潤">葉慈潤</option>
+                <option value="徐偉強">徐偉強</option>
+                <option value="蔡政達">蔡政達</option>
+                <option value="公司業務部">公司業務部</option>
+            </select>
+        </div>
+
+        <div class="input-group" style="flex: 2;">
+            <label>🔍 加入商品</label>
+            <input list="productList" id="qSearch" placeholder="搜尋商品..." onchange="addQuoteItem(this.value)">
             <datalist id="productList"></datalist>
         </div>
     </div>
@@ -102,29 +99,20 @@
     <div style="overflow-x: auto;">
         <table>
             <thead>
-                <tr>
-                    <th>品名規格</th>
-                    <th style="width:180px;">數量 / 單位 (✏️支援小數點)</th>
-                    <th style="width:140px; color:#d93025;">單價 (✏️可微調)</th>
-                    <th>小計</th>
-                    <th>操作</th>
-                </tr>
+                <tr><th>品名規格</th><th style="width:180px;">數量 / 單位</th><th style="width:140px;">單價(✏️)</th><th>小計</th><th>操作</th></tr>
             </thead>
             <tbody id="quoteBody"></tbody>
         </table>
     </div>
 
     <div style="display:flex; justify-content: space-between; align-items: flex-end; margin-top: 30px;">
-        <div id="profitDisplay" class="profit-badge" style="text-align: left; max-width: 400px;">請加入商品...</div>
-        
+        <div id="profitDisplay" class="profit-badge">請加入商品...</div>
         <div style="text-align: right;">
             <div id="taxDetailBlock" style="color: #555; font-size: 16px; margin-bottom: 10px; display: none;">
-                銷售合計 (未稅)：NT$ <span id="spanCartSum">0</span><br>
+                銷售合計：NT$ <span id="spanCartSum">0</span><br>
                 營業稅 (5%)：NT$ <span id="spanTaxAmt">0</span>
             </div>
-            <div style="font-size: 26px; font-weight: bold;">
-                <span id="totalLabel">總計 (含稅)：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span>
-            </div>
+            <div style="font-size: 26px; font-weight: bold;"><span id="totalLabel">總計：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span></div>
         </div>
     </div>
 
@@ -137,37 +125,41 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     let db = {}; let quoteCart = []; 
 
-    const PRICING_RULES = {
-        'A': { name: '中餐宴會', markup: 1.08 },
-        'B': { name: '一般中餐', markup: 1.10 },
-        'C': { name: '西餐連鎖', markup: 1.12 },
-        'D': { name: '西餐', markup: 1.15 },
-        'E': { name: '中央廚房', markup: 1.05 }
+    // 🌟 更新業務手機對照表
+    const SALES_MOBILES = {
+        '洪文斗': '0912631569',
+        '葉慈潤': '0906126091',
+        '徐偉強': '0983500675',
+        '蔡政達': '0960005486',
+        '公司業務部': '02-26802486'
     };
 
-    const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '台', '袋'];
+    // 🌟 更新業務信箱對照表
+    const SALES_EMAILS = {
+        '洪文斗': '',
+        '葉慈潤': '',
+        '徐偉強': '',
+        '蔡政達': 'alan03081228@gmail.com',
+        '公司業務部': ''
+    };
+
+    const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
+    const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋'];
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    // 🌟 重量換算核心邏輯
     function quickCalc() {
         let g = document.getElementById('calcGrams').value;
-        if (!g || g <= 0) { 
-            document.getElementById('calcResult').value = ""; 
-            return; 
-        }
-        let jin = (g / 600).toFixed(3).replace(/\.?0+$/, ''); // 自動去除多餘的0
+        if (!g || g <= 0) { document.getElementById('calcResult').innerText = ""; return; }
+        let jin = (g / 600).toFixed(3).replace(/\.?0+$/, ''); 
         let kg = (g / 1000).toFixed(3).replace(/\.?0+$/, '');
-        document.getElementById('calcResult').value = `【 ${jin} 斤 】 或 【 ${kg} 公斤 】`;
+        document.getElementById('calcResult').innerText = `➔ ${jin} 斤 或 ${kg} 公斤`;
     }
 
     async function fetchData() { 
         showLoading("資料載入中...");
-        try { 
-            const res = await fetch(CONFIG_URL); db = await res.json(); 
-            initLists();
-        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+        try { const res = await fetch(CONFIG_URL); db = await res.json(); initLists(); } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     function initLists() {
@@ -188,13 +180,8 @@
     function detectClientLevel(name) {
         if(!db.Customers) return;
         const client = db.Customers.find(r => r[0] === name);
-        let level = 'E';
-        if(client && client[1]) {
-            level = client[1].toUpperCase();
-            if(!PRICING_RULES[level]) level = 'E';
-        }
-        document.getElementById('qLevel').value = level;
-        recalculateCartPrices();
+        let level = 'E'; if(client && client[1]) { level = client[1].toUpperCase(); if(!PRICING_RULES[level]) level = 'E'; }
+        document.getElementById('qLevel').value = level; recalculateCartPrices();
     }
 
     function addQuoteItem(searchValue) {
@@ -206,13 +193,8 @@
             let currentLevel = document.getElementById('qLevel').value;
             let taxType = document.getElementById('qTaxType').value;
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
-            
-            let productUnit = product[6] || ""; 
-            
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
-            let autoPrice = Math.round(cost * multiplier);
-
-            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, unit: productUnit, price: autoPrice });
+            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, unit: product[6] || "", price: Math.round(cost * multiplier) });
             document.getElementById('qSearch').value = ""; renderCart();
         }
     }
@@ -222,80 +204,28 @@
         let taxType = document.getElementById('qTaxType').value;
         let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
-        
         quoteCart.forEach(item => { item.price = Math.round(item.cost * multiplier); });
         renderCart();
-    }
-
-    function getUnitSelectHTML(itemId, currentUnit) {
-        let optionsHtml = '';
-        let found = false;
-        COMMON_UNITS.forEach(u => {
-            if (u === currentUnit) { optionsHtml += `<option value="${u}" selected>${u}</option>`; found = true; }
-            else { optionsHtml += `<option value="${u}">${u}</option>`; }
-        });
-        
-        if (!found && currentUnit) {
-            optionsHtml = `<option value="${currentUnit}" selected>${currentUnit}</option>` + optionsHtml;
-        } else if (!found && !currentUnit) {
-            optionsHtml = `<option value="" selected>單位</option>` + optionsHtml;
-        }
-
-        return `<select class="unit-select" onchange="updateCart(${itemId}, 'unit', this.value)">${optionsHtml}</select>`;
     }
 
     function renderCart() {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
-        let cartSum = 0, totalCost = 0; 
-        
+        let cartSum = 0, totalCost = 0;
         tbody.innerHTML = quoteCart.map(item => {
             let subtotal = Math.round(item.qty * item.price);
-            cartSum += subtotal; 
-            totalCost += Math.round(item.qty * item.cost);
-            
-            return `<tr>
-                <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost}</small></td>
-                <td>
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <input type="number" class="quote-input" value="${item.qty}" min="0.001" step="any" style="width:75px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
-                        ${getUnitSelectHTML(item.id, item.unit)}
-                    </div>
-                </td>
-                <td><input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))" title="可手動修改報價"></td>
-                <td><b>${subtotal}</b></td>
-                <td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td>
-            </tr>`;
+            cartSum += subtotal; totalCost += Math.round(item.qty * item.cost);
+            return `<tr><td><b>${item.name}</b></td><td><div style="display:flex; gap:5px;"><input type="number" class="quote-input" value="${item.qty}" step="any" style="width:75px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))"><select class="unit-select" onchange="updateCart(${item.id}, 'unit', this.value)">${COMMON_UNITS.map(u => `<option value="${u}" ${u===item.unit?'selected':''}>${u}</option>`).join('')}</select></div></td><td><input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))"></td><td><b>${subtotal}</b></td><td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td></tr>`;
         }).join('');
-        
-        let taxAmt = 0;
-        let finalTotal = 0;
-        let taxDetailBlock = document.getElementById('taxDetailBlock');
-        
-        if (taxType === "未稅") {
-            taxAmt = Math.round(cartSum * 0.05);
-            finalTotal = cartSum + taxAmt;
-            document.getElementById('spanCartSum').innerText = cartSum;
-            document.getElementById('spanTaxAmt').innerText = taxAmt;
-            taxDetailBlock.style.display = "block"; 
-        } else {
-            taxAmt = 0;
-            finalTotal = cartSum;
-            taxDetailBlock.style.display = "none"; 
-        }
-
+        let taxAmt = (taxType === "未稅") ? Math.round(cartSum * 0.05) : 0;
+        let finalTotal = cartSum + taxAmt;
+        document.getElementById('spanCartSum').innerText = cartSum; document.getElementById('spanTaxAmt').innerText = taxAmt;
+        document.getElementById('taxDetailBlock').style.display = (taxType === "未稅") ? "block" : "none";
         document.getElementById('qTotalSales').innerText = finalTotal;
         document.getElementById('totalLabel').innerText = (taxType === "未稅") ? "總計 (含稅)：" : "總計：";
-        
-        let pureRevenue = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
-        let profit = pureRevenue - totalCost;
-        let margin = pureRevenue > 0 ? ((profit / pureRevenue) * 100).toFixed(1) : 0;
-        
-        let profitBox = document.getElementById('profitDisplay');
-        profitBox.innerHTML = `⚠️ 系統自動防呆：毛利計算已自動排除營業稅<br>本次總成本：$${totalCost} | 預估純利潤：$${profit} (${margin}%)`;
-        
-        if(margin < 5 && cartSum > 0) profitBox.classList.add('profit-warning');
-        else profitBox.classList.remove('profit-warning');
+        let pureRev = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
+        let profit = pureRev - totalCost;
+        document.getElementById('profitDisplay').innerHTML = `純利潤：$${profit} (${pureRev>0?((profit/pureRev)*100).toFixed(1):0}%)`;
     }
 
     function updateCart(id, field, value) { let item = quoteCart.find(i => i.id === id); if(item) { item[field] = value; renderCart(); } }
@@ -303,56 +233,33 @@
 
     async function saveQuote() {
         let client = document.getElementById('qClient').value.trim();
-        let taxType = document.getElementById('qTaxType').value; 
+        let salesName = document.getElementById('qSalesName').value;
+        if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶並加入商品");
+        showLoading("產生 PDF...");
+        let cartSum = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.price), 0);
+        let taxAmt = (document.getElementById('qTaxType').value === "未稅") ? Math.round(cartSum * 0.05) : 0;
+        let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
+        let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.cost), 0);
         
-        if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶名稱並加入商品");
-        showLoading("產生 PDF 中...");
-        
-        let cartSum = quoteCart.reduce((sum, i) => sum + Math.round(i.qty * i.price), 0);
-        let totalCost = quoteCart.reduce((sum, i) => sum + Math.round(i.qty * i.cost), 0);
-        let taxAmt = (taxType === "未稅") ? Math.round(cartSum * 0.05) : 0;
-        let finalTotal = cartSum + taxAmt;
-        
-        let pureRevenue = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
-        let profit = pureRevenue - totalCost;
-        let margin = ((profit/pureRevenue)*100).toFixed(1);
-
+        // 🌟 組合給大腦的資料
         const p = { 
             action: "saveQuotation", 
             clientName: client, 
-            taxType: taxType, 
-            cartSum: cartSum,
-            taxAmt: taxAmt,
-            finalTotal: finalTotal,
+            salesName: salesName, 
+            salesMobile: SALES_MOBILES[salesName], 
+            salesEmail: SALES_EMAILS[salesName], // 🌟 把個人信箱傳過去
+            taxType: document.getElementById('qTaxType').value, 
+            cartSum: cartSum, 
+            taxAmt: taxAmt, 
+            finalTotal: cartSum + taxAmt, 
             totalCost: totalCost, 
-            grossProfit: profit, 
-            margin: margin, 
+            grossProfit: pureRev - totalCost, 
+            margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
             items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, subtotal: Math.round(i.qty*i.price) })) 
         };
         
-        try {
-            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); 
-            const text = await res.text();
-            if(text.startsWith("Success")) { 
-                window.open(text.split("|")[1], '_blank'); 
-                quoteCart=[]; document.getElementById('qClient').value = ""; renderCart(); 
-            } else { alert("❌ 系統錯誤：" + text); }
-        } catch(e) { alert("連線異常"); } finally { hideLoading(); }
+        try { const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); const text = await res.text(); if(text.startsWith("Success")) { window.open(text.split("|")[1], '_blank'); quoteCart=[]; renderCart(); } } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
-
-    function exportHistory() {
-        if (!db.Quotations || db.Quotations.length <= 1) return alert("⚠️ 尚無報價紀錄");
-        showLoading("打包 Excel 檔案...");
-        setTimeout(() => {
-            try {
-                const ws = XLSX.utils.aoa_to_sheet(db.Quotations);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "報價紀錄");
-                XLSX.writeFile(wb, `禾禾園報價清單_${new Date().toLocaleDateString()}.xlsx`);
-            } catch (e) { alert("匯出失敗"); } finally { hideLoading(); }
-        }, 800);
-    }
-
     fetchData();
 </script>
 </body>
