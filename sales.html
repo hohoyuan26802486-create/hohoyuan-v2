@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.18</title>
+    <title>禾禾園 - 業務神速報價系統 V1.20</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -44,10 +44,10 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.18</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.20</div>
     <div style="display:flex; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
-        <button class="btn btn-outline" onclick="exportHistory()">📥 匯出報價紀錄</button>
+        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
 </div>
@@ -144,6 +144,18 @@
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+
+    // 🌟 產生精確時間字串的共用函數
+    function getFormattedTimeString() {
+        let now = new Date();
+        let y = now.getFullYear();
+        let m = String(now.getMonth() + 1).padStart(2, '0');
+        let d = String(now.getDate()).padStart(2, '0');
+        let h = String(now.getHours()).padStart(2, '0');
+        let min = String(now.getMinutes()).padStart(2, '0');
+        let s = String(now.getSeconds()).padStart(2, '0');
+        return `${y}${m}${d}_${h}${min}${s}`; // 格式：20260425_143005
+    }
 
     function saveDraft() {
         const draft = {
@@ -327,32 +339,46 @@
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🌟 匯出功能大升級：強制抓取最新資料，並解決檔名衝突問題
-    async function exportHistory() {
-        showLoading("正在從雲端抓取最新報價紀錄...");
-        try {
-            const res = await fetch(CONFIG_URL);
-            const freshDb = await res.json();
-            
-            if (!freshDb.Quotations || freshDb.Quotations.length <= 1) {
-                hideLoading();
-                return alert("⚠️ 雲端尚無任何報價紀錄可供匯出！");
+    // 🌟 匯出明細：加入客戶名稱與「時分秒」防重複
+    function exportCurrentExcel() {
+        if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
+        showLoading("打包 Excel 檔案...");
+        
+        setTimeout(() => {
+            try {
+                let taxType = document.getElementById('qTaxType').value;
+                let client = document.getElementById('qClient').value.trim() || "未具名客戶";
+                
+                let exportData = [["品號", "品名", "單位", "售價", "稅別"]];
+                
+                quoteCart.forEach(item => {
+                    let fullName = item.name;
+                    if(item.spec) fullName += ` - ${item.spec}`;
+                    
+                    exportData.push([
+                        item.no,
+                        fullName,
+                        item.unit || "",
+                        item.price,
+                        taxType
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "報價明細");
+
+                // 🌟 使用 YYYYMMDD_HHMMSS 格式當作檔名
+                let timeString = getFormattedTimeString();
+                XLSX.writeFile(wb, `禾禾園報價明細_${client}_${timeString}.xlsx`);
+                
+            } catch (e) { 
+                alert("❌ 匯出失敗，請確認瀏覽器是否阻擋下載！"); 
+                console.error(e);
+            } finally { 
+                hideLoading(); 
             }
-            
-            // 解決檔名斜線問題：使用 2026-04-25 的安全格式
-            let dateStr = new Date().toISOString().split('T')[0];
-            
-            const ws = XLSX.utils.aoa_to_sheet(freshDb.Quotations);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "報價紀錄");
-            XLSX.writeFile(wb, `禾禾園報價清單_${dateStr}.xlsx`);
-            
-        } catch (e) { 
-            alert("❌ 匯出失敗，請確認網路連線或稍後再試！"); 
-            console.error(e);
-        } finally { 
-            hideLoading(); 
-        }
+        }, 500);
     }
 
     fetchData();
