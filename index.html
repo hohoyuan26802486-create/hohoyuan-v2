@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V16.2</title>
+    <title>禾禾園 - 考勤系統 V16.4</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -42,6 +42,9 @@
         
         #unlockLink { text-align: right; margin-bottom: 10px; }
         #unlockLink a { font-size: 12px; color: var(--danger); text-decoration: none; font-weight: bold; }
+        
+        .holiday-box { display: none; background: #e8f0fe; border: 1px solid #aecbfa; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .holiday-box label { color: #1a73e8; font-weight: bold; margin-bottom: 8px; display: block; }
     </style>
 </head>
 <body>
@@ -57,6 +60,14 @@
         <div class="input-group"><label>👤 員工姓名</label><select id="attName" onchange="syncName(this.value)"></select></div>
         <div id="unlockLink"><a href="#" onclick="unlockDevice()">🔑 解除手機鎖定 (HR 專用)</a></div>
         
+        <div id="holidayTypeBox" class="holiday-box">
+            <label>🚨 本日為假日，請選擇出勤屬性</label>
+            <select id="holidayType" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #1a73e8;">
+                <option value="假日值班 (算加班費)">假日值班 (算加班費)</option>
+                <option value="假日值班 (擇日補休)">假日值班 (擇日補休)</option>
+            </select>
+        </div>
+
         <div class="type-toggle">
             <input type="radio" name="attType" id="typeIn" value="上班" checked onchange="handleTypeChange()">
             <label for="typeIn">上班打卡</label>
@@ -111,11 +122,16 @@
 </div>
 
 <script>
-    // ✅ 網址鎖定
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     
-    const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; const ALLOWED_DIST = 1.0; 
+    // 🌟 定義彈性上班人員名單 (已填入老闆指定的員工)
+    const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
+
+    const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; 
+    let ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
+    
+    let isWeekend = (new Date().getDay() === 0 || new Date().getDay() === 6);
 
     function syncName(name) {
         if(!name) return;
@@ -123,6 +139,7 @@
         document.getElementById('lvName').value = name;
         document.getElementById('prfName').value = name;
         handleLeaveTypeChange(); 
+        handleTypeChange(); 
     }
 
     function handleLeaveTypeChange() {
@@ -158,6 +175,14 @@
 
     function handleTypeChange() {
         try {
+            const currentName = document.getElementById('attName').value;
+            // 🌟 判斷是否為彈性上班人員
+            const isFlexWorker = FLEX_WORKERS.includes(currentName);
+
+            const holidayBox = document.getElementById('holidayTypeBox');
+            if (isWeekend) { holidayBox.style.display = "block"; } 
+            else { holidayBox.style.display = "none"; }
+
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return;
             const type = typeInput.value;
@@ -171,16 +196,27 @@
 
             if (type === "上班") {
                 if(statusBox) statusBox.style.display = "block";
-                if (time < 440) addStatusBtn("個人因素提早上班", true);
-                else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
-                else addStatusBtn("遲到", true);
+                
+                // 🌟 特權判斷：彈性上班人員
+                if (isFlexWorker) {
+                    addStatusBtn("打卡紀錄 (彈性上班)", true);
+                } else {
+                    if (time < 440) addStatusBtn("個人因素提早上班", true);
+                    else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
+                    else addStatusBtn("遲到", true);
+                }
                 updateGPSUI();
             } else {
                 if(statusBox) statusBox.style.display = "none";
-                if (time >= 1010) { 
-                    addStatusBtn("因個人因素延後下班", true);
-                    addStatusBtn("經主管核准加班", false);
-                } else { addStatusBtn("正常下班", true); }
+                
+                if (isFlexWorker) {
+                    addStatusBtn("打卡紀錄 (彈性上班)", true);
+                } else {
+                    if (time >= 1010) { 
+                        addStatusBtn("因個人因素延後下班", true);
+                        addStatusBtn("經主管核准加班", false);
+                    } else { addStatusBtn("正常下班", true); }
+                }
                 const btnAtt = document.getElementById('btnAtt');
                 if(btnAtt) btnAtt.disabled = false;
             }
@@ -210,6 +246,16 @@
         const box = document.getElementById('gpsStatusBox');
         const btn = document.getElementById('btnAtt');
         if(!box || !btn) return;
+        
+        const currentName = document.getElementById('attName').value;
+        const isFlexWorker = FLEX_WORKERS.includes(currentName);
+
+        // 🌟 彈性上班人員，無視 GPS
+        if (isFlexWorker) {
+            box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false;
+            return;
+        }
+
         if (userLat === null) { box.innerText = "🛰️ 定位中..."; box.className = "gps-box gps-fail"; btn.disabled = true; } 
         else if (isWithinRange) { box.innerText = "✅ 進入打卡範圍"; box.className = "gps-box gps-ok"; btn.disabled = false; } 
         else { box.innerText = "❌ 距離太遠，請回公司"; box.className = "gps-box gps-fail"; btn.disabled = true; }
@@ -246,6 +292,12 @@
         
         if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return alert("⚠️ 請填寫加班事由");
         
+        let finalStatus = selectedStatus;
+        if (isWeekend) {
+            const holidayChoice = document.getElementById('holidayType').value;
+            finalStatus = `【${holidayChoice}】` + selectedStatus;
+        }
+        
         const btn = document.getElementById('btnAtt'); 
         btn.innerText = "⏳ 傳送中..."; 
         btn.disabled = true;
@@ -253,7 +305,7 @@
         try {
             const response = await fetch(CONFIG_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: selectedStatus, reason: overtimeReason, lat: userLat, lon: userLon }) 
+                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat, lon: userLon }) 
             });
             
             const result = await response.text();
@@ -288,7 +340,6 @@
         const btn = document.getElementById('btnLv'); btn.innerText = "⏳..."; btn.disabled = true;
         const p = { action: "write", sheetName: "leave", name: document.getElementById('lvName').value, leaveType, start: document.getElementById('lvStart').value, end: document.getElementById('lvEnd').value, reason: document.getElementById('lvReason').value };
         
-        // 🌟 這裡就是送出假單後的強制彈出提示詞！
         const successMessage = "✅ 假單已成功送出！請等待主管審核。\n\n⚠️ 溫馨提醒：\n如請假需附上相關資料時，請於 3 天內附上，逾期視同作廢！謝謝！";
 
         if (file) {
@@ -320,7 +371,6 @@
         };
     }
 
-    // 🌟 修改了送出邏輯，讓它可以吃我們自訂的提示詞
     async function sendData(p, customSuccessMessage = "✅ 處理成功！") { 
         try { 
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
