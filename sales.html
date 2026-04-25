@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.5</title>
+    <title>禾禾園 - 業務神速報價系統 V1.6</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -28,7 +28,6 @@
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         
         .quote-input { width: 90%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
-        /* 🌟 醒目的手動修改價格框 */
         .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; }
         .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         
@@ -57,11 +56,11 @@
         <div class="input-group">
             <label>⚙️ 手動指定客戶等級 (會改變預設公式)</label>
             <select id="qLevel" onchange="manualLevelChange()">
-                <option value="A">A - 中餐宴會 (賺 8%)</option>
-                <option value="B">B - 一般中餐 (賺 10%)</option>
-                <option value="C">C - 西餐連鎖 (賺 12%)</option>
-                <option value="D">D - 西餐 (賺 15%)</option>
-                <option value="E" selected>E - 中央廚房 (賺 5%)</option>
+                <option value="A">A - 中餐宴會 (未稅 8%)</option>
+                <option value="B">B - 一般中餐 (未稅 10%)</option>
+                <option value="C">C - 西餐連鎖 (未稅 12%)</option>
+                <option value="D">D - 西餐 (未稅 15%)</option>
+                <option value="E" selected>E - 中央廚房 (未稅 5%)</option>
             </select>
         </div>
         <div class="input-group">
@@ -114,7 +113,6 @@
 </div>
 
 <script>
-    // 🚨 這裡請確定是您最新的大腦網址！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     let db = {}; let quoteCart = []; 
 
@@ -152,7 +150,6 @@
         }
     }
 
-    // 🌟 選擇客戶時，自動連動上方的等級下拉選單
     function detectClientLevel(name) {
         if(!db.Customers) return;
         const client = db.Customers.find(r => r[0] === name);
@@ -165,10 +162,7 @@
         recalculateCartPrices();
     }
 
-    // 🌟 手動改變等級下拉選單時，重新計算
-    function manualLevelChange() {
-        recalculateCartPrices();
-    }
+    function manualLevelChange() { recalculateCartPrices(); }
 
     function addQuoteItem(searchValue) {
         if(!searchValue) return;
@@ -197,7 +191,6 @@
         let taxType = document.getElementById('qTaxType').value;
         let totalSales = 0, totalCost = 0;
         
-        // 渲染表格，加上黃色醒目編輯框
         tbody.innerHTML = quoteCart.map(item => {
             let subtotal = item.qty * item.price;
             totalSales += subtotal; totalCost += (item.qty * item.cost);
@@ -210,11 +203,9 @@
             </tr>`;
         }).join('');
         
-        // 更新總計顯示
         document.getElementById('qTotalSales').innerText = totalSales;
         document.getElementById('totalLabel').innerText = `總計 (${taxType})：`;
         
-        // 計算毛利
         let profit = totalSales - totalCost;
         let margin = totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
         
@@ -230,7 +221,7 @@
 
     async function saveQuote() {
         let client = document.getElementById('qClient').value.trim();
-        let taxType = document.getElementById('qTaxType').value; // 抓取稅別
+        let taxType = document.getElementById('qTaxType').value; 
         
         if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶名稱並加入商品");
         showLoading("產生 PDF 中...");
@@ -241,7 +232,7 @@
         const p = { 
             action: "saveQuotation", 
             clientName: client, 
-            taxType: taxType, // 傳送稅別給大腦
+            taxType: taxType, 
             totalSales: totalSales, 
             totalCost: totalCost, 
             grossProfit: totalSales-totalCost, 
