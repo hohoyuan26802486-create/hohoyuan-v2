@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.6</title>
+    <title>禾禾園 - 業務神速報價系統 V1.7</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -55,7 +55,7 @@
     <div class="control-panel">
         <div class="input-group">
             <label>⚙️ 手動指定客戶等級 (會改變預設公式)</label>
-            <select id="qLevel" onchange="manualLevelChange()">
+            <select id="qLevel" onchange="recalculateCartPrices()">
                 <option value="A">A - 中餐宴會 (未稅 8%)</option>
                 <option value="B">B - 一般中餐 (未稅 10%)</option>
                 <option value="C">C - 西餐連鎖 (未稅 12%)</option>
@@ -64,10 +64,10 @@
             </select>
         </div>
         <div class="input-group">
-            <label>🧾 稅金計算方式 (顯示於報價單)</label>
-            <select id="qTaxType" onchange="renderCart()">
-                <option value="含稅">含稅報價</option>
-                <option value="未稅">未稅報價</option>
+            <label>🧾 稅金計算方式 (⚠️ 切換時會重新計算下方單價)</label>
+            <select id="qTaxType" onchange="recalculateCartPrices()">
+                <option value="未稅" selected>未稅報價 (單價不含稅，結帳外加 5%)</option>
+                <option value="含稅">含稅報價 (單價直接 × 1.05 含稅)</option>
             </select>
         </div>
     </div>
@@ -100,10 +100,17 @@
         </table>
     </div>
 
-    <div style="display:flex; justify-content: flex-end; align-items: center; margin-top: 30px; gap: 30px;">
-        <div id="profitDisplay" class="profit-badge">請加入商品...</div>
-        <div style="font-size: 26px; font-weight: bold;">
-            <span id="totalLabel">總計 (含稅)：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span>
+    <div style="display:flex; justify-content: space-between; align-items: flex-end; margin-top: 30px;">
+        <div id="profitDisplay" class="profit-badge" style="text-align: left; max-width: 400px;">請加入商品...</div>
+        
+        <div style="text-align: right;">
+            <div id="taxDetailBlock" style="color: #555; font-size: 16px; margin-bottom: 10px; display: none;">
+                銷售合計 (未稅)：NT$ <span id="spanCartSum">0</span><br>
+                營業稅 (5%)：NT$ <span id="spanTaxAmt">0</span>
+            </div>
+            <div style="font-size: 26px; font-weight: bold;">
+                <span id="totalLabel">總計 (含稅)：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span>
+            </div>
         </div>
     </div>
 
@@ -162,8 +169,6 @@
         recalculateCartPrices();
     }
 
-    function manualLevelChange() { recalculateCartPrices(); }
-
     function addQuoteItem(searchValue) {
         if(!searchValue) return;
         let itemNo = searchValue.split(" - ")[0];
@@ -171,8 +176,12 @@
         if(product) {
             let cost = Number(product[3]) || 0;
             let currentLevel = document.getElementById('qLevel').value;
+            let taxType = document.getElementById('qTaxType').value;
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
-            let autoPrice = Math.round(cost * rule.markup);
+            
+            // 🌟 核心定價邏輯：判斷是否直接把稅金灌進單價
+            let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
+            let autoPrice = Math.round(cost * multiplier);
 
             quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, price: autoPrice });
             document.getElementById('qSearch').value = ""; renderCart();
@@ -181,19 +190,25 @@
 
     function recalculateCartPrices() {
         let currentLevel = document.getElementById('qLevel').value;
+        let taxType = document.getElementById('qTaxType').value;
         let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
-        quoteCart.forEach(item => { item.price = Math.round(item.cost * rule.markup); });
+        
+        let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
+        
+        quoteCart.forEach(item => { 
+            item.price = Math.round(item.cost * multiplier); 
+        });
         renderCart();
     }
 
     function renderCart() {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
-        let totalSales = 0, totalCost = 0;
+        let cartSum = 0, totalCost = 0; // cartSum 是畫面上單價×數量的加總
         
         tbody.innerHTML = quoteCart.map(item => {
             let subtotal = item.qty * item.price;
-            totalSales += subtotal; totalCost += (item.qty * item.cost);
+            cartSum += subtotal; totalCost += (item.qty * item.cost);
             return `<tr>
                 <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost}</small></td>
                 <td><input type="number" class="quote-input" value="${item.qty}" min="1" onchange="updateCart(${item.id}, 'qty', Number(this.value))"></td>
@@ -203,16 +218,36 @@
             </tr>`;
         }).join('');
         
-        document.getElementById('qTotalSales').innerText = totalSales;
-        document.getElementById('totalLabel').innerText = `總計 (${taxType})：`;
+        // 🌟 核心結帳顯示邏輯
+        let taxAmt = 0;
+        let finalTotal = 0;
+        let taxDetailBlock = document.getElementById('taxDetailBlock');
         
-        let profit = totalSales - totalCost;
-        let margin = totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
+        if (taxType === "未稅") {
+            taxAmt = Math.round(cartSum * 0.05);
+            finalTotal = cartSum + taxAmt;
+            document.getElementById('spanCartSum').innerText = cartSum;
+            document.getElementById('spanTaxAmt').innerText = taxAmt;
+            taxDetailBlock.style.display = "block"; // 顯示明細
+        } else {
+            // 含稅模式：單價已經含稅，所以加總就是最終金額
+            taxAmt = 0;
+            finalTotal = cartSum;
+            taxDetailBlock.style.display = "none"; // 隱藏明細
+        }
+
+        document.getElementById('qTotalSales').innerText = finalTotal;
+        document.getElementById('totalLabel').innerText = (taxType === "未稅") ? "總計 (含稅)：" : "總計 (單價已含稅)：";
+        
+        // 🌟 計算「純毛利」(必須排除稅金)
+        let pureRevenue = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
+        let profit = pureRevenue - totalCost;
+        let margin = pureRevenue > 0 ? ((profit / pureRevenue) * 100).toFixed(1) : 0;
         
         let profitBox = document.getElementById('profitDisplay');
-        profitBox.innerHTML = `本次總成本：$${totalCost} | 預估毛利：$${profit} (${margin}%)`;
+        profitBox.innerHTML = `⚠️ 系統自動防呆：毛利計算已自動排除營業稅<br>本次總成本：$${totalCost} | 預估純利潤：$${profit} (${margin}%)`;
         
-        if(margin < 5 && totalSales > 0) profitBox.classList.add('profit-warning');
+        if(margin < 5 && cartSum > 0) profitBox.classList.add('profit-warning');
         else profitBox.classList.remove('profit-warning');
     }
 
@@ -226,17 +261,26 @@
         if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶名稱並加入商品");
         showLoading("產生 PDF 中...");
         
-        let totalSales = Number(document.getElementById('qTotalSales').innerText);
+        // 重新抓取最終數字傳給大腦
+        let cartSum = quoteCart.reduce((sum, i) => sum + (i.qty * i.price), 0);
         let totalCost = quoteCart.reduce((sum, i) => sum + (i.qty * i.cost), 0);
+        let taxAmt = (taxType === "未稅") ? Math.round(cartSum * 0.05) : 0;
+        let finalTotal = cartSum + taxAmt;
         
+        let pureRevenue = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
+        let profit = pureRevenue - totalCost;
+        let margin = ((profit/pureRevenue)*100).toFixed(1);
+
         const p = { 
             action: "saveQuotation", 
             clientName: client, 
             taxType: taxType, 
-            totalSales: totalSales, 
+            cartSum: cartSum,
+            taxAmt: taxAmt,
+            finalTotal: finalTotal,
             totalCost: totalCost, 
-            grossProfit: totalSales-totalCost, 
-            margin: ((totalSales-totalCost)/totalSales*100).toFixed(1), 
+            grossProfit: profit, 
+            margin: margin, 
             items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, price: i.price, subtotal: i.qty*i.price })) 
         };
         
@@ -245,9 +289,7 @@
             const text = await res.text();
             if(text.startsWith("Success")) { 
                 window.open(text.split("|")[1], '_blank'); 
-                quoteCart=[]; 
-                document.getElementById('qClient').value = "";
-                renderCart(); 
+                quoteCart=[]; document.getElementById('qClient').value = ""; renderCart(); 
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
