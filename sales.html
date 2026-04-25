@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.8</title>
+    <title>禾禾園 - 業務神速報價系統 V1.9</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -27,7 +27,7 @@
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         
-        .quote-input { width: 90%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; }
+        .quote-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
         .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; }
         .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         
@@ -90,7 +90,7 @@
             <thead>
                 <tr>
                     <th>品名規格</th>
-                    <th style="width:100px;">數量</th>
+                    <th style="width:120px;">數量 / 單位</th>
                     <th style="width:140px; color:#d93025;">單價 (✏️可微調)</th>
                     <th>小計</th>
                     <th>操作</th>
@@ -179,10 +179,13 @@
             let taxType = document.getElementById('qTaxType').value;
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
             
+            // 🌟 讀取 G 欄 (index 6) 的單位，若無則留白
+            let productUnit = product[6] || ""; 
+            
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
             let autoPrice = Math.round(cost * multiplier);
 
-            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, price: autoPrice });
+            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, unit: productUnit, price: autoPrice });
             document.getElementById('qSearch').value = ""; renderCart();
         }
     }
@@ -210,7 +213,12 @@
             cartSum += subtotal; totalCost += (item.qty * item.cost);
             return `<tr>
                 <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost}</small></td>
-                <td><input type="number" class="quote-input" value="${item.qty}" min="1" onchange="updateCart(${item.id}, 'qty', Number(this.value))"></td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" class="quote-input" value="${item.qty}" min="1" style="width:70px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
+                        <span style="font-weight:bold; color:#1a73e8;">${item.unit}</span>
+                    </div>
+                </td>
                 <td><input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))" title="可手動修改報價"></td>
                 <td><b>${subtotal}</b></td>
                 <td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td>
@@ -234,7 +242,6 @@
         }
 
         document.getElementById('qTotalSales').innerText = finalTotal;
-        // 🌟 這裡也把右下角原本刺眼的括號字眼改成了乾淨俐落的「總計：」
         document.getElementById('totalLabel').innerText = (taxType === "未稅") ? "總計 (含稅)：" : "總計：";
         
         let pureRevenue = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
@@ -277,7 +284,8 @@
             totalCost: totalCost, 
             grossProfit: profit, 
             margin: margin, 
-            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, price: i.price, subtotal: i.qty*i.price })) 
+            // 🌟 傳送資料給大腦時，一併把 unit 傳過去
+            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, subtotal: i.qty*i.price })) 
         };
         
         try {
