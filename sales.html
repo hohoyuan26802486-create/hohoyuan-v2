@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.9</title>
+    <title>禾禾園 - 業務神速報價系統 V1.11</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -17,19 +17,25 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-outline { background: white; color: #555; border: 1px solid #ddd; }
         
-        .control-panel { display: flex; gap: 15px; margin-bottom: 20px; background: #e8f0fe; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); }
+        .control-panel { display: flex; gap: 15px; margin-bottom: 15px; background: #e8f0fe; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); }
         .form-row { display: flex; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px; border: 1px solid #eee;}
         .input-group { display: flex; flex-direction: column; flex: 1; }
         .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
         
+        /* 🌟 換算小幫手專屬樣式 */
+        .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
+        .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         
-        .quote-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
-        .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; }
+        .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+        .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; width: 100%; }
         .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
+        .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
         
         .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
         .profit-warning { background: #fce8e6; color: #d93025; border: 1px solid #d93025; }
@@ -44,7 +50,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.11</div>
     <div style="display:flex; gap:10px;">
         <button class="btn btn-outline" onclick="exportHistory()">📥 匯出報價紀錄</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
@@ -72,6 +78,14 @@
         </div>
     </div>
 
+    <div class="helper-row">
+        <div style="font-weight:bold; color:#f57f17; font-size:16px;">⚖️ 散裝換算小幫手：</div>
+        <div style="color:#555; font-size:14px;">客人喊公克數？直接輸入 ➔</div>
+        <input type="number" id="calcGrams" class="helper-input" placeholder="例如: 150" oninput="quickCalc()">
+        <div style="font-weight:bold; color:#555; font-size:16px;">g = </div>
+        <input type="text" id="calcResult" placeholder="此處自動顯示小數點" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:300px; outline:none;">
+    </div>
+
     <div class="form-row">
         <div class="input-group" style="flex: 2;">
             <label>👤 客戶名稱 (必填)</label>
@@ -90,7 +104,7 @@
             <thead>
                 <tr>
                     <th>品名規格</th>
-                    <th style="width:120px;">數量 / 單位</th>
+                    <th style="width:180px;">數量 / 單位 (✏️支援小數點)</th>
                     <th style="width:140px; color:#d93025;">單價 (✏️可微調)</th>
                     <th>小計</th>
                     <th>操作</th>
@@ -131,8 +145,22 @@
         'E': { name: '中央廚房', markup: 1.05 }
     };
 
+    const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '台', '袋'];
+
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+
+    // 🌟 重量換算核心邏輯
+    function quickCalc() {
+        let g = document.getElementById('calcGrams').value;
+        if (!g || g <= 0) { 
+            document.getElementById('calcResult').value = ""; 
+            return; 
+        }
+        let jin = (g / 600).toFixed(3).replace(/\.?0+$/, ''); // 自動去除多餘的0
+        let kg = (g / 1000).toFixed(3).replace(/\.?0+$/, '');
+        document.getElementById('calcResult').value = `【 ${jin} 斤 】 或 【 ${kg} 公斤 】`;
+    }
 
     async function fetchData() { 
         showLoading("資料載入中...");
@@ -179,7 +207,6 @@
             let taxType = document.getElementById('qTaxType').value;
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
             
-            // 🌟 讀取 G 欄 (index 6) 的單位，若無則留白
             let productUnit = product[6] || ""; 
             
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
@@ -194,13 +221,27 @@
         let currentLevel = document.getElementById('qLevel').value;
         let taxType = document.getElementById('qTaxType').value;
         let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
-        
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
         
-        quoteCart.forEach(item => { 
-            item.price = Math.round(item.cost * multiplier); 
-        });
+        quoteCart.forEach(item => { item.price = Math.round(item.cost * multiplier); });
         renderCart();
+    }
+
+    function getUnitSelectHTML(itemId, currentUnit) {
+        let optionsHtml = '';
+        let found = false;
+        COMMON_UNITS.forEach(u => {
+            if (u === currentUnit) { optionsHtml += `<option value="${u}" selected>${u}</option>`; found = true; }
+            else { optionsHtml += `<option value="${u}">${u}</option>`; }
+        });
+        
+        if (!found && currentUnit) {
+            optionsHtml = `<option value="${currentUnit}" selected>${currentUnit}</option>` + optionsHtml;
+        } else if (!found && !currentUnit) {
+            optionsHtml = `<option value="" selected>單位</option>` + optionsHtml;
+        }
+
+        return `<select class="unit-select" onchange="updateCart(${itemId}, 'unit', this.value)">${optionsHtml}</select>`;
     }
 
     function renderCart() {
@@ -209,14 +250,16 @@
         let cartSum = 0, totalCost = 0; 
         
         tbody.innerHTML = quoteCart.map(item => {
-            let subtotal = item.qty * item.price;
-            cartSum += subtotal; totalCost += (item.qty * item.cost);
+            let subtotal = Math.round(item.qty * item.price);
+            cartSum += subtotal; 
+            totalCost += Math.round(item.qty * item.cost);
+            
             return `<tr>
                 <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost}</small></td>
                 <td>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" class="quote-input" value="${item.qty}" min="1" style="width:70px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
-                        <span style="font-weight:bold; color:#1a73e8;">${item.unit}</span>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <input type="number" class="quote-input" value="${item.qty}" min="0.001" step="any" style="width:75px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
+                        ${getUnitSelectHTML(item.id, item.unit)}
                     </div>
                 </td>
                 <td><input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))" title="可手動修改報價"></td>
@@ -265,8 +308,8 @@
         if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶名稱並加入商品");
         showLoading("產生 PDF 中...");
         
-        let cartSum = quoteCart.reduce((sum, i) => sum + (i.qty * i.price), 0);
-        let totalCost = quoteCart.reduce((sum, i) => sum + (i.qty * i.cost), 0);
+        let cartSum = quoteCart.reduce((sum, i) => sum + Math.round(i.qty * i.price), 0);
+        let totalCost = quoteCart.reduce((sum, i) => sum + Math.round(i.qty * i.cost), 0);
         let taxAmt = (taxType === "未稅") ? Math.round(cartSum * 0.05) : 0;
         let finalTotal = cartSum + taxAmt;
         
@@ -284,8 +327,7 @@
             totalCost: totalCost, 
             grossProfit: profit, 
             margin: margin, 
-            // 🌟 傳送資料給大腦時，一併把 unit 傳過去
-            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, subtotal: i.qty*i.price })) 
+            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, subtotal: Math.round(i.qty*i.price) })) 
         };
         
         try {
