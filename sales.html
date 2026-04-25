@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.14</title>
+    <title>禾禾園 - 業務神速報價系統 V1.15</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -21,8 +21,12 @@
         .input-group { display: flex; flex-direction: column; flex: 1; }
         .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
+        
+        /* 🌟 恢復明顯的小幫手樣式 */
         .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; }
+        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none;}
+        .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
@@ -40,7 +44,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.14</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.15</div>
     <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
 </div>
 
@@ -66,9 +70,11 @@
     </div>
 
     <div class="helper-row">
-        <div style="font-weight:bold; color:#f57f17;">⚖️ 換算小幫手：</div>
-        <input type="number" id="calcGrams" class="helper-input" placeholder="公克" oninput="quickCalc()">
-        <div id="calcResult" style="font-weight:bold; color:#d93025; font-size:16px;"></div>
+        <div style="font-weight:bold; color:#f57f17; font-size:16px;">⚖️ 散裝換算小幫手：</div>
+        <div style="color:#555; font-size:14px;">輸入公克數 ➔</div>
+        <input type="number" id="calcGrams" class="helper-input" placeholder="例如: 150" oninput="quickCalc()">
+        <div style="font-weight:bold; color:#555; font-size:16px;">g = </div>
+        <input type="text" id="calcResult" placeholder="此處自動顯示小數點" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:300px; outline:none;">
     </div>
 
     <div class="form-row">
@@ -125,7 +131,6 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     let db = {}; let quoteCart = []; 
 
-    // 🌟 更新業務手機對照表
     const SALES_MOBILES = {
         '洪文斗': '0912631569',
         '葉慈潤': '0906126091',
@@ -134,7 +139,6 @@
         '公司業務部': '02-26802486'
     };
 
-    // 🌟 更新業務信箱對照表
     const SALES_EMAILS = {
         '洪文斗': '',
         '葉慈潤': '',
@@ -149,12 +153,17 @@
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
+    // 🌟 確保就算沒輸入也能看清楚原本的位置
     function quickCalc() {
         let g = document.getElementById('calcGrams').value;
-        if (!g || g <= 0) { document.getElementById('calcResult').innerText = ""; return; }
+        if (!g || g <= 0) { 
+            document.getElementById('calcResult').value = ""; 
+            return; 
+        }
         let jin = (g / 600).toFixed(3).replace(/\.?0+$/, ''); 
         let kg = (g / 1000).toFixed(3).replace(/\.?0+$/, '');
-        document.getElementById('calcResult').innerText = `➔ ${jin} 斤 或 ${kg} 公斤`;
+        // 將值填入文字框內
+        document.getElementById('calcResult').value = `【 ${jin} 斤 】或【 ${kg} 公斤 】`;
     }
 
     async function fetchData() { 
@@ -241,13 +250,12 @@
         let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
         let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.cost), 0);
         
-        // 🌟 組合給大腦的資料
         const p = { 
             action: "saveQuotation", 
             clientName: client, 
             salesName: salesName, 
             salesMobile: SALES_MOBILES[salesName], 
-            salesEmail: SALES_EMAILS[salesName], // 🌟 把個人信箱傳過去
+            salesEmail: SALES_EMAILS[salesName],
             taxType: document.getElementById('qTaxType').value, 
             cartSum: cartSum, 
             taxAmt: taxAmt, 
