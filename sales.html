@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.31</title>
+    <title>禾禾園 - 業務神速報價系統 V1.32</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -45,7 +45,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.31</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.32</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -124,7 +124,6 @@
                 <tr>
                     <th style="width:50px; text-align:center;">項次</th>
                     <th>品名</th>
-                    <th>規格</th>
                     <th style="width:130px;">數量 / 單位</th>
                     <th style="width:110px;">單價(✏️)</th>
                     <th style="width:80px;">小計</th>
@@ -316,7 +315,6 @@
         }
     }
 
-    // 🚀 V1.31：臨時新增商品時，拔除詢問「規格」的對話框，直接預設為空白
     function addCustomItem() {
         let name = prompt("📌 請輸入【臨時品項】名稱：\n(例如：客製化拼盤、大油皮3斤裝)");
         if (!name) return;
@@ -331,7 +329,7 @@
             id: Date.now(), 
             no: "臨時自訂", 
             name: name, 
-            spec: "", // 🚀 直接強迫留白，不再問業務規格
+            spec: "", // 🚀 強制留白
             cost: Number(cost), 
             qty: 1, 
             unit: "式", 
@@ -401,12 +399,11 @@
             cartSum += subtotal; totalCost += Math.round(item.qty * (item.cost || 0));
             
             let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
-            let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
-
+            
+            // 🚀 V1.32 移除網頁渲染時的規格 td，直接不顯示
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
                 <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost || 0}</small></td>
-                <td style="color:#444;">${safeSpec}</td>
                 <td>
                     <div style="display:flex; gap:5px;">
                         <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:60px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
@@ -486,7 +483,7 @@
     }
 
     function exportCurrentExcel() {
-        if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
+        if (quoteCart.length === 0) return alert("⚠️ 畫面上還 ক্ষমতায়沒有商品喔！請先加入商品再匯出。");
         showLoading("打包 Excel 檔案...");
         
         setTimeout(() => {
