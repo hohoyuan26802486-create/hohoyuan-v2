@@ -47,7 +47,7 @@
     <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.20</div>
     <div style="display:flex; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
-        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
+        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細 (含成本)</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
 </div>
@@ -145,7 +145,6 @@
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    // 🌟 產生精確時間字串的共用函數
     function getFormattedTimeString() {
         let now = new Date();
         let y = now.getFullYear();
@@ -154,7 +153,7 @@
         let h = String(now.getHours()).padStart(2, '0');
         let min = String(now.getMinutes()).padStart(2, '0');
         let s = String(now.getSeconds()).padStart(2, '0');
-        return `${y}${m}${d}_${h}${min}${s}`; // 格式：20260425_143005
+        return `${y}${m}${d}_${h}${min}${s}`; 
     }
 
     function saveDraft() {
@@ -326,7 +325,8 @@
             totalCost: totalCost, 
             grossProfit: pureRev - totalCost, 
             margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
-            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, subtotal: Math.round(i.qty*i.price) })) 
+            // 🚀 關鍵修復1：把 i.cost 一起打包送給大腦
+            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, cost: i.cost, subtotal: Math.round(i.qty*i.price) })) 
         };
         
         try { 
@@ -339,7 +339,7 @@
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🌟 匯出明細：加入客戶名稱與「時分秒」防重複
+    // 🚀 關鍵修復2：在 Excel 匯出功能加入「成本」與「單項毛利」
     function exportCurrentExcel() {
         if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
         showLoading("打包 Excel 檔案...");
@@ -349,17 +349,21 @@
                 let taxType = document.getElementById('qTaxType').value;
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                let exportData = [["品號", "品名", "單位", "售價", "稅別"]];
+                // 第一行：加入成本單價與單項毛利標題
+                let exportData = [["品號", "品名", "單位", "成本單價", "售價單價", "單項毛利", "稅別"]];
                 
                 quoteCart.forEach(item => {
                     let fullName = item.name;
                     if(item.spec) fullName += ` - ${item.spec}`;
+                    let itemProfit = Math.round(item.price - item.cost); // 計算毛利
                     
                     exportData.push([
                         item.no,
                         fullName,
                         item.unit || "",
+                        item.cost,          // 將成本寫入 Excel
                         item.price,
+                        itemProfit,         // 將毛利寫入 Excel
                         taxType
                     ]);
                 });
@@ -368,7 +372,6 @@
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "報價明細");
 
-                // 🌟 使用 YYYYMMDD_HHMMSS 格式當作檔名
                 let timeString = getFormattedTimeString();
                 XLSX.writeFile(wb, `禾禾園報價明細_${client}_${timeString}.xlsx`);
                 
