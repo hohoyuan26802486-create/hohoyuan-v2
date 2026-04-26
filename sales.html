@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.34</title>
+    <title>禾禾園 - 業務神速報價系統 V1.35</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -45,7 +45,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.34</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.35</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -56,7 +56,7 @@
 <div class="container">
     <div class="control-panel">
         <div class="input-group">
-            <label>⚙️ 手動指定客戶等級</label>
+            <label>⚙️ 手 পণ্ডিত定客戶等級</label>
             <select id="qLevel" onchange="inputChanged()">
                 <option value="A">A - 中餐宴會 (未稅 8%)</option>
                 <option value="B">B - 一般中餐 (未稅 10%)</option>
@@ -109,10 +109,10 @@
         </div>
 
         <div class="input-group" style="flex: 2;">
-            <label>🔍 加入商品 (或自訂)</label>
+            <label>🔍 加入商品</label>
             <div style="display: flex; gap: 8px;">
                 <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
-                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8;" onclick="addCustomItem()">➕ 臨時新增</button>
+                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold;" onclick="addCustomItem()">➕ 手動增加品項</button>
             </div>
             <datalist id="productList"></datalist>
         </div>
@@ -315,24 +315,31 @@
         }
     }
 
+    // 🚀 V1.35：完美的 4 步驟自訂視窗
     function addCustomItem() {
-        let name = prompt("📌 請輸入【臨時品項】名稱：\n(例如：大油皮3斤裝)");
+        // 第 1 步：品名
+        let name = prompt("📌 [步驟 1/4] 請輸入【品名】：\n(例如：大油皮)");
         if (!name) return;
         
-        let price = prompt(`📌 請輸入「${name}」的【對外售價】(單價)：\n(請輸入數字)`);
-        if (!price || isNaN(price)) return alert("❌ 單價錯誤，請填寫數字！");
+        // 第 2 步：規格
+        let spec = prompt(`📌 [步驟 2/4] 請輸入「${name}」的【規格大小】：\n(例如：3斤裝 / 若無可直接按確定留白)`) || "";
         
-        let cost = prompt(`📌 請輸入「${name}」的【內部成本】：\n(選填，若無請填 0 或直接按確定)`) || 0;
+        // 第 3 步：成本
+        let cost = prompt(`📌 [步驟 3/4] 請輸入「${name}」的【成本】：\n(請輸入數字，若無請填 0)`) || 0;
         if (isNaN(cost)) cost = 0;
+
+        // 第 4 步：報價
+        let price = prompt(`📌 [步驟 4/4] 請輸入「${name}」的【報價 (單價)】：\n(請輸入數字)`);
+        if (!price || isNaN(price)) return alert("❌ 報價錯誤，請填寫數字！");
 
         quoteCart.push({ 
             id: Date.now(), 
-            no: "臨時自訂", 
+            no: "手動新增", 
             name: name, 
-            spec: "", // 強制留白
+            spec: spec, // 這裡會精準地把您輸入的規格帶進去！
             cost: Number(cost), 
             qty: 1, 
-            unit: "包", // 預設單位
+            unit: "包", 
             price: Number(price),
             remark: "" 
         });
@@ -382,7 +389,8 @@
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
         
         quoteCart.forEach(item => { 
-            if (item.no !== "臨時自訂" && item.no !== "已載入商品") {
+            // 如果是手動新增的，不套用折數
+            if (item.no !== "手動新增" && item.no !== "臨時自訂" && item.no !== "已載入商品") {
                 item.price = Math.round(item.cost * multiplier); 
             }
         });
@@ -445,16 +453,15 @@
         let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
         let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * (i.cost||0)), 0);
         
-        // 🚀 殺手鐧：在傳送給後端之前，徹底清洗規格 (spec) 欄位
+        // 🚀 在傳送前一樣用淨水器過濾掉舊的客製/臨時字眼，但會保留您手動輸入的規格
         const cleanedItems = quoteCart.map(i => {
             let cleanSpec = i.spec;
-            // 只要看到這些幽靈字眼，直接變成空白！
             if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) {
                 cleanSpec = "";
             }
             return { 
                 name: i.name, 
-                spec: cleanSpec,  // 傳送清洗過的乾淨規格
+                spec: cleanSpec,  
                 qty: i.qty, 
                 unit: i.unit, 
                 price: i.price, 
@@ -477,7 +484,7 @@
             totalCost: totalCost, 
             grossProfit: pureRev - totalCost, 
             margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
-            items: cleanedItems // 使用清洗過乾淨的資料
+            items: cleanedItems 
         };
         
         try { 
@@ -509,7 +516,6 @@
                     let marginPercent = item.price > 0 ? ((item.price - itemCost) / item.price * 100).toFixed(1) + "%" : "0%";
                     let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
                     
-                    // Excel 匯出前也一樣把它洗乾淨！
                     let cleanSpec = item.spec;
                     if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) {
                         cleanSpec = "";
