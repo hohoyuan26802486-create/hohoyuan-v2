@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.22</title>
+    <title>禾禾園 - 業務神速報價系統 V1.23</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -44,7 +44,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.22</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.23</div>
     <div style="display:flex; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -338,7 +338,6 @@
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🚀 更新：Excel 匯出功能加入「項次」，並將「料號」移至最後
     function exportCurrentExcel() {
         if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
         showLoading("打包 Excel 檔案...");
@@ -348,8 +347,8 @@
                 let taxType = document.getElementById('qTaxType').value;
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                // 第一行：新增「項次」在最前面，把「料號(原品號)」放到最後面
-                let exportData = [["項次", "品名", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項總毛利(元)", "毛利率(%)", "稅別", "料號"]];
+                // 🚀 這裡已經將名稱改為「單項價差(元)」
+                let exportData = [["項次", "品名", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "稅別", "料號"]];
                 
                 quoteCart.forEach((item, index) => {
                     let fullName = item.name;
@@ -359,7 +358,7 @@
                     let marginPercent = item.price > 0 ? ((item.price - item.cost) / item.price * 100).toFixed(1) + "%" : "0%";
                     
                     exportData.push([
-                        index + 1,          // 🚀 這裡就是自動生成的項次 1, 2, 3...
+                        index + 1,
                         fullName,
                         item.qty,
                         item.unit || "",
@@ -369,7 +368,7 @@
                         itemProfit,
                         marginPercent,
                         taxType,
-                        item.no             // 🚀 把料號移到最後一欄了！
+                        item.no
                     ]);
                 });
 
