@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.20</title>
+    <title>禾禾園 - 業務神速報價系統 V1.21</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -44,10 +44,10 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.20</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.21</div>
     <div style="display:flex; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
-        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細 (含成本)</button>
+        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細 (含成本/毛利率)</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
 </div>
@@ -325,7 +325,6 @@
             totalCost: totalCost, 
             grossProfit: pureRev - totalCost, 
             margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
-            // 🚀 關鍵修復1：把 i.cost 一起打包送給大腦
             items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, cost: i.cost, subtotal: Math.round(i.qty*i.price) })) 
         };
         
@@ -339,7 +338,7 @@
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🚀 關鍵修復2：在 Excel 匯出功能加入「成本」與「單項毛利」
+    // 🚀 更新：Excel 匯出功能加入數量、小計、毛利率
     function exportCurrentExcel() {
         if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
         showLoading("打包 Excel 檔案...");
@@ -349,21 +348,28 @@
                 let taxType = document.getElementById('qTaxType').value;
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                // 第一行：加入成本單價與單項毛利標題
-                let exportData = [["品號", "品名", "單位", "成本單價", "售價單價", "單項毛利", "稅別"]];
+                // 第一行：加入數量、小計、明確標示單位
+                let exportData = [["品號", "品名", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項總毛利(元)", "毛利率(%)", "稅別"]];
                 
                 quoteCart.forEach(item => {
                     let fullName = item.name;
                     if(item.spec) fullName += ` - ${item.spec}`;
-                    let itemProfit = Math.round(item.price - item.cost); // 計算毛利
+                    let subtotal = Math.round(item.price * item.qty);
+                    // 毛利 = (售價 - 成本) * 數量
+                    let itemProfit = Math.round((item.price - item.cost) * item.qty); 
+                    // 毛利率 = (售價 - 成本) / 售價
+                    let marginPercent = item.price > 0 ? ((item.price - item.cost) / item.price * 100).toFixed(1) + "%" : "0%";
                     
                     exportData.push([
                         item.no,
                         fullName,
+                        item.qty,           // 補上數量
                         item.unit || "",
-                        item.cost,          // 將成本寫入 Excel
+                        item.cost,
                         item.price,
-                        itemProfit,         // 將毛利寫入 Excel
+                        subtotal,           // 補上小計
+                        itemProfit,         // 這是賺幾塊錢
+                        marginPercent,      // 這是賺幾趴
                         taxType
                     ]);
                 });
