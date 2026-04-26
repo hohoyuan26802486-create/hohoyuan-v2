@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.29</title>
+    <title>禾禾園 - 業務神速報價系統 V1.30</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -25,10 +25,10 @@
         .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
         .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 850px; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; font-size: 14px; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; box-sizing: border-box; }
+        .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
         .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; width: 100%; }
         .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
@@ -36,7 +36,7 @@
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .remark-input { width: 90%; padding: 6px; margin-top: 6px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
+        .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
         .remark-input:focus { border-color: #1a73e8; }
     </style>
 </head>
@@ -45,7 +45,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.29</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.30</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -119,17 +119,21 @@
     </div>
 
     <div style="overflow-x: auto;">
-        <table style="min-width: 700px;">
+        <table>
             <thead>
-                <tr><th style="width:50px; text-align:center;">項次</th><th>品名規格 (與單品備註)</th><th style="width:160px;">數量 / 單位</th><th style="width:130px;">單價(✏️)</th><th>小計</th><th>操作</th></tr>
+                <tr>
+                    <th style="width:50px; text-align:center;">項次</th>
+                    <th>品名</th>
+                    <th>規格</th>
+                    <th style="width:130px;">數量 / 單位</th>
+                    <th style="width:110px;">單價(✏️)</th>
+                    <th style="width:80px;">小計</th>
+                    <th style="width:160px;">備註</th>
+                    <th style="width:70px;">操作</th>
+                </tr>
             </thead>
             <tbody id="quoteBody"></tbody>
         </table>
-    </div>
-
-    <div style="margin-top: 25px;">
-        <label style="font-size: 15px; font-weight: bold; color: #5f6368;">📝 報價單【總備註】 <span style="font-weight:normal; font-size:13px; color:#999;">(選填，將印在 PDF 總金額下方)</span></label>
-        <textarea id="qRemarks" placeholder="例如：1. 交貨時地另議。 2. 需開立統編..." style="width: 100%; padding: 15px; margin-top: 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; box-sizing: border-box; resize: vertical;" rows="2" onchange="saveDraft()"></textarea>
     </div>
 
     <div style="display:flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; margin-top: 20px; gap: 20px;">
@@ -179,8 +183,7 @@
             salesName: document.getElementById('qSalesName').value,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
-            cart: quoteCart,
-            remarks: document.getElementById('qRemarks').value 
+            cart: quoteCart
         };
         localStorage.setItem('hohoyuan_quote_draft', JSON.stringify(draft));
         let now = new Date();
@@ -199,7 +202,6 @@
                 if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName;
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
-                if(draft.remarks) document.getElementById('qRemarks').value = draft.remarks; 
                 if(draft.cart) quoteCart = draft.cart;
                 renderCart(false);
                 document.getElementById('saveStatus').innerText = "已恢復上次未完成的報價單";
@@ -213,7 +215,6 @@
             document.getElementById('qClient').value = "";
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
-            document.getElementById('qRemarks').value = ""; 
             document.getElementById('historyBlock').style.display = "none";
             localStorage.removeItem('hohoyuan_quote_draft');
             document.getElementById('saveStatus').innerText = "";
@@ -310,7 +311,6 @@
             let taxType = document.getElementById('qTaxType').value;
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
-            // 🚀 加入 remark 屬性
             quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, unit: product[6] || "", price: Math.round(cost * multiplier), remark: "" });
             document.getElementById('qSearch').value = ""; renderCart();
         }
@@ -337,7 +337,7 @@
             qty: 1, 
             unit: "式", 
             price: Number(price),
-            remark: "" // 🚀 加入 remark 屬性
+            remark: "" 
         });
         renderCart();
     }
@@ -364,10 +364,11 @@
                     unit: i.unit,
                     price: i.price,
                     cost: i.cost,
-                    remark: i.remark || "" // 🚀 載入舊單的單品備註
+                    // 🚀 防呆機制：完全消滅 undefined
+                    remark: (i.remark === "undefined" || !i.remark) ? "" : i.remark
                 }));
                 renderCart();
-                alert("✅ 舊單明細載入成功！您可以開始修改數量與單價了。");
+                alert("✅ 舊單明細載入成功！");
             } else {
                 alert("❌ 找不到該單號的明細資料。");
             }
@@ -397,20 +398,21 @@
         let taxType = document.getElementById('qTaxType').value;
         let cartSum = 0, totalCost = 0;
         
+        // 🚀 網頁表格重新排列，單品備註移到右邊
         tbody.innerHTML = quoteCart.map((item, index) => {
             let subtotal = Math.round(item.qty * item.price);
-            cartSum += subtotal; totalCost += Math.round(item.qty * item.cost);
-            // 🚀 在品名下方加入「單品備註」的輸入框
+            cartSum += subtotal; totalCost += Math.round(item.qty * (item.cost || 0));
+            
+            let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
+            let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
+
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
-                <td>
-                    <b>${item.name}</b><br>
-                    <small style="color:#777;">成本: $${item.cost}</small><br>
-                    <input type="text" class="remark-input" placeholder="單品備註 (例如: 切半/去頭)" value="${item.remark}" onchange="updateCart(${item.id}, 'remark', this.value)">
-                </td>
+                <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost || 0}</small></td>
+                <td style="color:#444;">${safeSpec}</td>
                 <td>
                     <div style="display:flex; gap:5px;">
-                        <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:65px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
+                        <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:60px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
                         <select class="unit-select" onchange="updateCart(${item.id}, 'unit', this.value)">
                             ${COMMON_UNITS.map(u => `<option value="${u}" ${u===item.unit?'selected':''}>${u}</option>`).join('')}
                         </select>
@@ -418,6 +420,7 @@
                 </td>
                 <td><input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))"></td>
                 <td><b>${subtotal}</b></td>
+                <td><input type="text" class="remark-input" placeholder="選填備註..." value="${safeRemark}" onchange="updateCart(${item.id}, 'remark', this.value)"></td>
                 <td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td>
             </tr>`;
         }).join('');
@@ -441,14 +444,13 @@
     async function saveQuote() {
         let client = document.getElementById('qClient').value.trim();
         let salesName = document.getElementById('qSalesName').value;
-        let remarks = document.getElementById('qRemarks').value.trim();
 
         if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶並加入商品");
         showLoading("產生 PDF 中...");
         let cartSum = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.price), 0);
         let taxAmt = (document.getElementById('qTaxType').value === "未稅") ? Math.round(cartSum * 0.05) : 0;
         let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
-        let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.cost), 0);
+        let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * (i.cost||0)), 0);
         
         const p = { 
             action: "saveQuotation", 
@@ -463,9 +465,16 @@
             totalCost: totalCost, 
             grossProfit: pureRev - totalCost, 
             margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
-            remarks: remarks, 
-            // 🚀 將單品備註 (remark) 打包送給大腦
-            items: quoteCart.map(i => ({ name: i.name, spec: i.spec, qty: i.qty, unit: i.unit, price: i.price, cost: i.cost, subtotal: Math.round(i.qty*i.price), remark: i.remark || "" })) 
+            items: quoteCart.map(i => ({ 
+                name: i.name, 
+                spec: i.spec || "", 
+                qty: i.qty, 
+                unit: i.unit, 
+                price: i.price, 
+                cost: i.cost || 0, 
+                subtotal: Math.round(i.qty*i.price), 
+                remark: i.remark || "" 
+            })) 
         };
         
         try { 
@@ -488,26 +497,28 @@
                 let taxType = document.getElementById('qTaxType').value;
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                // 🚀 Excel 新增「單品備註」欄位，放在規格後面
-                let exportData = [["項次", "品名", "規格", "單品備註", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "稅別", "料號"]];
+                let exportData = [["項次", "品名", "規格", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "單品備註", "稅別", "料號"]];
                 
                 quoteCart.forEach((item, index) => {
                     let subtotal = Math.round(item.price * item.qty);
-                    let itemProfit = Math.round((item.price - item.cost) * item.qty); 
-                    let marginPercent = item.price > 0 ? ((item.price - item.cost) / item.price * 100).toFixed(1) + "%" : "0%";
-                    
+                    let itemCost = item.cost || 0;
+                    let itemProfit = Math.round((item.price - itemCost) * item.qty); 
+                    let marginPercent = item.price > 0 ? ((item.price - itemCost) / item.price * 100).toFixed(1) + "%" : "0%";
+                    let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
+                    let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
+
                     exportData.push([
                         index + 1,
                         item.name,
-                        item.spec,
-                        item.remark || "", // 🚀 匯出單品備註
+                        safeSpec,
                         item.qty,
                         item.unit || "",
-                        item.cost,
+                        itemCost,
                         item.price,
                         subtotal,
                         itemProfit,
                         marginPercent,
+                        safeRemark, // 匯出單品備註
                         taxType,
                         item.no
                     ]);
