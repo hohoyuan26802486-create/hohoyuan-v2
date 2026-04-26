@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.23</title>
+    <title>禾禾園 - 業務神速報價系統 V1.24</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -37,6 +37,7 @@
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .load-box { background: #fffde7; border: 2px dashed #fbc02d; display: flex; gap: 10px; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -44,12 +45,18 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.23</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.24</div>
     <div style="display:flex; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
+</div>
+
+<div class="container load-box">
+    <span style="font-weight: bold; color: #f57f17; font-size: 16px;">🔙 舊單回溯與修改：</span>
+    <input type="text" id="loadId" placeholder="輸入舊單號 (例如: Q202604...)" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 15px;">
+    <button class="btn btn-warning" onclick="loadOldQuote()">🔍 載入此單明細</button>
 </div>
 
 <div class="container">
@@ -191,6 +198,7 @@
             document.getElementById('qClient').value = "";
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
+            document.getElementById('loadId').value = "";
             localStorage.removeItem('hohoyuan_quote_draft');
             document.getElementById('saveStatus').innerText = "";
             renderCart();
@@ -251,6 +259,43 @@
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
             quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, unit: product[6] || "", price: Math.round(cost * multiplier) });
             document.getElementById('qSearch').value = ""; renderCart();
+        }
+    }
+
+    // 🚀 新增：一鍵載入舊報價單資料
+    async function loadOldQuote() {
+        let id = document.getElementById('loadId').value.trim();
+        if(!id) return alert("請輸入報價單號");
+        
+        showLoading("正在從雲端抓取明細...");
+        try {
+            const res = await fetch(CONFIG_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "loadOldQuote", quoteId: id })
+            });
+            const data = await res.json();
+            
+            if(data && data.items) {
+                quoteCart = data.items.map(i => ({
+                    id: Date.now() + Math.random(),
+                    no: "已載入商品", // 標記為舊單載入
+                    name: i.name,
+                    spec: i.spec,
+                    qty: i.qty,
+                    unit: i.unit,
+                    price: i.price,
+                    cost: i.cost
+                }));
+                document.getElementById('qClient').value = data.clientName;
+                renderCart();
+                alert("✅ 已成功載入「" + data.clientName + "」的舊單明細，您可以開始修改了！");
+            } else {
+                alert("❌ 找不到該單號，請檢查輸入是否正確。");
+            }
+        } catch(e) {
+            alert("連線異常");
+        } finally {
+            hideLoading();
         }
     }
 
@@ -347,7 +392,7 @@
                 let taxType = document.getElementById('qTaxType').value;
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                // 🚀 這裡已經將名稱改為「單項價差(元)」
+                // 🚀 已調整 Excel 欄位：項次在第一，料號在最後，並改名單項價差
                 let exportData = [["項次", "品名", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "稅別", "料號"]];
                 
                 quoteCart.forEach((item, index) => {
@@ -358,17 +403,17 @@
                     let marginPercent = item.price > 0 ? ((item.price - item.cost) / item.price * 100).toFixed(1) + "%" : "0%";
                     
                     exportData.push([
-                        index + 1,
+                        index + 1,          // 項次
                         fullName,
                         item.qty,
                         item.unit || "",
                         item.cost,
                         item.price,
                         subtotal,
-                        itemProfit,
+                        itemProfit,         // 單項價差
                         marginPercent,
                         taxType,
-                        item.no
+                        item.no             // 料號移到這裡
                     ]);
                 });
 
