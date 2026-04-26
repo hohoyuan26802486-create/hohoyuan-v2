@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.24</title>
+    <title>禾禾園 - 業務神速報價系統 V1.26</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -18,11 +18,11 @@
         .btn-warning { background: #fbc02d; color: #333; }
         .btn-outline { background: white; color: #555; border: 1px solid #ddd; }
         .control-panel { display: flex; gap: 15px; margin-bottom: 15px; background: #e8f0fe; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); }
-        .form-row { display: flex; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px; border: 1px solid #eee;}
-        .input-group { display: flex; flex-direction: column; flex: 1; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px; border: 1px solid #eee;}
+        .input-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
         .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
-        .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
         .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -33,11 +33,9 @@
         .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
         .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
-        .profit-warning { background: #fce8e6; color: #d93025; border: 1px solid #d93025; }
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .load-box { background: #fffde7; border: 2px dashed #fbc02d; display: flex; gap: 10px; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -45,18 +43,12 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.24</div>
-    <div style="display:flex; gap:10px;">
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.26</div>
+    <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
-</div>
-
-<div class="container load-box">
-    <span style="font-weight: bold; color: #f57f17; font-size: 16px;">🔙 舊單回溯與修改：</span>
-    <input type="text" id="loadId" placeholder="輸入舊單號 (例如: Q202604...)" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 15px;">
-    <button class="btn btn-warning" onclick="loadOldQuote()">🔍 載入此單明細</button>
 </div>
 
 <div class="container">
@@ -85,14 +77,22 @@
         <div style="color:#555; font-size:14px;">輸入公克數 ➔</div>
         <input type="number" id="calcGrams" class="helper-input" placeholder="例如: 150" oninput="quickCalc()">
         <div style="font-weight:bold; color:#555; font-size:16px;">g = </div>
-        <input type="text" id="calcResult" placeholder="此處自動顯示小數點" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:300px; outline:none;">
+        <input type="text" id="calcResult" placeholder="此處自動顯示" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:280px; outline:none;">
     </div>
 
     <div class="form-row">
-        <div class="input-group" style="flex: 2;">
+        <div class="input-group" style="flex: 2; position: relative;">
             <label>👤 客戶名稱 (必填)</label>
             <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="clientChanged(this.value)">
             <datalist id="clientList"></datalist>
+
+            <div id="historyBlock" style="display:none; margin-top: 15px; background: #fffde7; padding: 12px; border-radius: 8px; border: 2px dashed #fbc02d;">
+                <label style="color: #d35400; font-size: 14px;">🔙 載入此客戶舊報價單：</label>
+                <div style="display:flex; gap:8px; margin-top: 5px;">
+                    <select id="qHistorySelect" style="flex:1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></select>
+                    <button class="btn btn-warning" style="padding: 5px 15px;" onclick="loadSelectedHistory()">載入修改</button>
+                </div>
+            </div>
         </div>
         
         <div class="input-group" style="flex: 1;">
@@ -107,25 +107,28 @@
         </div>
 
         <div class="input-group" style="flex: 2;">
-            <label>🔍 加入商品</label>
-            <input list="productList" id="qSearch" placeholder="搜尋商品..." onchange="addQuoteItem(this.value)">
+            <label>🔍 加入商品 (或自訂)</label>
+            <div style="display: flex; gap: 8px;">
+                <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
+                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8;" onclick="addCustomItem()">➕ 臨時新增</button>
+            </div>
             <datalist id="productList"></datalist>
         </div>
     </div>
 
     <div style="overflow-x: auto;">
-        <table>
+        <table style="min-width: 700px;">
             <thead>
-                <tr><th>品名規格</th><th style="width:180px;">數量 / 單位</th><th style="width:140px;">單價(✏️)</th><th>小計</th><th>操作</th></tr>
+                <tr><th style="width:50px; text-align:center;">項次</th><th>品名規格</th><th style="width:160px;">數量 / 單位</th><th style="width:130px;">單價(✏️)</th><th>小計</th><th>操作</th></tr>
             </thead>
             <tbody id="quoteBody"></tbody>
         </table>
     </div>
 
-    <div style="display:flex; justify-content: space-between; align-items: flex-end; margin-top: 30px;">
-        <div id="profitDisplay" class="profit-badge" style="text-align: left; max-width: 400px;">請加入商品...</div>
+    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; margin-top: 30px; gap: 20px;">
+        <div id="profitDisplay" class="profit-badge" style="text-align: left; flex: 1; min-width: 250px;">請加入商品...</div>
         
-        <div style="text-align: right;">
+        <div style="text-align: right; min-width: 200px;">
             <div id="taxDetailBlock" style="color: #555; font-size: 16px; margin-bottom: 10px; display: none;">
                 銷售合計：NT$ <span id="spanCartSum">0</span><br>
                 營業稅 (5%)：NT$ <span id="spanTaxAmt">0</span>
@@ -134,9 +137,9 @@
         </div>
     </div>
 
-    <div style="display:flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
-        <button class="btn btn-warning" style="font-size: 16px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
-        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px;" onclick="saveQuote()">🚀 產生 PDF 報價單</button>
+    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; gap: 15px;">
+        <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 200px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
+        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px; flex: 2; min-width: 200px;" onclick="saveQuote()">🚀 產生 PDF 報價單</button>
     </div>
 </div>
 
@@ -147,7 +150,7 @@
     const SALES_MOBILES = { '洪文斗': '0912631569', '葉慈潤': '0906126091', '徐偉強': '0983500675', '蔡政達': '0960005486', '公司業務部': '02-26802486' };
     const SALES_EMAILS = { '洪文斗': '', '葉慈潤': '', '徐偉強': '', '蔡政達': 'alan03081228@gmail.com', '公司業務部': '' };
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
-    const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋'];
+    const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋', '式', '趟'];
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
@@ -181,7 +184,10 @@
         if(saved) {
             try {
                 const draft = JSON.parse(saved);
-                if(draft.client) document.getElementById('qClient').value = draft.client;
+                if(draft.client) {
+                    document.getElementById('qClient').value = draft.client;
+                    updateHistoryDropdown(draft.client); // 載入時也更新選單
+                }
                 if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName;
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
@@ -198,7 +204,7 @@
             document.getElementById('qClient').value = "";
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
-            document.getElementById('loadId').value = "";
+            document.getElementById('historyBlock').style.display = "none";
             localStorage.removeItem('hohoyuan_quote_draft');
             document.getElementById('saveStatus').innerText = "";
             renderCart();
@@ -237,7 +243,48 @@
         }
     }
 
-    function clientChanged(name) { detectClientLevel(name); saveDraft(); }
+    function clientChanged(name) { 
+        detectClientLevel(name); 
+        updateHistoryDropdown(name); // 🚀 客戶改變時，自動去撈他的舊單
+        saveDraft(); 
+    }
+
+    // 🚀 核心智慧選單：列出該客戶的舊單
+    function updateHistoryDropdown(clientName) {
+        const block = document.getElementById('historyBlock');
+        const select = document.getElementById('qHistorySelect');
+        select.innerHTML = '<option value="">-- 請選擇想修改的歷史紀錄 --</option>';
+
+        if(!clientName || !db.Quotations) {
+            block.style.display = 'none';
+            return;
+        }
+
+        let historyList = [];
+        for(let i = 1; i < db.Quotations.length; i++) {
+            let row = db.Quotations[i];
+            // row[2] 是客戶名稱
+            if(row[2] === clientName) {
+                historyList.push(row);
+            }
+        }
+
+        if(historyList.length > 0) {
+            // 反轉陣列讓最新的單排在最上面
+            historyList.reverse().forEach(row => {
+                let dateObj = new Date(row[1]);
+                let dateStr = `${dateObj.getMonth()+1}/${dateObj.getDate()} ${dateObj.getHours()}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+                let option = document.createElement('option');
+                option.value = row[0]; // 報價單號
+                option.innerText = `${dateStr} | 總計 $${row[4]}`;
+                select.appendChild(option);
+            });
+            block.style.display = 'block'; // 顯示選單
+        } else {
+            block.style.display = 'none'; // 沒紀錄就隱藏
+        }
+    }
+
     function inputChanged() { recalculateCartPrices(); saveDraft(); }
 
     function detectClientLevel(name) {
@@ -262,10 +309,33 @@
         }
     }
 
-    // 🚀 新增：一鍵載入舊報價單資料
-    async function loadOldQuote() {
-        let id = document.getElementById('loadId').value.trim();
-        if(!id) return alert("請輸入報價單號");
+    function addCustomItem() {
+        let name = prompt("📌 請輸入【臨時品項】名稱：\n(例如：客製化拼盤、專車運費)");
+        if (!name) return;
+        
+        let price = prompt(`📌 請輸入「${name}」的【對外售價】(單價)：\n(請輸入數字)`);
+        if (!price || isNaN(price)) return alert("❌ 單價錯誤，請填寫數字！");
+        
+        let cost = prompt(`📌 請輸入「${name}」的【內部成本】：\n(選填，若無請填 0 或直接按確定)`) || 0;
+        if (isNaN(cost)) cost = 0;
+
+        quoteCart.push({ 
+            id: Date.now(), 
+            no: "臨時自訂", 
+            name: name, 
+            spec: "客製/臨時", 
+            cost: Number(cost), 
+            qty: 1, 
+            unit: "式", 
+            price: Number(price) 
+        });
+        renderCart();
+    }
+
+    // 🚀 一鍵載入選定歷史紀錄
+    async function loadSelectedHistory() {
+        let id = document.getElementById('qHistorySelect').value;
+        if(!id) return alert("請先在選單中點選一張報價單！");
         
         showLoading("正在從雲端抓取明細...");
         try {
@@ -278,7 +348,7 @@
             if(data && data.items) {
                 quoteCart = data.items.map(i => ({
                     id: Date.now() + Math.random(),
-                    no: "已載入商品", // 標記為舊單載入
+                    no: "已載入商品", 
                     name: i.name,
                     spec: i.spec,
                     qty: i.qty,
@@ -286,11 +356,10 @@
                     price: i.price,
                     cost: i.cost
                 }));
-                document.getElementById('qClient').value = data.clientName;
                 renderCart();
-                alert("✅ 已成功載入「" + data.clientName + "」的舊單明細，您可以開始修改了！");
+                alert("✅ 舊單明細載入成功！您可以開始修改數量與單價了。");
             } else {
-                alert("❌ 找不到該單號，請檢查輸入是否正確。");
+                alert("❌ 找不到該單號的明細資料。");
             }
         } catch(e) {
             alert("連線異常");
@@ -304,7 +373,12 @@
         let taxType = document.getElementById('qTaxType').value;
         let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
-        quoteCart.forEach(item => { item.price = Math.round(item.cost * multiplier); });
+        
+        quoteCart.forEach(item => { 
+            if (item.no !== "臨時自訂" && item.no !== "已載入商品") {
+                item.price = Math.round(item.cost * multiplier); 
+            }
+        });
         renderCart();
     }
 
@@ -312,14 +386,17 @@
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
         let cartSum = 0, totalCost = 0;
-        tbody.innerHTML = quoteCart.map(item => {
+        
+        // 🚀 網頁表格新增了「項次 (index + 1)」的顯示
+        tbody.innerHTML = quoteCart.map((item, index) => {
             let subtotal = Math.round(item.qty * item.price);
             cartSum += subtotal; totalCost += Math.round(item.qty * item.cost);
             return `<tr>
+                <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
                 <td><b>${item.name}</b><br><small style="color:#777;">成本: $${item.cost}</small></td>
                 <td>
                     <div style="display:flex; gap:5px;">
-                        <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:75px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
+                        <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:65px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
                         <select class="unit-select" onchange="updateCart(${item.id}, 'unit', this.value)">
                             ${COMMON_UNITS.map(u => `<option value="${u}" ${u===item.unit?'selected':''}>${u}</option>`).join('')}
                         </select>
@@ -379,6 +456,7 @@
             if(text.startsWith("Success")) { 
                 window.open(text.split("|")[1], '_blank'); 
                 alert("✅ 報價單 PDF 已成功產生並彈出視窗！\n\n【貼心提醒】\n畫面資料已為您保留。若客戶要加減品項，可直接在此修改數量後，再次按下『產生 PDF』開立新單。\n\n若要打下一位客戶的報價單，請點擊畫面左下角的『🧹 清空畫面』按鈕。");
+                updateHistoryDropdown(client); // 出單後刷新歷史紀錄選單
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
@@ -392,7 +470,6 @@
                 let taxType = document.getElementById('qTaxType').value;
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                // 🚀 已調整 Excel 欄位：項次在第一，料號在最後，並改名單項價差
                 let exportData = [["項次", "品名", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "稅別", "料號"]];
                 
                 quoteCart.forEach((item, index) => {
@@ -403,17 +480,17 @@
                     let marginPercent = item.price > 0 ? ((item.price - item.cost) / item.price * 100).toFixed(1) + "%" : "0%";
                     
                     exportData.push([
-                        index + 1,          // 項次
+                        index + 1,
                         fullName,
                         item.qty,
                         item.unit || "",
                         item.cost,
                         item.price,
                         subtotal,
-                        itemProfit,         // 單項價差
+                        itemProfit,
                         marginPercent,
                         taxType,
-                        item.no             // 料號移到這裡
+                        item.no
                     ]);
                 });
 
