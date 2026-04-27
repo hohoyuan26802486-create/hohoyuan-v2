@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 最終完整版</title>
+    <title>禾禾園 - 業務神速報價系統 V1.40</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -45,7 +45,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.40</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -112,7 +112,7 @@
             <label style="color:#5f6368;">🔍 加入商品</label>
             <div style="display: flex; gap: 8px;">
                 <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
-                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手動增加</button>
+                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手動增加品項</button>
             </div>
             <datalist id="productList"></datalist>
         </div>
@@ -154,8 +154,8 @@
 </div>
 
 <script>
-    // 🚨 最新的連線網址
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwjcY3YPSn1PqfOZdpNe6KbbkHl8vkwSJnSo-12bpkP5pfPXWBXFtlNXX5BhWGiFl9lyw/exec";
+    // 🚨 修正：換回「報價系統」專用的正確網址！！！
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     let db = {}; let quoteCart = []; 
 
     const SALES_MOBILES = { '洪文斗': '0912631569', '葉慈潤': '0906126091', '徐偉強': '0983500675', '蔡政達': '0960005486', '公司業務部': '02-26802486' };
@@ -236,7 +236,7 @@
             const res = await fetch(CONFIG_URL); db = await res.json(); 
             initLists();
             loadDraft();
-        } catch(e) { alert("連線失敗！請確認大腦權限已設為所有人。"); } finally { hideLoading(); }
+        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     function initLists() {
@@ -316,7 +316,6 @@
         }
     }
 
-    // 🚀 手動增加品項的 4 步驟
     function addCustomItem() {
         let name = prompt("📌 [步驟 1/4] 請輸入【品名】：\n(例如：大油皮)");
         if (!name) return;
@@ -450,7 +449,6 @@
         let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
         let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * (i.cost||0)), 0);
         
-        // 將規格與備註清乾淨再送出
         const cleanedItems = quoteCart.map(i => {
             let cleanSpec = i.spec;
             if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
