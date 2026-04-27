@@ -2,149 +2,100 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 最終完美版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>禾禾園 - 最終修復版</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f1f3f4; padding: 20px; margin: 0; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 25px; }
-        .top-nav { background: #202124; color: white; display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s;}
-        .btn:hover { opacity: 0.9; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-warning { background: #fbc02d; color: #333; }
-        .btn-outline { background: white; color: #555; border: 1px solid #ddd; }
-        .control-panel { display: flex; gap: 15px; margin-bottom: 15px; background: #e8f0fe; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); }
-        .form-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; background: var(--bg-gray); padding: 20px; border-radius: 12px; border: 1px solid #eee;}
-        .input-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
-        .input-group label { font-size: 13px; font-weight: bold; color: #5f6368; margin-bottom: 8px; }
-        .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
-        .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
-        .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 850px; }
-        th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; font-size: 14px; }
-        td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-        .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; width: 100%; }
-        .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
-        .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
-        .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
-        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
-        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
-        .remark-input:focus { border-color: #1a73e8; }
+        :root { --primary: #202124; --success: #28a745; --bg: #f1f3f4; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); padding: 20px; margin: 0; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #1a73e8; color: white; }
+        .btn-success { background: var(--success); color: white; width: 100%; margin-top: 20px; padding: 15px; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #f8f9fa; padding: 10px; border-bottom: 2px solid #ddd; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .history-box { background: #fff9db; padding: 15px; border-radius: 8px; border: 1px dashed #fbc02d; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-<div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
-
-<div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 最終完美版</div>
-    <div style="display:flex; flex-wrap: wrap; gap:10px;">
-        <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
-        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
-        <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+        <h2 style="margin:0;">💼 禾禾園報價系統 V1.38</h2>
+        <button class="btn btn-primary" onclick="fetchData()">🔄 同步資料</button>
     </div>
+
+    <div class="history-box" id="historyBlock" style="display:none;">
+        <label>🔙 載入舊單：</label>
+        <select id="qHistorySelect" style="padding:8px; width:70%;"></select>
+        <button class="btn" onclick="loadSelectedHistory()">載入</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 2fr 1fr 2fr; gap:15px; margin-bottom: 20px;">
+        <div><label>👤 客戶：</label><input list="clientList" id="qClient" onchange="clientChanged(this.value)"><datalist id="clientList"></datalist></div>
+        <div><label>💼 業務：</label><select id="qSalesName" style="width:100%; padding:8px;"><option value="公司業務部">公司業務部</option></select></div>
+        <div><label>🔍 加入品項：</label><div style="display:flex; gap:5px;"><input list="productList" id="qSearch" onchange="addQuoteItem(this.value)"><datalist id="productList"></datalist><button class="btn btn-primary" onclick="addCustomItem()">➕手動增加</button></div></div>
+    </div>
+
+    <table id="quoteTable">
+        <thead><tr><th>項次</th><th>品名</th><th>數量/單位</th><th>單價</th><th>小計</th><th>備註</th><th>刪除</th></tr></thead>
+        <tbody id="quoteBody"></tbody>
+    </table>
+
+    <button class="btn btn-success" onclick="saveQuote()">🚀 產生 PDF 報價單</button>
 </div>
 
-<div class="container">
-    <div class="control-panel">
-        <div class="input-group">
-            <label>⚙️ 手動指定客戶等級</label>
-            <select id="qLevel" onchange="inputChanged()">
-                <option value="A">A - 中餐宴會 (未稅 8%)</option>
-                <option value="B">B - 一般中餐 (未稅 10%)</option>
-                <option value="C">C - 西餐連鎖 (未稅 12%)</option>
-                <option value="D">D - 西餐 (未稅 15%)</option>
-                <option value="E" selected>E - 中央廚房 (未稅 5%)</option>
-            </select>
-        </div>
-        <div class="input-group">
-            <label>🧾 稅金計算方式</label>
-            <select id="qTaxType" onchange="inputChanged()">
-                <option value="未稅" selected>未稅報價 (結帳外加 5%)</option>
-                <option value="含稅">含稅報價 (單價直接含稅)</option>
-            </select>
-        </div>
-    </div>
+<script>
+    // 🚨 老闆，這裡已經幫您填好您剛給的新網址了！
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwjcY3YPSn1PqfOZdpNe6KbbkHl8vkwSJnSo-12bpkP5pfPXWBXFtlNXX5BhWGiFl9lyw/exec";
+    let db = {}; let cart = [];
 
-    <div class="helper-row">
-        <div style="font-weight:bold; color:#f57f17; font-size:16px;">⚖️ 散裝換算小幫手：</div>
-        <div style="color:#555; font-size:14px;">輸入公克數 ➔</div>
-        <input type="number" id="calcGrams" class="helper-input" placeholder="例如: 150" oninput="quickCalc()">
-        <div style="font-weight:bold; color:#555; font-size:16px;">g = </div>
-        <input type="text" id="calcResult" placeholder="此處自動顯示" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:280px; outline:none;">
-    </div>
+    async function fetchData() {
+        const res = await fetch(CONFIG_URL); db = await res.json();
+        const cList = document.getElementById('clientList'); cList.innerHTML = db.Customers.map(r => `<option value="${r[0]}">`).join('');
+        const pList = document.getElementById('productList'); pList.innerHTML = db.Products.map(r => `<option value="${r[0]} - ${r[1]}">`).join('');
+    }
 
-    <div class="form-row">
-        <div class="input-group" style="flex: 2; position: relative;">
-            <label>👤 客戶名稱 (必填)</label>
-            <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="clientChanged(this.value)">
-            <datalist id="clientList"></datalist>
+    function addQuoteItem(val) {
+        if(!val) return; let id = val.split(" - ")[0]; let p = db.Products.find(r => r[0] == id);
+        if(p) { cart.push({id: Date.now(), name: p[1], spec: p[2], qty: 1, unit: p[6]||'包', price: p[3], cost: p[3], remark: ""}); render(); }
+        document.getElementById('qSearch').value = "";
+    }
 
-            <div id="historyBlock" style="display:none; margin-top: 15px; background: #fffde7; padding: 12px; border-radius: 8px; border: 2px dashed #fbc02d;">
-                <label style="color: #d35400; font-size: 14px;">🔙 載入此客戶舊報價單：</label>
-                <div style="display:flex; gap:8px; margin-top: 5px;">
-                    <select id="qHistorySelect" style="flex:1; padding: 8px; border-radius: 6px; border: 1px solid #ccc;"></select>
-                    <button class="btn btn-warning" style="padding: 5px 15px;" onclick="loadSelectedHistory()">載入修改</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="input-group" style="flex: 1;">
-            <label>💼 負責業務</label>
-            <select id="qSalesName" onchange="saveDraft()">
-                <option value="洪文斗">洪文斗</option>
-                <option value="葉慈潤">葉慈潤</option>
-                <option value="徐偉強">徐偉強</option>
-                <option value="蔡政達">蔡政達</option>
-                <option value="公司業務部" selected>公司業務部</option>
-            </select>
-        </div>
+    function addCustomItem() {
+        let n = prompt("品名："); if(!n) return;
+        let s = prompt("規格：");
+        let c = prompt("成本：") || 0;
+        let p = prompt("報價：") || 0;
+        cart.push({id: Date.now(), name: n, spec: s, qty: 1, unit: '包', price: p, cost: c, remark: ""}); render();
+    }
 
-        <div class="input-group" style="flex: 2;">
-            <label>🔍 加入商品</label>
-            <div style="display: flex; gap: 8px;">
-                <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
-                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold;" onclick="addCustomItem()">➕ 手動增加品項</button>
-            </div>
-            <datalist id="productList"></datalist>
-        </div>
-    </div>
+    function render() {
+        document.getElementById('quoteBody').innerHTML = cart.map((item, idx) => `
+            <tr>
+                <td>${idx+1}</td>
+                <td><b>${item.name}</b><br><small>${item.spec||''}</small></td>
+                <td><input type="number" value="${item.qty}" style="width:60px;" onchange="update(${item.id}, 'qty', this.value)"> ${item.unit}</td>
+                <td><input type="number" value="${item.price}" style="width:80px;" onchange="update(${item.id}, 'price', this.value)"></td>
+                <td>$${Math.round(item.qty * item.price)}</td>
+                <td><input type="text" value="${item.remark}" placeholder="備註" onchange="update(${item.id}, 'remark', this.value)"></td>
+                <td><button onclick="cart=cart.filter(i=>i.id!=${item.id});render()">❌</button></td>
+            </tr>
+        `).join('');
+    }
 
-    <div style="overflow-x: auto;">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:50px; text-align:center;">項次</th>
-                    <th>品名</th>
-                    <th style="width:130px;">數量 / 單位</th>
-                    <th style="width:110px;">單價(✏️)</th>
-                    <th style="width:80px;">小計</th>
-                    <th style="width:160px;">備註</th>
-                    <th style="width:70px;">操作</th>
-                </tr>
-            </thead>
-            <tbody id="quoteBody"></tbody>
-        </table>
-    </div>
+    function update(id, field, val) { let i = cart.find(x => x.id == id); i[field] = val; render(); }
 
-    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; margin-top: 20px; gap: 20px;">
-        <div id="profitDisplay" class="profit-badge" style="text-align: left; flex: 1; min-width: 250px;">請加入商品...</div>
-        
-        <div style="text-align: right; min-width: 200px;">
-            <div id="taxDetailBlock" style="color: #555; font-size: 16px; margin-bottom: 10px; display: none;">
-                銷售合計：NT$ <span id="spanCartSum">0</span><br>
-                營業稅 (5%)：NT$ <span id="spanTaxAmt">0</span>
-            </div>
-            <div style="font-size: 26px; font-weight: bold;"><span id="totalLabel">總計：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span></div>
-        </div>
-    </div>
+    async function saveQuote() {
+        if(cart.length == 0) return alert("請加商品");
+        const body = { action: "saveQuotation", clientName: document.getElementById('qClient').value, salesName: document.getElementById('qSalesName').value, items: cart, finalTotal: cart.reduce((a,b)=>a+(b.qty*b.price),0), taxType: "含稅" };
+        const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(body) });
+        const text = await res.text(); window.open(text.split("|")[1], '_blank');
+    }
 
-    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px
+    fetchData();
+</script>
+</body>
+</html>
