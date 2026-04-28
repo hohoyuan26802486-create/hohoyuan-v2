@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V16.5</title>
+    <title>禾禾園 - 考勤系統 V16.6 (請假修復版)</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -103,9 +103,10 @@
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="原因"></div>
-        <div class="input-group"><label>📸 證明照片</label><input type="file" id="lvFile" accept="image/*"></div>
+        <div class="input-group"><label>📸 證明照片 (病/公/喪假必填)</label><input type="file" id="lvFile" accept="image/*"></div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
+
     <div id="proofTab" class="form-content">
         <div class="input-group"><label>👤 員工姓名</label><select id="prfName" onchange="syncName(this.value); loadPendingProofs();"></select></div>
         <div class="input-group"><label>📝 選擇缺件假單</label><select id="prfSelect"></select></div>
@@ -115,6 +116,7 @@
 </div>
 
 <script>
+    // 您的考勤系統大腦網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     
     // 🌟 彈性上班人員名單
@@ -282,6 +284,7 @@
         if (prompt("🔐 HR 密碼：") === "456") { localStorage.removeItem('bound_user'); alert("🔓 已解除鎖定"); location.reload(); } else { alert("❌ 密碼錯誤"); }
     }
 
+    // 🟢 打卡送出邏輯
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
@@ -310,13 +313,88 @@
         } catch (e) { alert("❌ 連線失敗"); btn.disabled = false; btn.innerText = "送出打卡"; }
     }
 
-    async function sendData(p, customSuccessMessage = "✅ 處理成功！") { 
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); const text = await res.text(); if (text === "Success") alert(customSuccessMessage); else alert("❌ 異常：" + text); location.reload(); } catch (e) { alert("網路錯誤"); location.reload(); } 
+    // 🟢 🌟 修復的「請假送出」邏輯 (加上必填防呆)
+    async function submitLeave() {
+        const name = document.getElementById('lvName').value;
+        const type = document.getElementById('lvType').value;
+        const start = document.getElementById('lvStart').value;
+        const end = document.getElementById('lvEnd').value;
+        const reason = document.getElementById('lvReason').value;
+        const fileInput = document.getElementById('lvFile');
+        
+        // 防呆：確認時間都有填
+        if (!start || !end) return alert("⚠️ 請選擇開始與結束時間！");
+        
+        // 防呆：病假、公假、喪假如果沒傳照片，直接擋下並跳警告
+        if ((type === "病假" || type === "公假" || type === "喪假") && fileInput.files.length === 0) {
+            return alert(`⚠️ 申請【${type}】必須附上證明照片喔！`);
+        }
+
+        const btn = document.getElementById('btnLv'); 
+        btn.innerText = "⏳ 傳送中..."; 
+        btn.disabled = true;
+
+        const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, photoData: "" };
+
+        if (fileInput.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = async function() {
+                p.photoData = reader.result.split(',')[1];
+                p.mimeType = fileInput.files[0].type;
+                p.fileName = fileInput.files[0].name;
+                await sendData(p, "✅ 假單與照片已成功送出！");
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            await sendData(p, "✅ 假單已成功送出！");
+        }
     }
 
-    async function submitLeave() { /* 請假邏輯維持不變... */ }
-    function loadPendingProofs() { /* 補件邏輯維持不變... */ }
-    async function submitProof() { /* 補件邏輯維持不變... */ }
+    // 🟢 補件相關邏輯
+    function loadPendingProofs() {
+        const name = document.getElementById('prfName').value;
+        const sel = document.getElementById('prfSelect');
+        sel.innerHTML = "";
+        if (!globalDB || !globalDB.leave) return;
+        const pending = globalDB.leave.filter(r => r[2] === name && r[9] === "待補件");
+        if (pending.length === 0) {
+            sel.innerHTML = "<option value=''>✅ 您目前沒有缺件的假單</option>";
+        } else {
+            pending.forEach(r => { sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; });
+        }
+    }
+
+    async function submitProof() {
+        const rowIdx = document.getElementById('prfSelect').value;
+        const fileInput = document.getElementById('prfFile');
+        if (!rowIdx) return alert("沒有需要補件的紀錄");
+        if (fileInput.files.length === 0) return alert("⚠️ 請選擇要上傳的照片！");
+        
+        const btn = document.getElementById('btnPrf'); 
+        btn.innerText = "⏳ 上傳中..."; 
+        btn.disabled = true;
+
+        const reader = new FileReader();
+        reader.onload = async function() {
+            const p = { action: "updateProof", rowIdx: rowIdx, photoData: reader.result.split(',')[1], mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
+            await sendData(p, "✅ 補件照片上傳成功！");
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    }
+
+    // 🟢 共用的發送器
+    async function sendData(p, customSuccessMessage = "✅ 處理成功！") { 
+        try { 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            const text = await res.text(); 
+            if (text === "Success") alert(customSuccessMessage); 
+            else alert("❌ 異常：" + text); 
+            location.reload(); 
+        } catch (e) { 
+            alert("網路錯誤，請確認連線"); 
+            location.reload(); 
+        } 
+    }
 
     function switchTab(id) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
