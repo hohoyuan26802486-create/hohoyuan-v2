@@ -3,28 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V13.8</title>
+    <title>禾禾園 - 專業管理後台 V14.0</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f1f3f4; color: var(--text-main); padding: 20px; margin: 0; }
         .container { max-width: 1350px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 1px 3px rgba(60,64,67,0.3); margin-bottom: 25px; }
-        h1 { color: var(--text-main); font-size: 20px; font-weight: 500; margin-bottom: 20px; border-left: 5px solid var(--primary); padding-left: 15px; }
+        h1 { color: var(--text-main); font-size: 20px; font-weight: 500; margin-bottom: 15px; border-left: 5px solid var(--primary); padding-left: 15px; display: flex; justify-content: space-between; align-items: center;}
         
+        /* 🌟 分頁標籤樣式 */
+        .tab-container { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap;}
+        .tab-btn { padding: 8px 16px; border: none; background: none; font-size: 15px; font-weight: bold; color: var(--text-sub); cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .tab-btn:hover { background: #f1f3f4; }
+        .tab-btn.active { background: #e8f0fe; color: var(--primary); }
+
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1100px; }
-        th { text-align: left; padding: 12px 15px; border-bottom: 2px solid #eee; color: var(--text-sub); font-size: 13px; }
-        td { padding: 15px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px; } /* 縮小 min-width 因為內容變緊湊了 */
+        th { text-align: left; padding: 12px 10px; border-bottom: 2px solid #eee; color: var(--text-sub); font-size: 13px; }
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; } /* 縮減 padding 讓畫面更瘦 */
         
-        .main-info { font-size: 16px; font-weight: 600; color: #202124; }
-        .sub-info { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+        .main-info { font-size: 15px; font-weight: 600; color: #202124; }
+        .sub-info { font-size: 12px; color: var(--text-sub); }
         .ins-highlight { font-size: 17px; font-weight: bold; color: #000; }
         .bonus-text { color: var(--success); font-weight: bold; font-size: 13px; margin-top: 4px; }
 
         .proof-btn { 
             display: inline-flex; align-items: center; background: #f1f3f4; color: #5f6368 !important; 
-            border: 1px solid #dadce0; padding: 6px 12px; border-radius: 20px; text-decoration: none;
-            font-size: 13px; font-weight: bold; transition: 0.2s;
+            border: 1px solid #dadce0; padding: 4px 10px; border-radius: 20px; text-decoration: none;
+            font-size: 12px; font-weight: bold; transition: 0.2s;
         }
         .proof-btn:hover { background: #e8eaed; border-color: var(--primary); color: var(--primary) !important; }
 
@@ -33,7 +39,7 @@
         .input-group label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
         .input-group input, .input-group select { padding: 10px; border: 1px solid #dadce0; border-radius: 8px; font-size: 14px; outline:none; }
         
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-success { background: var(--success); color: white; }
         .btn-warning { background: var(--warning); color: white; }
@@ -97,7 +103,11 @@
 
 <div class="container">
     <h1>📝 假單審核中心</h1>
-    <div class="table-responsive"><table><thead><tr><th>姓名</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
+    <div class="tab-container">
+        <button id="tab-pending" class="tab-btn active" onclick="switchTab('pending')">🔴 待處理假單</button>
+        <button id="tab-history" class="tab-btn" onclick="switchTab('history')">⚪ 歷史紀錄</button>
+    </div>
+    <div class="table-responsive"><table><thead><tr><th>申請人</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
 <div id="reportBox" class="container" style="display:none;">
@@ -113,8 +123,17 @@
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = {}; let editingEmpName = null;
+    let currentTab = 'pending'; // 🌟 預設停留在待處理頁籤
 
-    function formatTime(timeStr) {
+    // 🌟 瘦身版的時間格式：只顯示 月/日 時:分
+    function formatShortTime(timeStr) {
+        if (!timeStr) return "";
+        const d = new Date(timeStr); if (isNaN(d)) return timeStr;
+        const pad = (n) => n.toString().padStart(2, '0');
+        return `${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function formatTime(timeStr) { // 保留原本給員工列表用的
         if (!timeStr) return "";
         const d = new Date(timeStr); if (isNaN(d)) return timeStr;
         const pad = (n) => n.toString().padStart(2, '0');
@@ -123,6 +142,14 @@
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+
+    // 🌟 切換頁籤功能
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        render(); // 重新渲染表格
+    }
 
     function authRole() {
         const r = document.getElementById('adminRole').value;
@@ -163,11 +190,43 @@
         }
 
         if(db.leave) {
-            document.getElementById('leaveBody').innerHTML = db.leave.filter(r=>r[0]!=="ID" && r[0]!=="").reverse().map(r => {
+            // 🌟 先過濾出所有有效的假單
+            let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "").reverse();
+
+            // 🌟 根據選取的頁籤進行二次過濾
+            if (currentTab === 'pending') {
+                leaveData = leaveData.filter(r => r[8] && r[8].includes('待')); // 只保留狀態裡有「待」字的
+            } else {
+                leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待'))); // 保留「已生效」、「已退件」等歷史
+            }
+
+            // 🌟 生成瘦身版表格
+            let tableHTML = leaveData.map(r => {
                 let next = (role.includes(r[3]) && r[8]==='待主管審核') ? '待人事審核' : (role==='人事部' && r[8]==='待人事審核') ? '待副總審核' : (role==='副總' && r[8]==='待副總審核') ? '已生效' : '';
-                let proof = (r[9] && r[9].includes('http')) ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看單據</a>` : `<span style="color:#ccc">無</span>`;
-                return `<tr><td><div class="main-info">${r[2]}</div><div class="sub-info">${r[3]}</div></td><td>${formatTime(r[5])}<br>~ ${formatTime(r[6])}</td><td>${r[4]}</td><td>${proof}</td><td><span style="font-weight:bold; color:${r[8]==='已生效'?'#28a745':'#f4b400'}">${r[8]}</span></td><td>${next?`<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>`:'-'}</td></tr>`;
+                let proof = (r[9] && r[9].includes('http')) ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看</a>` : `<span style="color:#ccc">無</span>`;
+                
+                // 狀態文字顏色判斷
+                let statusColor = r[8] === '已生效' ? '#28a745' : (r[8].includes('退') ? '#d93025' : '#f4b400');
+                
+                // 如果在歷史紀錄區，或者當前角色沒有權限核准，就不要顯示核准按鈕，讓畫面更乾淨
+                let actionBtn = (next && currentTab === 'pending') ? `<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>` : `<span style="color:#ccc">-</span>`;
+
+                return `<tr>
+                    <td><div class="main-info">${r[2]} <span class="sub-info">(${r[3]})</span></div></td>
+                    <td><div style="font-size:13px; color:#3c4043;">${formatShortTime(r[5])} <span style="color:#aaa;">~</span> ${formatShortTime(r[6])}</div></td>
+                    <td>${r[4]}</td>
+                    <td>${proof}</td>
+                    <td><span style="font-weight:bold; color:${statusColor}">${r[8]}</span></td>
+                    <td>${actionBtn}</td>
+                </tr>`;
             }).join('');
+
+            // 🌟 如果該頁籤沒資料的防呆提示
+            if (leaveData.length === 0) {
+                tableHTML = `<tr><td colspan="6" style="text-align:center; padding:40px; color:#70757a; font-size:15px;">🎉 太棒了！目前沒有${currentTab === 'pending' ? '需要待處理' : '歷史'}的假單資料</td></tr>`;
+            }
+
+            document.getElementById('leaveBody').innerHTML = tableHTML;
         }
     }
 
@@ -199,7 +258,6 @@
         document.getElementById('cancelBtn').style.display = "none";
     }
 
-    // 🌟 加裝防當機安全網的儲存功能
     async function saveEmp() { 
         showLoading("儲存資料中...");
         const d = { action: editingEmpName ? "editEmployee" : "saveEmployee", name: document.getElementById('eName').value, dept: document.getElementById('eDept').value, onboardingDate: document.getElementById('eDate').value, salary: document.getElementById('eSal').value, laborIns: document.getElementById('eLabor').value, healthIns: document.getElementById('eHealth').value, dependents: document.getElementById('eDependents').value, bonus: document.getElementById('eBonus').value };
