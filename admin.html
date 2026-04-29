@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V14.0</title>
+    <title>禾禾園 - 專業管理後台 V14.5</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -11,16 +11,22 @@
         .container { max-width: 1350px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 1px 3px rgba(60,64,67,0.3); margin-bottom: 25px; }
         h1 { color: var(--text-main); font-size: 20px; font-weight: 500; margin-bottom: 15px; border-left: 5px solid var(--primary); padding-left: 15px; display: flex; justify-content: space-between; align-items: center;}
         
-        /* 🌟 分頁標籤樣式 */
+        /* 🌟 分頁標籤樣式 (假單審核用) */
         .tab-container { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap;}
         .tab-btn { padding: 8px 16px; border: none; background: none; font-size: 15px; font-weight: bold; color: var(--text-sub); cursor: pointer; border-radius: 8px; transition: 0.2s; }
         .tab-btn:hover { background: #f1f3f4; }
         .tab-btn.active { background: #e8f0fe; color: var(--primary); }
 
+        /* 🌟 部門膠囊按鈕樣式 (員工名冊用) */
+        .dept-filter-container { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; padding-bottom: 10px; }
+        .filter-pill { padding: 6px 16px; border: 1px solid #dadce0; background: white; border-radius: 20px; font-size: 14px; color: var(--text-sub); cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .filter-pill:hover { background: #f1f3f4; border-color: #bdc1c6; }
+        .filter-pill.active { background: #e8f0fe; color: var(--primary); border-color: var(--primary); font-weight: bold; box-shadow: 0 1px 2px rgba(26,115,232,0.2); }
+
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px; } /* 縮小 min-width 因為內容變緊湊了 */
+        table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px; } 
         th { text-align: left; padding: 12px 10px; border-bottom: 2px solid #eee; color: var(--text-sub); font-size: 13px; }
-        td { padding: 12px 10px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; } /* 縮減 padding 讓畫面更瘦 */
+        td { padding: 12px 10px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; } 
         
         .main-info { font-size: 15px; font-weight: 600; color: #202124; }
         .sub-info { font-size: 12px; color: var(--text-sub); }
@@ -86,7 +92,7 @@
     <h1>👥 員工名冊管理</h1>
     <div class="form-row" id="employeeForm">
         <div class="input-group"><label>姓名</label><input type="text" id="eName"></div>
-        <div class="input-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option></select></div>
+        <div class="input-group"><label>部門</label><select id="eDept"><option>業務部</option><option>會計部</option><option>生產部</option><option>運輸部</option><option>倉儲部</option><option>人事部</option><option>採購部</option><option>品管部</option><option>主管人員</option></select></div>
         <div class="input-group"><label>到職日</label><input type="date" id="eDate"></div>
         <div class="input-group"><label>底薪</label><input type="number" id="eSal"></div>
         <div class="input-group"><label>變動獎金</label><input type="number" id="eBonus" value="0"></div>
@@ -98,6 +104,9 @@
             <button id="cancelBtn" class="btn btn-edit" style="display:none; margin-left:10px;" onclick="cancelEdit()">❌ 取消</button>
         </div>
     </div>
+    
+    <div id="deptFilters" class="dept-filter-container"></div>
+    
     <div class="table-responsive"><table><thead><tr><th>員工</th><th>特休天數</th><th>薪資/獎金</th><th>勞健保</th><th>操作</th></tr></thead><tbody id="empBody"></tbody></table></div>
 </div>
 
@@ -123,9 +132,10 @@
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = {}; let editingEmpName = null;
-    let currentTab = 'pending'; // 🌟 預設停留在待處理頁籤
+    let currentTab = 'pending'; 
+    let currentDeptFilter = '全部'; // 🌟 新增：目前選取的部門篩選狀態
 
-    // 🌟 瘦身版的時間格式：只顯示 月/日 時:分
+    // 🌟 瘦身版的時間格式
     function formatShortTime(timeStr) {
         if (!timeStr) return "";
         const d = new Date(timeStr); if (isNaN(d)) return timeStr;
@@ -133,7 +143,7 @@
         return `${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    function formatTime(timeStr) { // 保留原本給員工列表用的
+    function formatTime(timeStr) { 
         if (!timeStr) return "";
         const d = new Date(timeStr); if (isNaN(d)) return timeStr;
         const pad = (n) => n.toString().padStart(2, '0');
@@ -143,12 +153,18 @@
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    // 🌟 切換頁籤功能
+    // 🌟 切換假單頁籤功能
     function switchTab(tab) {
         currentTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + tab).classList.add('active');
-        render(); // 重新渲染表格
+        render(); 
+    }
+
+    // 🌟 切換部門篩選功能
+    function setDeptFilter(dept) {
+        currentDeptFilter = dept;
+        render(); // 重新渲染員工列表
     }
 
     function authRole() {
@@ -176,9 +192,26 @@
         document.getElementById('hrBox').style.display = isHR ? 'block' : 'none';
         document.getElementById('reportBox').style.display = (isHR || role === '會計部') ? 'block' : 'none';
 
-        if(db.employees && db.leave) {
-            document.getElementById('empBody').innerHTML = db.employees.filter(r=>r[0]!=="姓名" && r[0]!=="").map(r => {
-                const used = db.leave.filter(l => l[2] === r[0] && l[4] === "特休" && l[8] === "已生效").length;
+        if(db.employees) {
+            // 🌟 1. 動態生成「部門篩選按鈕」
+            let depts = ["全部"];
+            db.employees.forEach(r => {
+                if (r[1] && r[0] !== "姓名" && r[0] !== "" && !depts.includes(r[1])) {
+                    depts.push(r[1]); // 自動抓取試算表裡的部門名稱
+                }
+            });
+            document.getElementById('deptFilters').innerHTML = depts.map(d => 
+                `<button class="filter-pill ${currentDeptFilter === d ? 'active' : ''}" onclick="setDeptFilter('${d}')">${d}</button>`
+            ).join('');
+
+            // 🌟 2. 渲染員工列表 (根據篩選條件)
+            let empList = db.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
+            if (currentDeptFilter !== '全部') {
+                empList = empList.filter(r => r[1] === currentDeptFilter);
+            }
+
+            document.getElementById('empBody').innerHTML = empList.map(r => {
+                const used = db.leave ? db.leave.filter(l => l[2] === r[0] && l[4] === "特休" && l[8] === "已生效").length : 0;
                 return `<tr>
                     <td><div class="main-info">${r[0]}</div><div class="sub-info">${r[1]} · ${r[4]?formatTime(r[4]).split(' ')[0]:''}</div></td>
                     <td><div class="ins-highlight" style="color:#d93025;">剩 ${Number(r[5])-used} 天</div><div class="sub-info">總額 ${r[5]} 天</div></td>
@@ -187,28 +220,27 @@
                     <td><button class="btn btn-edit" onclick="startEdit('${r[0]}','${r[1]}','${r[3]}','${r[4]}','${r[7]}','${r[8]}','${r[9]}','${r[6]}')">✏️ 修改</button></td>
                 </tr>`;
             }).join('');
+            
+            // 防呆：如果某部門沒人
+            if (empList.length === 0) {
+                document.getElementById('empBody').innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#70757a;">目前「${currentDeptFilter}」沒有員工資料</td></tr>`;
+            }
         }
 
         if(db.leave) {
-            // 🌟 先過濾出所有有效的假單
             let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "").reverse();
 
-            // 🌟 根據選取的頁籤進行二次過濾
             if (currentTab === 'pending') {
-                leaveData = leaveData.filter(r => r[8] && r[8].includes('待')); // 只保留狀態裡有「待」字的
+                leaveData = leaveData.filter(r => r[8] && r[8].includes('待'));
             } else {
-                leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待'))); // 保留「已生效」、「已退件」等歷史
+                leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待'))); 
             }
 
-            // 🌟 生成瘦身版表格
             let tableHTML = leaveData.map(r => {
                 let next = (role.includes(r[3]) && r[8]==='待主管審核') ? '待人事審核' : (role==='人事部' && r[8]==='待人事審核') ? '待副總審核' : (role==='副總' && r[8]==='待副總審核') ? '已生效' : '';
                 let proof = (r[9] && r[9].includes('http')) ? `<a href="${r[9]}" target="_blank" class="proof-btn">📎 查看</a>` : `<span style="color:#ccc">無</span>`;
                 
-                // 狀態文字顏色判斷
                 let statusColor = r[8] === '已生效' ? '#28a745' : (r[8].includes('退') ? '#d93025' : '#f4b400');
-                
-                // 如果在歷史紀錄區，或者當前角色沒有權限核准，就不要顯示核准按鈕，讓畫面更乾淨
                 let actionBtn = (next && currentTab === 'pending') ? `<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>` : `<span style="color:#ccc">-</span>`;
 
                 return `<tr>
@@ -221,7 +253,6 @@
                 </tr>`;
             }).join('');
 
-            // 🌟 如果該頁籤沒資料的防呆提示
             if (leaveData.length === 0) {
                 tableHTML = `<tr><td colspan="6" style="text-align:center; padding:40px; color:#70757a; font-size:15px;">🎉 太棒了！目前沒有${currentTab === 'pending' ? '需要待處理' : '歷史'}的假單資料</td></tr>`;
             }
