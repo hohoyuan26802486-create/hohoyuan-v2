@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V14.5</title>
+    <title>禾禾園 - 專業管理後台 V14.6</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -17,11 +17,10 @@
         .tab-btn:hover { background: #f1f3f4; }
         .tab-btn.active { background: #e8f0fe; color: var(--primary); }
 
-        /* 🌟 部門膠囊按鈕樣式 (員工名冊用) */
-        .dept-filter-container { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; padding-bottom: 10px; }
-        .filter-pill { padding: 6px 16px; border: 1px solid #dadce0; background: white; border-radius: 20px; font-size: 14px; color: var(--text-sub); cursor: pointer; transition: 0.2s; font-weight: 500; }
-        .filter-pill:hover { background: #f1f3f4; border-color: #bdc1c6; }
-        .filter-pill.active { background: #e8f0fe; color: var(--primary); border-color: var(--primary); font-weight: bold; box-shadow: 0 1px 2px rgba(26,115,232,0.2); }
+        /* 🌟 部門篩選樞紐下拉選單樣式 (V14.6 新增) */
+        .dept-select-container { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee;}
+        .dept-select { padding: 8px 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; font-weight: bold; color: var(--primary); outline: none; background-color: white; cursor: pointer; min-width: 180px;}
+        .dept-select:hover { border-color: var(--primary); }
 
         .table-responsive { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 900px; } 
@@ -105,7 +104,7 @@
         </div>
     </div>
     
-    <div id="deptFilters" class="dept-filter-container"></div>
+    <div id="deptFilters" class="dept-select-container"></div>
     
     <div class="table-responsive"><table><thead><tr><th>員工</th><th>特休天數</th><th>薪資/獎金</th><th>勞健保</th><th>操作</th></tr></thead><tbody id="empBody"></tbody></table></div>
 </div>
@@ -133,9 +132,8 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     let db = {}; let editingEmpName = null;
     let currentTab = 'pending'; 
-    let currentDeptFilter = '全部'; // 🌟 新增：目前選取的部門篩選狀態
+    let currentDeptFilter = '全部'; 
 
-    // 🌟 瘦身版的時間格式
     function formatShortTime(timeStr) {
         if (!timeStr) return "";
         const d = new Date(timeStr); if (isNaN(d)) return timeStr;
@@ -153,7 +151,6 @@
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    // 🌟 切換假單頁籤功能
     function switchTab(tab) {
         currentTab = tab;
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -161,10 +158,9 @@
         render(); 
     }
 
-    // 🌟 切換部門篩選功能
     function setDeptFilter(dept) {
         currentDeptFilter = dept;
-        render(); // 重新渲染員工列表
+        render(); 
     }
 
     function authRole() {
@@ -193,18 +189,26 @@
         document.getElementById('reportBox').style.display = (isHR || role === '會計部') ? 'block' : 'none';
 
         if(db.employees) {
-            // 🌟 1. 動態生成「部門篩選按鈕」
+            // 🌟 V14.6: 動態生成「部門篩選樞紐選單」
             let depts = ["全部"];
             db.employees.forEach(r => {
                 if (r[1] && r[0] !== "姓名" && r[0] !== "" && !depts.includes(r[1])) {
-                    depts.push(r[1]); // 自動抓取試算表裡的部門名稱
+                    depts.push(r[1]); 
                 }
             });
-            document.getElementById('deptFilters').innerHTML = depts.map(d => 
-                `<button class="filter-pill ${currentDeptFilter === d ? 'active' : ''}" onclick="setDeptFilter('${d}')">${d}</button>`
+            
+            let optionsHTML = depts.map(d => 
+                `<option value="${d}" ${currentDeptFilter === d ? 'selected' : ''}>${d === '全部' ? '顯示全部員工' : d}</option>`
             ).join('');
+            
+            document.getElementById('deptFilters').innerHTML = `
+                <label for="deptSelect" style="font-size:14px; font-weight:bold; color:var(--text-sub);">🎯 部門篩選：</label>
+                <select id="deptSelect" class="dept-select" onchange="setDeptFilter(this.value)">
+                    ${optionsHTML}
+                </select>
+            `;
 
-            // 🌟 2. 渲染員工列表 (根據篩選條件)
+            // 渲染員工列表
             let empList = db.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
             if (currentDeptFilter !== '全部') {
                 empList = empList.filter(r => r[1] === currentDeptFilter);
@@ -221,7 +225,6 @@
                 </tr>`;
             }).join('');
             
-            // 防呆：如果某部門沒人
             if (empList.length === 0) {
                 document.getElementById('empBody').innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:#70757a;">目前「${currentDeptFilter}」沒有員工資料</td></tr>`;
             }
