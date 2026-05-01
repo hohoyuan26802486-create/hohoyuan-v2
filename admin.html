@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V14.8</title>
+    <title>禾禾園 - 專業管理後台 V14.9</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -234,7 +234,8 @@
         }
 
         if(db.leave) {
-            let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "").reverse();
+            // 🌟 完美排除了標題列的 Bug！
+            let leaveData = db.leave.filter(r => r[0] !== "單號 (ID)" && r[0] !== "ID" && r[0] !== "").reverse();
 
             if (currentTab === 'pending') {
                 leaveData = leaveData.filter(r => r[8] && r[8].includes('待'));
@@ -245,7 +246,6 @@
             let tableHTML = leaveData.map(r => {
                 let next = (role.includes(r[3]) && r[8]==='待主管審核') ? '待人事審核' : (role==='人事部' && r[8]==='待人事審核') ? '待副總審核' : (role==='副總' && r[8]==='待副總審核') ? '已生效' : '';
                 
-                // 🌟 強化版防呆抓取：確保就算格式奇怪也不會當機，並換上醒目藍色按鈕
                 let proofUrl = r[9] ? String(r[9]).trim() : "";
                 let proof = (proofUrl.includes('http')) ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 點擊查看單據</a>` : `<span style="color:#ccc">無</span>`;
                 
