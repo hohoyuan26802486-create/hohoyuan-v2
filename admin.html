@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V14.9</title>
+    <title>禾禾園 - 專業管理後台 V15.0</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -234,8 +234,15 @@
         }
 
         if(db.leave) {
-            // 🌟 完美排除了標題列的 Bug！
-            let leaveData = db.leave.filter(r => r[0] !== "單號 (ID)" && r[0] !== "ID" && r[0] !== "").reverse();
+            // 🌟 V15.0 修正 1：排除奇怪的標題列
+            let leaveData = db.leave.filter(r => r[0] !== "單號 (ID)" && r[0] !== "ID" && r[0] !== "");
+
+            // 🌟 V15.0 修正 2：精準依照「請假開始時間」由新到舊 (降冪) 排序
+            leaveData.sort((a, b) => {
+                let dateA = new Date(a[5]).getTime() || 0;
+                let dateB = new Date(b[5]).getTime() || 0;
+                return dateB - dateA; // 確保越新的日期排在越上面
+            });
 
             if (currentTab === 'pending') {
                 leaveData = leaveData.filter(r => r[8] && r[8].includes('待'));
