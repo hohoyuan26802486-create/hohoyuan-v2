@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V16.7 (完美相片除蟲版)</title>
+    <title>禾禾園 - 考勤系統 V18.1 (代理人與補件升級版)</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -100,10 +100,14 @@
                 🏖️ 目前特休餘額：<span id="annualLeaveCount" style="color: #d93025; font-size: 18px;">-</span> 天
             </div>
         </div>
+        
+        <!-- 🌟 新增的職位代理人欄位 -->
+        <div class="input-group"><label>🤝 職位代理人</label><select id="lvAgent"><option value="無">無</option></select></div>
+        
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="原因"></div>
-        <div class="input-group"><label>📸 證明照片 (病/公/喪假必填)</label><input type="file" id="lvFile" accept="image/*"></div>
+        <div class="input-group"><label>📸 證明照片 (若無照片系統將自動標為待補件)</label><input type="file" id="lvFile" accept="image/*"></div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
 
@@ -116,33 +120,15 @@
 </div>
 
 <script>
-    // 您的考勤系統大腦網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
-    
-    // 🌟 彈性上班人員名單
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
-
-    // 🌟 2026 國定假日清單 (系統會自動根據今天日期判定)
-    const HOLIDAYS_2026 = [
-        "2026-01-01", // 元旦
-        "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", // 春節年假
-        "2026-02-27", "2026-02-28", // 228和平紀念日
-        "2026-04-03", "2026-04-04", // 清明連假
-        "2026-05-01", // 勞動節
-        "2026-06-19", // 端午節
-        "2026-09-25", // 中秋節
-        "2026-10-09", "2026-10-10"  // 國慶連假
-    ];
-
+    const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; 
     let ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
     
-    // 🌟 假日智慧判定函數 (週末 + 國定假日)
     function isHolidayToday() {
-        const now = new Date();
-        const day = now.getDay();
-        const dateStr = now.toLocaleDateString('sv-SE'); // 格式為 YYYY-MM-DD
+        const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
         return (day === 0 || day === 6 || HOLIDAYS_2026.includes(dateStr));
     }
 
@@ -151,8 +137,7 @@
         document.getElementById('attName').value = name;
         document.getElementById('lvName').value = name;
         document.getElementById('prfName').value = name;
-        handleLeaveTypeChange(); 
-        handleTypeChange(); 
+        handleLeaveTypeChange(); handleTypeChange(); 
     }
 
     function handleLeaveTypeChange() {
@@ -160,8 +145,7 @@
         const box = document.getElementById('annualLeaveBox');
         if(!box) return;
         if (type === '特休') {
-            box.style.display = 'block';
-            updateAnnualLeave(document.getElementById('lvName').value);
+            box.style.display = 'block'; updateAnnualLeave(document.getElementById('lvName').value);
         } else { box.style.display = 'none'; }
     }
 
@@ -177,8 +161,7 @@
     }
 
     function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+        const R = 6371; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
@@ -187,11 +170,8 @@
         try {
             const currentName = document.getElementById('attName').value;
             const isFlexWorker = FLEX_WORKERS.includes(currentName);
-
-            // 🌟 智慧判定是否顯示假日選單
             const holidayBox = document.getElementById('holidayTypeBox');
-            if (isHolidayToday()) { holidayBox.style.display = "block"; } 
-            else { holidayBox.style.display = "none"; }
+            holidayBox.style.display = isHolidayToday() ? "block" : "none";
 
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return;
@@ -218,8 +198,7 @@
                 if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
                 else {
                     if (time >= 1010) { 
-                        addStatusBtn("因個人因素延後下班", true);
-                        addStatusBtn("經主管核准加班", false);
+                        addStatusBtn("因個人因素延後下班", true); addStatusBtn("經主管核准加班", false);
                     } else { addStatusBtn("正常下班", true); }
                 }
                 const btnAtt = document.getElementById('btnAtt');
@@ -230,8 +209,7 @@
 
     function addStatusBtn(txt, isSelected) {
         const div = document.createElement('div');
-        div.className = isSelected ? "status-btn selected" : "status-btn";
-        div.innerText = txt;
+        div.className = isSelected ? "status-btn selected" : "status-btn"; div.innerText = txt;
         if(isSelected) {
             selectedStatus = txt;
             const ob = document.getElementById('overtimeBox');
@@ -248,15 +226,11 @@
     }
 
     function updateGPSUI() {
-        const box = document.getElementById('gpsStatusBox');
-        const btn = document.getElementById('btnAtt');
+        const box = document.getElementById('gpsStatusBox'); const btn = document.getElementById('btnAtt');
         if(!box || !btn) return;
         const currentName = document.getElementById('attName').value;
         const isFlexWorker = FLEX_WORKERS.includes(currentName);
-        if (isFlexWorker) {
-            box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false;
-            return;
-        }
+        if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; return; }
         if (userLat === null) { box.innerText = "🛰️ 定位中..."; box.className = "gps-box gps-fail"; btn.disabled = true; } 
         else if (isWithinRange) { box.innerText = "✅ 進入打卡範圍"; box.className = "gps-box gps-ok"; btn.disabled = false; } 
         else { box.innerText = "❌ 距離太遠，請回公司"; box.className = "gps-box gps-fail"; btn.disabled = true; }
@@ -265,10 +239,17 @@
     async function fetchEmployees() {
         try {
             const res = await fetch(CONFIG_URL); globalDB = await res.json();
-            const opts = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "").map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
+            const validEmp = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
+            const opts = validEmp.map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
+            
+            // 🌟 載入代理人選單
+            const optsAgent = `<option value="無">無</option>` + opts;
+            
             document.getElementById('attName').innerHTML = opts; 
             document.getElementById('lvName').innerHTML = opts; 
             document.getElementById('prfName').innerHTML = opts;
+            document.getElementById('lvAgent').innerHTML = optsAgent;
+
             const bound = localStorage.getItem('bound_user');
             if(bound) {
                 document.getElementById('attName').value = bound; document.getElementById('attName').disabled = true;
@@ -284,7 +265,6 @@
         if (prompt("🔐 HR 密碼：") === "456") { localStorage.removeItem('bound_user'); alert("🔓 已解除鎖定"); location.reload(); } else { alert("❌ 密碼錯誤"); }
     }
 
-    // 🟢 打卡送出邏輯
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
@@ -313,43 +293,39 @@
         } catch (e) { alert("❌ 連線失敗"); btn.disabled = false; btn.innerText = "送出打卡"; }
     }
 
-    // 🟢 🌟 完全修復的請假送出邏輯 (將 photoData 改為正確的 imageFile)
+    // 🌟 修改：移除強制阻擋，並將代理人加入傳送資料
     async function submitLeave() {
         const name = document.getElementById('lvName').value;
         const type = document.getElementById('lvType').value;
         const start = document.getElementById('lvStart').value;
         const end = document.getElementById('lvEnd').value;
         const reason = document.getElementById('lvReason').value;
+        const agent = document.getElementById('lvAgent').value;
         const fileInput = document.getElementById('lvFile');
         
         if (!start || !end) return alert("⚠️ 請選擇開始與結束時間！");
-        
-        if ((type === "病假" || type === "公假" || type === "喪假") && fileInput.files.length === 0) {
-            return alert(`⚠️ 申請【${type}】必須附上證明照片喔！`);
-        }
 
         const btn = document.getElementById('btnLv'); 
-        btn.innerText = "⏳ 照片打包上傳中..."; 
+        btn.innerText = "⏳ 假單傳送中..."; 
         btn.disabled = true;
 
-        // 🌟 這裡修正了：統一為 imageFile 以符合大腦的期待
-        const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, imageFile: "" };
+        const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "" };
 
         if (fileInput.files.length > 0) {
             const reader = new FileReader();
             reader.onload = async function() {
-                p.imageFile = reader.result.split(',')[1]; // 🔑 這裡改對了包裹名稱
+                p.imageFile = reader.result.split(',')[1];
                 p.mimeType = fileInput.files[0].type;
                 p.fileName = fileInput.files[0].name;
                 await sendData(p, "✅ 假單與照片已成功送出！");
             };
             reader.readAsDataURL(fileInput.files[0]);
         } else {
-            await sendData(p, "✅ 假單已成功送出！");
+            // 沒有附照片，直接送出，大腦會自動標記「待補件」
+            await sendData(p, "✅ 假單已成功送出！(如需證明請記得補件)");
         }
     }
 
-    // 🟢 🌟 完全修復的補件送出邏輯
     function loadPendingProofs() {
         const name = document.getElementById('prfName').value;
         const sel = document.getElementById('prfSelect');
@@ -375,14 +351,12 @@
 
         const reader = new FileReader();
         reader.onload = async function() {
-            // 🌟 這裡修正了：action 改回 uploadLeaveProof，並把 photoData 改為 imageFile
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: reader.result.split(',')[1], mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
             await sendData(p, "✅ 補件照片上傳成功！");
         };
         reader.readAsDataURL(fileInput.files[0]);
     }
 
-    // 🟢 共用的發送器
     async function sendData(p, customSuccessMessage = "✅ 處理成功！") { 
         try { 
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
