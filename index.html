@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V18.2 (補休選項 + 代理人升級版)</title>
+    <title>禾禾園 - 考勤系統 V18.4 (定位修復版)</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -98,8 +98,7 @@
                 <option value="病假">病假</option>
                 <option value="生理假">生理假</option>
                 <option value="特休">特休</option>
-                <!-- 🌟 新增的補休選項 -->
-                <option value="補休">補休</option>
+                <option value="補休">補休</option> 
                 <option value="公假">公假</option>
                 <option value="婚假">婚假</option>
                 <option value="喪假">喪假</option>
@@ -111,7 +110,6 @@
             </div>
         </div>
         
-        <!-- 🌟 新增的職位代理人欄位 -->
         <div class="input-group"><label>🤝 職位代理人</label><select id="lvAgent"><option value="無">無</option></select></div>
         
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
@@ -130,13 +128,8 @@
 </div>
 
 <script>
-    // 您的考勤系統大腦網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
-    
-    // 🌟 彈性上班人員名單
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
-
-    // 🌟 2026 國定假日清單 (系統會自動根據今天日期判定)
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; 
     let ALLOWED_DIST = 1.0; 
@@ -216,6 +209,14 @@
                         addStatusBtn("因個人因素延後下班", true); addStatusBtn("經主管核准加班", false);
                     } else { addStatusBtn("正常下班", true); }
                 }
+                
+                // 🌟 【關鍵修復】下班打卡時，也強制檢查 GPS 定位
+                if (navigator.geolocation && !isFlexWorker) {
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        userLat = pos.coords.latitude; userLon = pos.coords.longitude;
+                    });
+                }
+                
                 const btnAtt = document.getElementById('btnAtt');
                 if(btnAtt) btnAtt.disabled = false;
             }
@@ -257,7 +258,6 @@
             const validEmp = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
             const opts = validEmp.map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
             
-            // 🌟 載入代理人選單
             const optsAgent = `<option value="無">無</option>` + opts;
             
             document.getElementById('attName').innerHTML = opts; 
@@ -308,7 +308,6 @@
         } catch (e) { alert("❌ 連線失敗"); btn.disabled = false; btn.innerText = "送出打卡"; }
     }
 
-    // 🌟 移除強制阻擋，並將代理人加入傳送資料
     async function submitLeave() {
         const name = document.getElementById('lvName').value;
         const type = document.getElementById('lvType').value;
@@ -336,7 +335,6 @@
             };
             reader.readAsDataURL(fileInput.files[0]);
         } else {
-            // 沒有附照片，直接送出，大腦會自動標記「待補件」
             await sendData(p, "✅ 假單已成功送出！(如需證明請記得補件)");
         }
     }
