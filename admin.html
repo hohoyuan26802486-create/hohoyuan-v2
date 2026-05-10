@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V18.7 (HR 功能全強化版)</title>
+    <title>禾禾園 - 專業管理後台 V18.9 (假單部門篩選與時間修復版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -21,6 +21,7 @@
         th { text-align: left; padding: 12px 10px; border-bottom: 2px solid #eee; color: var(--text-sub); font-size: 13px; }
         td { padding: 12px 10px; border-bottom: 1px solid #f1f1f1; vertical-align: middle; } 
         .main-info { font-size: 15px; font-weight: 600; color: #202124; }
+        .sub-info { font-size: 12px; color: var(--text-sub); margin-top: 4px;}
         
         .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: var(--primary); color: white; }
@@ -28,6 +29,7 @@
         .btn-warning { background: var(--warning); color: white; }
         .btn-danger { background: #ffebee; color: #d93025; border: 1px solid #ffcdd2; }
         .btn-edit { background: white; border: 1px solid #dadce0; color: var(--text-main); }
+        .proof-btn { display: inline-flex; align-items: center; background: #e8f0fe; color: #1a73e8 !important; border: 1px solid #cce0ff; padding: 6px 12px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; }
 
         .hr-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--text-sub); }
@@ -57,14 +59,14 @@
 
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
         <div style="flex: 1; min-width: 200px;">
-            <label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">1. 選擇部門 (篩選清單)</label>
+            <label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">1. 選擇部門</label>
             <select id="filterDept" onchange="updateEmpDropdown()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-weight:bold;">
                 <option value="">顯示全公司...</option>
                 <option value="業務部">業務部</option><option value="倉儲部">倉儲部</option><option value="運輸部">運輸部</option><option value="生產部">生產部</option><option value="行政部">行政部</option><option value="會計部">會計部</option>
             </select>
         </div>
         <div style="flex: 1; min-width: 200px;">
-            <label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">2. 選擇員工 (自動帶入下方資料)</label>
+            <label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">2. 選擇員工 (細部微調)</label>
             <select id="filterEmp" onchange="loadEmpDetails()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;">
                 <option value="">請先選擇部門...</option>
             </select>
@@ -85,233 +87,4 @@
         <div class="form-group"><label>基本薪資 (底薪)</label><input type="number" id="empSalary"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
         <div class="form-group"><label>變動獎金 (月)</label><input type="number" id="bonus" value="0"></div>
-        <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
-        <div class="form-group"><label>健保自付額</label><input type="number" id="healthIns" value="0"></div>
-        <div class="form-group"><label>健保眷屬人數</label><input type="number" id="dependents" value="0"></div>
-        <div class="form-group" style="display:flex; align-items:flex-end;">
-            <button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存員工設定</button>
-        </div>
-    </div>
-    
-    <div class="table-responsive">
-        <table>
-            <thead><tr><th>姓名</th><th>部門</th><th>薪資/類別</th><th>到職日</th><th>特休 (總計 / 剩餘)</th><th>操作</th></tr></thead>
-            <tbody id="staffBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<div class="container">
-    <h1>📝 假單審核中心</h1>
-    <div class="tab-container">
-        <button id="tab-pending" class="tab-btn active" onclick="switchTab('pending')">🔴 待處理假單</button>
-        <button id="tab-history" class="tab-btn" onclick="switchTab('history')">⚪ 歷史紀錄</button>
-    </div>
-    <div class="table-responsive">
-        <table>
-            <thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>操作</th></tr></thead>
-            <tbody id="leaveBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
-    let db = {}; let currentTab = 'pending'; 
-
-    function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
-    function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
-
-    function switchTab(tab) {
-        currentTab = tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.add('active'); render(); 
-    }
-
-    function authRole() {
-        const r = document.getElementById('adminRole').value;
-        if((r==='人事部' || r==='會計部' || r==='副總') && prompt("請輸入管理員密碼")!=="123") { 
-            document.getElementById('adminRole').value="業務部主管"; 
-        }
-        render();
-    }
-
-    async function fetchData() { 
-        showLoading("獲取雲端資料...");
-        try { 
-            const res = await fetch(CONFIG_URL); 
-            db = await res.json(); 
-            render(); 
-        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
-    }
-
-    function render() {
-        const role = document.getElementById('adminRole').value;
-        const hrBox = document.getElementById('hrBox');
-
-        if (role === '人事部' || role === '會計部' || role === '副總') {
-            hrBox.style.display = 'block';
-            renderStaff(document.getElementById('filterDept').value);
-        } else {
-            hrBox.style.display = 'none';
-        }
-
-        if(db.leave) {
-            let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號 (ID)" && r[0] !== "");
-            leaveData.sort((a, b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
-
-            if (currentTab === 'pending') {
-                leaveData = leaveData.filter(r => r[8] && r[8].includes('待'));
-            } else {
-                leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待')));
-            }
-
-            document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
-                let next = '';
-                if (role.includes(r[3].replace('部','')) && r[8] === '待主管審核') next = '待副總審核';
-                else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核')) next = '待人事核銷';
-                else if (role === '人事部' && r[8] === '待人事核銷') next = '已生效';
-                
-                let proofUrl = r[9] ? String(r[9]).trim() : "";
-                let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
-                let actionBtn = (next && currentTab === 'pending') ? `<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>` : "-";
-
-                return `<tr>
-                    <td><div class="main-info">${r[2]} <small>(${r[3]})</small></div></td>
-                    <td><small>${r[5]}<br>~<br>${r[6]}</small></td>
-                    <td><b>${r[4]}</b></td>
-                    <td>${proof}</td>
-                    <td><span style="color:#1a73e8;font-weight:bold;">${r[8]}</span></td>
-                    <td>${actionBtn}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">目前無假單紀錄</td></tr>';
-        }
-    }
-
-    // 🌟 渲染員工清單 (包含特休剩餘計算)
-    function renderStaff(filterDept = "") {
-        if(!db.employees) return;
-        const staffBody = document.getElementById('staffBody');
-        let staffData = db.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
-        
-        if (filterDept) {
-            staffData = staffData.filter(r => r[1] === filterDept);
-        }
-
-        staffBody.innerHTML = staffData.map(r => {
-            // 計算剩餘特休
-            let totalLeave = Number(r[5]) || 0;
-            let usedLeave = 0;
-            if (db.leave) {
-                db.leave.forEach(lv => {
-                    if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") {
-                        let days = (new Date(lv[6]) - new Date(lv[5])) / (1000 * 60 * 60 * 24);
-                        usedLeave += Math.max(0.5, Math.ceil(days * 2) / 2); // 簡單天數估計
-                    }
-                });
-            }
-            let remainLeave = Math.max(0, totalLeave - usedLeave);
-
-            return `
-                <tr>
-                    <td><b>${r[0]}</b></td>
-                    <td>${r[1]}</td>
-                    <td>$${r[3]} (${r[2]})</td>
-                    <td>${r[4] ? new Date(r[4]).toLocaleDateString() : '-'}</td>
-                    <td><b style="color:#1a73e8;">${totalLeave}</b> / <b style="color:#d93025;">${remainLeave}</b> 天</td>
-                    <td>
-                        <button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1]}')">編輯</button>
-                        <button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    // 🌟 部門篩選與員工下拉更新
-    function updateEmpDropdown() {
-        const dept = document.getElementById('filterDept').value;
-        const empSelect = document.getElementById('filterEmp');
-        empSelect.innerHTML = '<option value="">請選擇員工...</option>';
-        
-        renderStaff(dept); // 過濾表格
-
-        if (!dept || !db.employees) return;
-        db.employees.filter(r => r[1] === dept).forEach(r => {
-            empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`;
-        });
-    }
-
-    // 🌟 自動載入員工詳細資料到表單
-    function loadEmpDetails() {
-        const name = document.getElementById('filterEmp').value;
-        if (!name) return clearForm();
-        const emp = db.employees.find(r => r[0] === name);
-        if (emp) {
-            document.getElementById('empName').value = emp[0];
-            document.getElementById('empDept').value = emp[1];
-            document.getElementById('payType').value = emp[2];
-            document.getElementById('empSalary').value = emp[3];
-            document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
-            document.getElementById('bonus').value = emp[6] || 0;
-            document.getElementById('laborIns').value = emp[7] || 0;
-            document.getElementById('healthIns').value = emp[8] || 0;
-            document.getElementById('dependents').value = emp[9] || 0;
-        }
-    }
-
-    function quickEdit(name, dept) {
-        document.getElementById('filterDept').value = dept;
-        updateEmpDropdown();
-        document.getElementById('filterEmp').value = name;
-        loadEmpDetails();
-    }
-
-    function clearForm() {
-        ['empName','empSalary','obDate'].forEach(id => document.getElementById(id).value = "");
-        ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0");
-        document.getElementById('filterEmp').value = "";
-    }
-
-    async function saveEmployee() {
-        const payload = {
-            action: "saveEmployee",
-            name: document.getElementById('empName').value,
-            dept: document.getElementById('empDept').value,
-            payType: document.getElementById('payType').value,
-            salary: document.getElementById('empSalary').value,
-            onboardingDate: document.getElementById('obDate').value,
-            bonus: document.getElementById('bonus').value,
-            laborIns: document.getElementById('laborIns').value,
-            healthIns: document.getElementById('healthIns').value,
-            dependents: document.getElementById('dependents').value
-        };
-        if(!payload.name || !payload.salary) return alert("姓名與薪資必填！");
-        showLoading("儲存中...");
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
-            alert("✅ 儲存成功"); fetchData(); clearForm();
-        } catch(e) { alert("失敗"); hideLoading(); }
-    }
-
-    async function updLv(id, s) {
-        showLoading("審核中...");
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })});
-            fetchData(); alert("✅ 審核成功");
-        } catch (e) { alert("錯誤"); hideLoading(); }
-    }
-
-    async function deleteEmp(name) {
-        if(!confirm(`刪除 ${name}？`)) return;
-        showLoading("刪除中...");
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name })});
-            fetchData(); alert("✅ 已刪除");
-        } catch (e) { alert("失敗"); hideLoading(); }
-    }
-
-    fetchData();
-</script>
-</body>
-</html>
+        <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns"
