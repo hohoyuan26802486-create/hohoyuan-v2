@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V18.4 (定位修復版)</title>
+    <title>禾禾園 - 考勤系統 V18.5 (特權免定位版)</title>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
@@ -129,7 +129,13 @@
 
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
+    
+    // 🌟 原有的彈性上班名單 (連遲到都不算)
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
+    
+    // 🌟 新增：特權免定位名單 (蔡政達只免除GPS，但仍會計算遲到與時數)
+    const NO_GPS_WORKERS = ["蔡政達"];
+
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; 
     let ALLOWED_DIST = 1.0; 
@@ -178,6 +184,7 @@
         try {
             const currentName = document.getElementById('attName').value;
             const isFlexWorker = FLEX_WORKERS.includes(currentName);
+            const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName);
             const holidayBox = document.getElementById('holidayTypeBox');
             holidayBox.style.display = isHolidayToday() ? "block" : "none";
 
@@ -210,8 +217,8 @@
                     } else { addStatusBtn("正常下班", true); }
                 }
                 
-                // 🌟 【關鍵修復】下班打卡時，也強制檢查 GPS 定位
-                if (navigator.geolocation && !isFlexWorker) {
+                // 🌟 這裡把蔡政達也加入「免除下班定位檢查」的行列
+                if (navigator.geolocation && !isFlexWorker && !isNoGpsWorker) {
                     navigator.geolocation.getCurrentPosition(pos => {
                         userLat = pos.coords.latitude; userLon = pos.coords.longitude;
                     });
@@ -246,7 +253,12 @@
         if(!box || !btn) return;
         const currentName = document.getElementById('attName').value;
         const isFlexWorker = FLEX_WORKERS.includes(currentName);
+        const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName); // 🌟 檢查是否為白名單
+
+        // 🌟 判斷並給予不同的放行提示
         if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; return; }
+        if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; return; }
+        
         if (userLat === null) { box.innerText = "🛰️ 定位中..."; box.className = "gps-box gps-fail"; btn.disabled = true; } 
         else if (isWithinRange) { box.innerText = "✅ 進入打卡範圍"; box.className = "gps-box gps-ok"; btn.disabled = false; } 
         else { box.innerText = "❌ 距離太遠，請回公司"; box.className = "gps-box gps-fail"; btn.disabled = true; }
