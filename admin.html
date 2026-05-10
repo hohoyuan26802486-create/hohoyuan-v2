@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.2 (薪資結算與報表匯出版)</title>
+    <title>禾禾園 - 專業管理後台 V19.3 (薪資清爽排版與獨立建檔版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -23,13 +23,14 @@
         .main-info { font-size: 15px; font-weight: 600; color: #202124; }
         .sub-info { font-size: 12px; color: var(--text-sub); margin-top: 4px;}
         
-        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-warning { background: var(--warning); color: white; }
-        .btn-danger { background: #ffebee; color: #d93025; border: 1px solid #ffcdd2; }
-        .btn-edit { background: white; border: 1px solid #dadce0; color: var(--text-main); }
-        .proof-btn { display: inline-flex; align-items: center; background: #e8f0fe; color: #1a73e8 !important; border: 1px solid #cce0ff; padding: 6px 12px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: bold; }
+        /* 統一按鈕基礎樣式 */
+        .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; color: white !important; }
+        .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-primary { background: #1a73e8; }
+        .btn-danger { background: #d93025; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #f4b400; }
+        .btn-edit { background: white; border: 1px solid #dadce0; color: var(--text-main) !important; }
 
         .hr-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--text-sub); }
@@ -57,7 +58,7 @@
 <div id="hrBox" class="container" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0;">👥 員工人事維護與薪資調整</h1>
-        <button class="btn btn-edit" style="color:var(--danger); font-weight:bold;" onclick="changeAdminPassword()">🔑 更換管理密碼</button>
+        <button class="btn btn-edit" style="color:var(--danger) !important; font-weight:bold;" onclick="changeAdminPassword()">🔑 更換管理密碼</button>
     </div>
 
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
@@ -70,60 +71,54 @@
         </div>
         <div style="flex: 1; min-width: 200px;">
             <label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">2. 選擇員工 (細部微調)</label>
-            <select id="filterEmp" onchange="loadEmpDetails()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;">
-                <option value="">請先選擇部門...</option>
-            </select>
+            <select id="filterEmp" onchange="loadEmpDetails()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;"><option value="">請先選擇部門...</option></select>
         </div>
-        <div style="flex: 0.5; min-width: 120px; display: flex; align-items: flex-end;">
-            <button class="btn btn-warning" onclick="clearForm()" style="width: 100%; height: 35px;">➕ 新增員工</button>
-        </div>
+        <div style="flex: 0.5; min-width: 120px; display: flex; align-items: flex-end;"><button class="btn btn-warning" onclick="clearForm()" style="width: 100%; height: 35px;">➕ 新增員工</button></div>
     </div>
 
     <div class="hr-form-grid">
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
-        <div class="form-group"><label>所屬部門</label>
-            <select id="empDept">
-                <option>業務部</option><option>倉儲部</option><option>運輸部</option><option>生產部</option><option>行政部</option><option>會計部</option>
-            </select>
-        </div>
+        <div class="form-group"><label>所屬部門</label><select id="empDept"><option>業務部</option><option>倉儲部</option><option>運輸部</option><option>生產部</option><option>行政部</option><option>會計部</option></select></div>
         <div class="form-group"><label>計薪類別</label><select id="payType"><option>月薪</option><option>時薪</option></select></div>
-        <div class="form-group"><label>基本薪資 (底薪)</label><input type="number" id="empSalary"></div>
+        <div class="form-group"><label>基本薪資</label><input type="number" id="empSalary"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
-        <div class="form-group"><label>變動獎金 (月)</label><input type="number" id="bonus" value="0"></div>
-        <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
-        <div class="form-group"><label>健保自付額</label><input type="number" id="healthIns" value="0"></div>
-        <div class="form-group"><label>健保眷屬人數</label><input type="number" id="dependents" value="0"></div>
-        <div class="form-group" style="display:flex; align-items:flex-end;">
-            <button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存修改</button>
-        </div>
+        <div class="form-group"><label>變動獎金</label><input type="number" id="bonus" value="0"></div>
+        <div class="form-group"><label>勞保自付</label><input type="number" id="laborIns" value="0"></div>
+        <div class="form-group"><label>健保自付</label><input type="number" id="healthIns" value="0"></div>
+        <div class="form-group"><label>眷屬人數</label><input type="number" id="dependents" value="0"></div>
+        <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存修改</button></div>
     </div>
     
     <div class="table-responsive">
         <table>
-            <thead><tr><th>姓名</th><th>部門</th><th>薪資/類別</th><th>到職日</th><th>特休 (總計 / 剩餘)</th><th>操作</th></tr></thead>
+            <thead><tr><th>姓名</th><th>部門</th><th>薪資/類別</th><th>到職日</th><th>特休 (總/剩)</th><th>操作</th></tr></thead>
             <tbody id="staffBody"></tbody>
         </table>
     </div>
 </div>
 
-<div id="salaryBox" class="container" style="display:none; background-color: #fff9e6; border: 2px solid #ffeb3b;">
+<div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
     <h1 style="color: #d35400; border-left: 5px solid #d35400; padding-left:15px; margin-top:0;">💰 月底薪資結算與報表匯出</h1>
     
-    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <div style="flex: 1; min-width: 250px;">
-            <label style="font-weight:bold; color:#d35400; display:block; margin-bottom:5px;">📅 選擇欲結算的月份</label>
-            <input type="month" id="salaryMonth" onchange="renderSalary()" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-weight:bold; font-size: 16px;">
+    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="background:#fef5e7; padding:10px 15px; border-radius:8px; border:1px solid #f9e79f;">
+                <label style="font-weight:bold; color:#d35400; font-size: 16px; margin-right:10px;">📅 選擇結算月份</label>
+                <input type="month" id="salaryMonth" onchange="renderSalary()" style="padding:8px; border-radius:6px; border:1px solid #ccc; font-weight:bold; font-size: 15px; outline:none; cursor:pointer;">
+            </div>
         </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
-            <button class="btn btn-primary" onclick="calculateSalary()" style="height: 42px; font-size: 14px;">⚙️ 1. 執行薪資結算</button>
-            <button class="btn btn-danger" onclick="generatePDF()" style="height: 42px; font-size: 14px; background: #c0392b;">📄 2. 產出 PDF 薪資單</button>
-            <button class="btn btn-success" onclick="exportExcel()" style="height: 42px; font-size: 14px; background: #27ae60;">📊 3. 下載 Excel 報表</button>
+
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <button class="btn btn-primary" style="height: 45px; padding: 0 25px;" onclick="calculateSalary()">⚙️ 1. 執行薪資結算</button>
+            <button class="btn btn-danger" style="height: 45px; padding: 0 25px;" onclick="generatePDF()">📄 2. 產出 PDF 薪資單</button>
+            <button class="btn btn-success" style="height: 45px; padding: 0 25px;" onclick="exportExcel()">📊 3. 下載 Excel 報表</button>
         </div>
     </div>
     
     <div class="table-responsive">
         <table>
-            <thead><tr><th>結算月份</th><th>姓名</th><th>部門</th><th>總工時</th><th>基本薪資</th><th>遲到/請假扣款</th><th>實發總計</th></tr></thead>
+            <thead><tr style="background:#f8f9fa;"><th>結算月份</th><th>姓名</th><th>部門</th><th>總工時</th><th>基本薪資</th><th>遲到/請假扣款</th><th>實發總計</th></tr></thead>
             <tbody id="salaryBody"></tbody>
         </table>
     </div>
@@ -132,7 +127,6 @@
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0;">📝 假單審核中心</h1>
-        
         <div style="background:#e8f0fe; padding:8px 15px; border-radius:8px; border:1px solid #cce0ff; display:flex; align-items:center; gap:10px;">
             <label style="font-weight:bold; color:#1a73e8; font-size:14px;">🔍 篩選部門：</label>
             <select id="leaveDeptFilter" onchange="render()" style="padding:6px 10px; border-radius:6px; border:1px solid #1a73e8; outline:none; font-weight:bold; color:#1a73e8; cursor:pointer;">
@@ -141,27 +135,16 @@
             </select>
         </div>
     </div>
-
-    <div class="tab-container">
-        <button id="tab-pending" class="tab-btn active" onclick="switchTab('pending')">🔴 待處理假單</button>
-        <button id="tab-history" class="tab-btn" onclick="switchTab('history')">⚪ 歷史紀錄</button>
-    </div>
-    <div class="table-responsive">
-        <table>
-            <thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead>
-            <tbody id="leaveBody"></tbody>
-        </table>
-    </div>
+    <div class="tab-container"><button id="tab-pending" class="tab-btn active" onclick="switchTab('pending')">🔴 待處理假單</button><button id="tab-history" class="tab-btn" onclick="switchTab('history')">⚪ 歷史紀錄</button></div>
+    <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
-    let db = {}; let currentTab = 'pending'; 
+    let db = {}; let currentTab = 'pending';
 
     function formatShortTime(timeStr) {
-        if (!timeStr) return ""; 
-        const d = new Date(timeStr); 
-        if (isNaN(d.getTime())) return timeStr;
+        if (!timeStr) return ""; const d = new Date(timeStr); if (isNaN(d.getTime())) return timeStr;
         const pad = (n) => n.toString().padStart(2, '0');
         return `${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
@@ -169,62 +152,36 @@
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
 
-    function switchTab(tab) {
-        currentTab = tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.add('active'); render(); 
-    }
+    function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('tab-' + tab).classList.add('active'); render(); }
 
     function authRole() {
         const r = document.getElementById('adminRole').value;
         const correctPwd = db.adminPassword || "123";
-        
-        if((r === '人事部' || r === '副總') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
-            alert("❌ 密碼錯誤！");
-            document.getElementById('adminRole').value="業務部主管"; 
+        if((r==='人事部' || r==='副總') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
+            alert("❌ 密碼錯誤！"); document.getElementById('adminRole').value="業務部主管"; 
         }
         render();
     }
 
     async function fetchData() { 
         showLoading("獲取最新資料...");
-        try { 
-            const res = await fetch(CONFIG_URL); 
-            db = await res.json(); 
-            render(); 
-            renderSalary(); // 抓完資料順便更新薪資表
-        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+        try { const res = await fetch(CONFIG_URL); db = await res.json(); render(); renderSalary(); } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     function render() {
         const role = document.getElementById('adminRole').value;
         const hrBox = document.getElementById('hrBox');
         const salaryBox = document.getElementById('salaryBox');
+        if (role === '人事部' || role === '副總') { hrBox.style.display = 'block'; salaryBox.style.display = 'block'; renderStaff(document.getElementById('filterDept').value); } else { hrBox.style.display = 'none'; salaryBox.style.display = 'none'; }
 
-        // 🌟 核心防護：只有「人事部」和「副總」能看到 HR 薪資與結算區塊
-        if (role === '人事部' || role === '副總') {
-            hrBox.style.display = 'block';
-            salaryBox.style.display = 'block';
-            renderStaff(document.getElementById('filterDept').value);
-        } else { 
-            hrBox.style.display = 'none'; 
-            salaryBox.style.display = 'none';
-        }
-
-        // 渲染假單
         if(db.leave) {
             let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號 (ID)" && r[0] !== "");
-            
-            const leaveFilter = document.getElementById('leaveDeptFilter');
-            if (leaveFilter && leaveFilter.value) {
-                leaveData = leaveData.filter(r => r[3] === leaveFilter.value);
-            }
-
+            const leaveFilter = document.getElementById('leaveDeptFilter').value;
+            if (leaveFilter) { leaveData = leaveData.filter(r => r[3] === leaveFilter); }
             leaveData.sort((a, b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
 
-            if (currentTab === 'pending') {
-                leaveData = leaveData.filter(r => r[8] && r[8].includes('待'));
-            } else { leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待'))); }
+            if (currentTab === 'pending') { leaveData = leaveData.filter(r => r[8] && r[8].includes('待')); } 
+            else { leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待'))); }
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
@@ -237,201 +194,89 @@
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
                 let actionBtn = (next && currentTab === 'pending') ? `<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>` : "-";
 
-                return `<tr>
-                    <td><div class="main-info">${r[2]} <small>(${r[3]})</small></div>${agentText}${reasonText}</td>
-                    <td><div style="font-size:13px; color:#3c4043;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td>
-                    <td><b>${r[4]}</b></td>
-                    <td>${proof}</td>
-                    <td><span style="color:#1a73e8;font-weight:bold;">${r[8]}</span></td>
-                    <td>${actionBtn}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">無符合條件之紀錄</td></tr>';
+                return `<tr><td><div class="main-info">${r[2]} <small>(${r[3]})</small></div>${agentText}${reasonText}</td><td><div style="font-size:13px;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td><td><b>${r[4]}</b></td><td>${proof}</td><td><span style="color:#1a73e8;font-weight:bold;">${r[8]}</span></td><td>${actionBtn}</td></tr>`;
+            }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">無資料</td></tr>';
         }
     }
 
     function renderStaff(filterDept = "") {
         if(!db.employees) return;
-        const staffBody = document.getElementById('staffBody');
         let staffData = db.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
         if (filterDept) { staffData = staffData.filter(r => r[1] === filterDept); }
-
-        staffBody.innerHTML = staffData.map(r => {
-            let totalLeave = Number(r[5]) || 0;
-            let usedLeave = 0;
-            if (db.leave) {
-                db.leave.forEach(lv => {
-                    if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") {
-                        let days = (new Date(lv[6]) - new Date(lv[5])) / (1000 * 60 * 60 * 24);
-                        usedLeave += Math.max(0.5, Math.ceil(days * 2) / 2);
-                    }
-                });
-            }
-            let remainLeave = Math.max(0, totalLeave - usedLeave);
-            return `
-                <tr>
-                    <td><b>${r[0]}</b></td>
-                    <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1]}</span></td>
-                    <td>$${r[3]} (${r[2]})</td>
-                    <td>${r[4] ? new Date(r[4]).toLocaleDateString() : '-'}</td>
-                    <td><b style="color:#70757a;">${totalLeave}</b> 天 / <b style="color:#d93025;">${remainLeave}</b> 天</td>
-                    <td>
-                        <button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1]}')">編輯</button>
-                        <button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button>
-                    </td>
-                </tr>
-            `;
+        document.getElementById('staffBody').innerHTML = staffData.map(r => {
+            let total = Number(r[5]) || 0; let used = 0;
+            if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
+            return `<tr><td><b>${r[0]}</b></td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1]}</span></td><td>$${r[3]}</td><td>${r[4] ? new Date(r[4]).toLocaleDateString() : '-'}</td><td><b>${total} / ${Math.max(0, total-used)}</b></td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1]}')">編輯</button></td></tr>`;
         }).join('');
     }
 
     function updateEmpDropdown() {
-        const dept = document.getElementById('filterDept').value;
-        const empSelect = document.getElementById('filterEmp');
-        empSelect.innerHTML = '<option value="">請選擇員工...</option>';
-        renderStaff(dept);
-        if (!dept || !db.employees) return;
-        db.employees.filter(r => r[1] === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; });
+        const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp');
+        empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept);
+        if (dept && db.employees) { db.employees.filter(r => r[1] === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); }
     }
 
     function loadEmpDetails() {
-        const name = document.getElementById('filterEmp').value;
-        if (!name) return clearForm();
+        const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
             document.getElementById('empName').value = emp[0]; document.getElementById('empDept').value = emp[1]; document.getElementById('payType').value = emp[2];
             document.getElementById('empSalary').value = emp[3]; document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
-            document.getElementById('bonus').value = emp[6] || 0; document.getElementById('laborIns').value = emp[7] || 0; document.getElementById('healthIns').value = emp[8] || 0; document.getElementById('dependents').value = emp[9] || 0;
+            document.getElementById('bonus').value = emp[6]; document.getElementById('laborIns').value = emp[7]; document.getElementById('healthIns').value = emp[8]; document.getElementById('dependents').value = emp[9];
         }
     }
 
-    function quickEdit(name, dept) {
-        document.getElementById('filterDept').value = dept;
-        updateEmpDropdown();
-        document.getElementById('filterEmp').value = name;
-        loadEmpDetails();
-        window.scrollTo({ top: document.getElementById('hrBox').offsetTop, behavior: 'smooth' });
-    }
+    function quickEdit(n, d) { document.getElementById('filterDept').value = d; updateEmpDropdown(); document.getElementById('filterEmp').value = n; loadEmpDetails(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-    function clearForm() {
-        ['empName','empSalary','obDate'].forEach(id => document.getElementById(id).value = "");
-        ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0");
-        document.getElementById('filterEmp').value = "";
-    }
+    function clearForm() { ['empName','empSalary','obDate'].forEach(id => document.getElementById(id).value = ""); ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); document.getElementById('filterEmp').value = ""; }
 
     async function saveEmployee() {
-        const payload = {
-            action: "saveEmployee", name: document.getElementById('empName').value, dept: document.getElementById('empDept').value, payType: document.getElementById('payType').value, salary: document.getElementById('empSalary').value, onboardingDate: document.getElementById('obDate').value, bonus: document.getElementById('bonus').value, laborIns: document.getElementById('laborIns').value, healthIns: document.getElementById('healthIns').value, dependents: document.getElementById('dependents').value
-        };
-        if(!payload.name || !payload.salary) return alert("必填欄位缺失！");
-        showLoading("儲存中...");
-        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("✅ 儲存成功"); fetchData(); clearForm(); } catch(e) { alert("失敗"); hideLoading(); }
+        const p = { action: "saveEmployee", name: document.getElementById('empName').value, dept: document.getElementById('empDept').value, payType: document.getElementById('payType').value, salary: document.getElementById('empSalary').value, onboardingDate: document.getElementById('obDate').value, bonus: document.getElementById('bonus').value, laborIns: document.getElementById('laborIns').value, healthIns: document.getElementById('healthIns').value, dependents: document.getElementById('dependents').value };
+        if(!p.name || !p.salary) return alert("姓名與薪資必填！");
+        showLoading("儲存中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 儲存成功"); fetchData(); clearForm();
     }
 
-    async function updLv(id, s) {
-        showLoading("審核中...");
-        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核成功"); } catch (e) { alert("錯誤"); hideLoading(); }
-    }
-
-    async function deleteEmp(name) {
-        if(!confirm(`刪除 ${name}？`)) return;
-        showLoading("刪除中...");
-        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name })}); fetchData(); alert("✅ 已刪除"); } catch (e) { alert("失敗"); hideLoading(); }
-    }
+    async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
 
     async function changeAdminPassword() {
-        const newPwd = prompt("請設定新的管理員密碼：\n(建議設定好記的數字或英文)");
-        if (!newPwd) return;
-        if (confirm(`確定要將密碼更新為 [ ${newPwd} ] 嗎？`)) {
-            showLoading("同步至雲端中...");
-            try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", newPassword: newPwd })}); alert("✅ 密碼更新成功！請重新整理網頁。"); location.reload(); } catch (e) { alert("更新失敗，請檢查網路。"); hideLoading(); }
-        }
+        const newPwd = prompt("請設定新的管理員密碼："); if (!newPwd) return;
+        if (confirm(`確定要將密碼更新為 [ ${newPwd} ] 嗎？`)) { showLoading("同步至雲端中..."); try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", newPassword: newPwd })}); alert("✅ 密碼更新成功！"); location.reload(); } catch (e) { alert("更新失敗"); hideLoading(); } }
     }
 
     // ==========================================
-    // 💰 薪資結算與報表匯出功能區
+    // 💰 薪資功能區
     // ==========================================
-    
-    // 渲染薪資預覽表
     function renderSalary() {
         const month = document.getElementById('salaryMonth').value;
         const tbody = document.getElementById('salaryBody');
-        if (!month || !db.Salary_Summary) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#aaa;">請先選擇結算月份以顯示報表</td></tr>';
-            return;
-        }
-
+        if (!month || !db.Salary_Summary) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#aaa;">請先選擇結算月份</td></tr>'; return; }
         const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
-        
-        if (rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#d93025; font-weight:bold;">此月份尚無結算資料，請點擊上方【執行薪資結算】</td></tr>';
-            return;
-        }
-
+        if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#d93025;">此月份尚未結算，請點擊上方執行鈕</td></tr>'; return; }
         tbody.innerHTML = rows.map(r => {
-            // 計算總扣款 (遲到 + 事假 + 病假)
             const totalDeduct = Number(r[11] || 0) + Number(r[14] || 0) + Number(r[17] || 0);
-            return `
-                <tr>
-                    <td>${r[0].replace(/'/g, "")}</td>
-                    <td><b>${r[1]}</b></td>
-                    <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px;">${r[2]}</span></td>
-                    <td>${r[4]} 小時</td>
-                    <td>$${r[5]}</td>
-                    <td style="color:#d93025;">-$${totalDeduct}</td>
-                    <td><h4 style="margin:0; color:#1a73e8;">$${r[20]}</h4></td>
-                </tr>
-            `;
+            return `<tr><td>${r[0].replace(/'/g, "")}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td>${r[4]} 小時</td><td>$${r[5]}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[20]}</h4></td></tr>`;
         }).join('');
     }
 
-    // ⚙️ 1. 執行結算
     async function calculateSalary() {
-        const month = document.getElementById('salaryMonth').value;
-        if (!month) return alert("⚠️ 請先選擇要結算的月份！");
-        if (!confirm(`確定要執行 ${month} 月份的薪資結算嗎？\n(這會重新讀取所有打卡與假單資料，並覆蓋舊資料)`)) return;
-        
-        showLoading(`正在由雲端大腦運算 ${month} 月薪資中...`);
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: month }) });
-            alert("✅ 結算完成！");
-            await fetchData(); // 重新抓取資料以更新表格
-        } catch (e) { alert("結算失敗，請重試！"); hideLoading(); }
+        const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
+        if (!confirm(`確定執行 ${m} 月薪資結算？\n(將自動建立該月獨立存檔分頁！)`)) return;
+        showLoading(`正在結算 ${m} 月薪資並建立獨立檔案...`);
+        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m }) }); alert("✅ 結算完成！獨立月份檔案已於雲端建立。"); await fetchData(); } catch (e) { alert("結算失敗"); hideLoading(); }
     }
 
-    // 📄 2. 產出 PDF
     async function generatePDF() {
-        const month = document.getElementById('salaryMonth').value;
-        if (!month) return alert("⚠️ 請先選擇月份！");
-        if (!confirm(`確定要產生 ${month} 月份的 PDF 薪資單嗎？\n(檔案會直接儲存至您的 Google 雲端硬碟)`)) return;
-
-        showLoading(`正在生成 ${month} 的獨立 PDF 薪資單據...`);
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: month }) });
-            alert("✅ PDF 產生完畢！請至 Google Drive 雲端硬碟【禾禾園薪資單】資料夾查看。");
-        } catch (e) { alert("PDF 生成失敗！"); } finally { hideLoading(); }
+        const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
+        showLoading(`正在生成 ${m} 月 PDF 薪資單...`);
+        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m }) }); alert("✅ PDF 產生完畢！請至雲端硬碟查看。"); } catch (e) { alert("PDF 生成失敗"); } finally { hideLoading(); }
     }
 
-    // 📊 3. 下載 Excel 報表
     function exportExcel() {
-        const month = document.getElementById('salaryMonth').value;
-        if (!month) return alert("⚠️ 請先選擇結算月份！");
-        if (!db.Salary_Summary) return alert("系統中尚無薪資資料庫！");
-
-        const headers = db.Salary_Summary[0];
-        const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
-
-        if (rows.length === 0) return alert(`⚠️ 找不到 ${month} 月份的結算資料，請先執行【⚙️ 1. 執行薪資結算】！`);
-
-        try {
-            // 合併表頭與資料，使用 SheetJS 瞬間轉換下載
-            const excelData = [headers, ...rows];
-            const ws = XLSX.utils.aoa_to_sheet(excelData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, `${month} 薪資報表`);
-            
-            XLSX.writeFile(wb, `禾禾園_${month}_薪資結算總表.xlsx`);
-        } catch(e) {
-            alert("匯出 Excel 失敗：" + e.toString());
-        }
+        const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
+        const headers = db.Salary_Summary[0]; const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(m));
+        if (rows.length === 0) return alert("⚠️ 尚未結算！");
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
     }
 
     fetchData();
