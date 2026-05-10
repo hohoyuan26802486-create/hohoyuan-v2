@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V18.9 (假單部門篩選與時間修復版)</title>
+    <title>禾禾園 - 專業管理後台 V18.9 (防呆除錯完整版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -179,9 +179,9 @@
             let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號 (ID)" && r[0] !== "");
             
             // 🌟 套用假單部門篩選
-            const leaveFilter = document.getElementById('leaveDeptFilter').value;
-            if (leaveFilter) {
-                leaveData = leaveData.filter(r => r[3] === leaveFilter);
+            const leaveFilter = document.getElementById('leaveDeptFilter');
+            if (leaveFilter && leaveFilter.value) {
+                leaveData = leaveData.filter(r => r[3] === leaveFilter.value);
             }
 
             leaveData.sort((a, b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
@@ -196,7 +196,7 @@
                 else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核')) next = '待人事核銷';
                 else if (role === '人事部' && r[8] === '待人事核銷') next = '已生效';
                 
-                // 🌟 顯示代理人與事由 (解決第二張截圖資訊不全問題)
+                // 🌟 顯示代理人與事由
                 let agentText = r[10] && r[10] !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${r[10]}</div>` : '';
                 let reasonText = r[7] ? `<div class="sub-info">📝 事由：${r[7]}</div>` : '';
 
