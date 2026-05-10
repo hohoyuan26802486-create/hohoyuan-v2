@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.1 (薪資機密與權限修正版)</title>
+    <title>禾禾園 - 專業管理後台 V19.2 (薪資結算與報表匯出版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -106,6 +106,29 @@
     </div>
 </div>
 
+<div id="salaryBox" class="container" style="display:none; background-color: #fff9e6; border: 2px solid #ffeb3b;">
+    <h1 style="color: #d35400; border-left: 5px solid #d35400; padding-left:15px; margin-top:0;">💰 月底薪資結算與報表匯出</h1>
+    
+    <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="flex: 1; min-width: 250px;">
+            <label style="font-weight:bold; color:#d35400; display:block; margin-bottom:5px;">📅 選擇欲結算的月份</label>
+            <input type="month" id="salaryMonth" onchange="renderSalary()" style="width:100%; padding:10px; border-radius:4px; border:1px solid #ccc; font-weight:bold; font-size: 16px;">
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+            <button class="btn btn-primary" onclick="calculateSalary()" style="height: 42px; font-size: 14px;">⚙️ 1. 執行薪資結算</button>
+            <button class="btn btn-danger" onclick="generatePDF()" style="height: 42px; font-size: 14px; background: #c0392b;">📄 2. 產出 PDF 薪資單</button>
+            <button class="btn btn-success" onclick="exportExcel()" style="height: 42px; font-size: 14px; background: #27ae60;">📊 3. 下載 Excel 報表</button>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table>
+            <thead><tr><th>結算月份</th><th>姓名</th><th>部門</th><th>總工時</th><th>基本薪資</th><th>遲到/請假扣款</th><th>實發總計</th></tr></thead>
+            <tbody id="salaryBody"></tbody>
+        </table>
+    </div>
+</div>
+
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0;">📝 假單審核中心</h1>
@@ -152,12 +175,10 @@
         document.getElementById('tab-' + tab).classList.add('active'); render(); 
     }
 
-    // 🌟 權限驗證：會計部不需要密碼
     function authRole() {
         const r = document.getElementById('adminRole').value;
         const correctPwd = db.adminPassword || "123";
         
-        // 只有「人事部」或「副總」需要輸入密碼
         if((r === '人事部' || r === '副總') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
             alert("❌ 密碼錯誤！");
             document.getElementById('adminRole').value="業務部主管"; 
@@ -167,20 +188,27 @@
 
     async function fetchData() { 
         showLoading("獲取最新資料...");
-        try { const res = await fetch(CONFIG_URL); db = await res.json(); render(); 
+        try { 
+            const res = await fetch(CONFIG_URL); 
+            db = await res.json(); 
+            render(); 
+            renderSalary(); // 抓完資料順便更新薪資表
         } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     function render() {
         const role = document.getElementById('adminRole').value;
         const hrBox = document.getElementById('hrBox');
+        const salaryBox = document.getElementById('salaryBox');
 
-        // 🌟 核心防護：只有「人事部」和「副總」能看到 HR 薪資區塊，會計部被踢除了
+        // 🌟 核心防護：只有「人事部」和「副總」能看到 HR 薪資與結算區塊
         if (role === '人事部' || role === '副總') {
             hrBox.style.display = 'block';
+            salaryBox.style.display = 'block';
             renderStaff(document.getElementById('filterDept').value);
         } else { 
             hrBox.style.display = 'none'; 
+            salaryBox.style.display = 'none';
         }
 
         // 渲染假單
@@ -200,23 +228,17 @@
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
-                // 🌟 精簡假單流程：主管核准 -> 待副總審核 -> 已生效
                 if (role.includes(r[3].replace('部','')) && r[8] === '待主管審核') next = '待副總審核';
                 else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核' || r[8] === '待人事核銷')) next = '已生效';
                 
                 let agentText = r[10] && r[10] !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${r[10]}</div>` : '';
                 let reasonText = r[7] ? `<div class="sub-info">📝 事由：${r[7]}</div>` : '';
-
                 let proofUrl = r[9] ? String(r[9]).trim() : "";
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
                 let actionBtn = (next && currentTab === 'pending') ? `<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>` : "-";
 
                 return `<tr>
-                    <td>
-                        <div class="main-info">${r[2]} <small>(${r[3]})</small></div>
-                        ${agentText}
-                        ${reasonText}
-                    </td>
+                    <td><div class="main-info">${r[2]} <small>(${r[3]})</small></div>${agentText}${reasonText}</td>
                     <td><div style="font-size:13px; color:#3c4043;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td>
                     <td><b>${r[4]}</b></td>
                     <td>${proof}</td>
@@ -267,9 +289,7 @@
         empSelect.innerHTML = '<option value="">請選擇員工...</option>';
         renderStaff(dept);
         if (!dept || !db.employees) return;
-        db.employees.filter(r => r[1] === dept).forEach(r => {
-            empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`;
-        });
+        db.employees.filter(r => r[1] === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; });
     }
 
     function loadEmpDetails() {
@@ -277,15 +297,9 @@
         if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
-            document.getElementById('empName').value = emp[0];
-            document.getElementById('empDept').value = emp[1];
-            document.getElementById('payType').value = emp[2];
-            document.getElementById('empSalary').value = emp[3];
-            document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
-            document.getElementById('bonus').value = emp[6] || 0;
-            document.getElementById('laborIns').value = emp[7] || 0;
-            document.getElementById('healthIns').value = emp[8] || 0;
-            document.getElementById('dependents').value = emp[9] || 0;
+            document.getElementById('empName').value = emp[0]; document.getElementById('empDept').value = emp[1]; document.getElementById('payType').value = emp[2];
+            document.getElementById('empSalary').value = emp[3]; document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
+            document.getElementById('bonus').value = emp[6] || 0; document.getElementById('laborIns').value = emp[7] || 0; document.getElementById('healthIns').value = emp[8] || 0; document.getElementById('dependents').value = emp[9] || 0;
         }
     }
 
@@ -305,53 +319,118 @@
 
     async function saveEmployee() {
         const payload = {
-            action: "saveEmployee",
-            name: document.getElementById('empName').value,
-            dept: document.getElementById('empDept').value,
-            payType: document.getElementById('payType').value,
-            salary: document.getElementById('empSalary').value,
-            onboardingDate: document.getElementById('obDate').value,
-            bonus: document.getElementById('bonus').value,
-            laborIns: document.getElementById('laborIns').value,
-            healthIns: document.getElementById('healthIns').value,
-            dependents: document.getElementById('dependents').value
+            action: "saveEmployee", name: document.getElementById('empName').value, dept: document.getElementById('empDept').value, payType: document.getElementById('payType').value, salary: document.getElementById('empSalary').value, onboardingDate: document.getElementById('obDate').value, bonus: document.getElementById('bonus').value, laborIns: document.getElementById('laborIns').value, healthIns: document.getElementById('healthIns').value, dependents: document.getElementById('dependents').value
         };
         if(!payload.name || !payload.salary) return alert("必填欄位缺失！");
         showLoading("儲存中...");
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) });
-            alert("✅ 儲存成功"); fetchData(); clearForm();
-        } catch(e) { alert("失敗"); hideLoading(); }
+        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("✅ 儲存成功"); fetchData(); clearForm(); } catch(e) { alert("失敗"); hideLoading(); }
     }
 
     async function updLv(id, s) {
         showLoading("審核中...");
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })});
-            fetchData(); alert("✅ 審核成功");
-        } catch (e) { alert("錯誤"); hideLoading(); }
+        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核成功"); } catch (e) { alert("錯誤"); hideLoading(); }
     }
 
     async function deleteEmp(name) {
         if(!confirm(`刪除 ${name}？`)) return;
         showLoading("刪除中...");
-        try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name })});
-            fetchData(); alert("✅ 已刪除");
-        } catch (e) { alert("失敗"); hideLoading(); }
+        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name })}); fetchData(); alert("✅ 已刪除"); } catch (e) { alert("失敗"); hideLoading(); }
     }
 
-    // 🌟 更換管理密碼功能
     async function changeAdminPassword() {
         const newPwd = prompt("請設定新的管理員密碼：\n(建議設定好記的數字或英文)");
         if (!newPwd) return;
         if (confirm(`確定要將密碼更新為 [ ${newPwd} ] 嗎？`)) {
             showLoading("同步至雲端中...");
-            try {
-                await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", newPassword: newPwd })});
-                alert("✅ 密碼更新成功！請重新整理網頁。");
-                location.reload();
-            } catch (e) { alert("更新失敗，請檢查網路。"); hideLoading(); }
+            try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", newPassword: newPwd })}); alert("✅ 密碼更新成功！請重新整理網頁。"); location.reload(); } catch (e) { alert("更新失敗，請檢查網路。"); hideLoading(); }
+        }
+    }
+
+    // ==========================================
+    // 💰 薪資結算與報表匯出功能區
+    // ==========================================
+    
+    // 渲染薪資預覽表
+    function renderSalary() {
+        const month = document.getElementById('salaryMonth').value;
+        const tbody = document.getElementById('salaryBody');
+        if (!month || !db.Salary_Summary) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#aaa;">請先選擇結算月份以顯示報表</td></tr>';
+            return;
+        }
+
+        const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
+        
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#d93025; font-weight:bold;">此月份尚無結算資料，請點擊上方【執行薪資結算】</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(r => {
+            // 計算總扣款 (遲到 + 事假 + 病假)
+            const totalDeduct = Number(r[11] || 0) + Number(r[14] || 0) + Number(r[17] || 0);
+            return `
+                <tr>
+                    <td>${r[0].replace(/'/g, "")}</td>
+                    <td><b>${r[1]}</b></td>
+                    <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px;">${r[2]}</span></td>
+                    <td>${r[4]} 小時</td>
+                    <td>$${r[5]}</td>
+                    <td style="color:#d93025;">-$${totalDeduct}</td>
+                    <td><h4 style="margin:0; color:#1a73e8;">$${r[20]}</h4></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // ⚙️ 1. 執行結算
+    async function calculateSalary() {
+        const month = document.getElementById('salaryMonth').value;
+        if (!month) return alert("⚠️ 請先選擇要結算的月份！");
+        if (!confirm(`確定要執行 ${month} 月份的薪資結算嗎？\n(這會重新讀取所有打卡與假單資料，並覆蓋舊資料)`)) return;
+        
+        showLoading(`正在由雲端大腦運算 ${month} 月薪資中...`);
+        try {
+            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: month }) });
+            alert("✅ 結算完成！");
+            await fetchData(); // 重新抓取資料以更新表格
+        } catch (e) { alert("結算失敗，請重試！"); hideLoading(); }
+    }
+
+    // 📄 2. 產出 PDF
+    async function generatePDF() {
+        const month = document.getElementById('salaryMonth').value;
+        if (!month) return alert("⚠️ 請先選擇月份！");
+        if (!confirm(`確定要產生 ${month} 月份的 PDF 薪資單嗎？\n(檔案會直接儲存至您的 Google 雲端硬碟)`)) return;
+
+        showLoading(`正在生成 ${month} 的獨立 PDF 薪資單據...`);
+        try {
+            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: month }) });
+            alert("✅ PDF 產生完畢！請至 Google Drive 雲端硬碟【禾禾園薪資單】資料夾查看。");
+        } catch (e) { alert("PDF 生成失敗！"); } finally { hideLoading(); }
+    }
+
+    // 📊 3. 下載 Excel 報表
+    function exportExcel() {
+        const month = document.getElementById('salaryMonth').value;
+        if (!month) return alert("⚠️ 請先選擇結算月份！");
+        if (!db.Salary_Summary) return alert("系統中尚無薪資資料庫！");
+
+        const headers = db.Salary_Summary[0];
+        const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
+
+        if (rows.length === 0) return alert(`⚠️ 找不到 ${month} 月份的結算資料，請先執行【⚙️ 1. 執行薪資結算】！`);
+
+        try {
+            // 合併表頭與資料，使用 SheetJS 瞬間轉換下載
+            const excelData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, `${month} 薪資報表`);
+            
+            XLSX.writeFile(wb, `禾禾園_${month}_薪資結算總表.xlsx`);
+        } catch(e) {
+            alert("匯出 Excel 失敗：" + e.toString());
         }
     }
 
