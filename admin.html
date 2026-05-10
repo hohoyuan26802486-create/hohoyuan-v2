@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.0 (流程精簡與密碼自訂版)</title>
+    <title>禾禾園 - 專業管理後台 V19.1 (薪資機密與權限修正版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -152,17 +152,15 @@
         document.getElementById('tab-' + tab).classList.add('active'); render(); 
     }
 
-    // 🌟 變更一：會計部免密碼，人事/副總驗證雲端密碼
+    // 🌟 權限驗證：會計部不需要密碼
     function authRole() {
         const r = document.getElementById('adminRole').value;
         const correctPwd = db.adminPassword || "123";
         
-        if(r === '人事部' || r === '副總') {
-            const inputPwd = prompt("安全管理驗證，請輸入密碼：");
-            if(inputPwd !== correctPwd) { 
-                alert("❌ 密碼錯誤！");
-                document.getElementById('adminRole').value="業務部主管"; 
-            }
+        // 只有「人事部」或「副總」需要輸入密碼
+        if((r === '人事部' || r === '副總') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
+            alert("❌ 密碼錯誤！");
+            document.getElementById('adminRole').value="業務部主管"; 
         }
         render();
     }
@@ -177,11 +175,13 @@
         const role = document.getElementById('adminRole').value;
         const hrBox = document.getElementById('hrBox');
 
-        // 控制 HR 顯示
-        if (role === '人事部' || role === '會計部' || role === '副總') {
+        // 🌟 核心防護：只有「人事部」和「副總」能看到 HR 薪資區塊，會計部被踢除了
+        if (role === '人事部' || role === '副總') {
             hrBox.style.display = 'block';
             renderStaff(document.getElementById('filterDept').value);
-        } else { hrBox.style.display = 'none'; }
+        } else { 
+            hrBox.style.display = 'none'; 
+        }
 
         // 渲染假單
         if(db.leave) {
@@ -200,7 +200,7 @@
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
-                // 🌟 變更二：精簡假單流程 (主管核准 -> 待副總審核 -> 已生效)
+                // 🌟 精簡假單流程：主管核准 -> 待副總審核 -> 已生效
                 if (role.includes(r[3].replace('部','')) && r[8] === '待主管審核') next = '待副總審核';
                 else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核' || r[8] === '待人事核銷')) next = '已生效';
                 
@@ -341,7 +341,7 @@
         } catch (e) { alert("失敗"); hideLoading(); }
     }
 
-    // 🌟 變更三：更換管理密碼功能
+    // 🌟 更換管理密碼功能
     async function changeAdminPassword() {
         const newPwd = prompt("請設定新的管理員密碼：\n(建議設定好記的數字或英文)");
         if (!newPwd) return;
