@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.3 (薪資清爽排版與獨立建檔版)</title>
+    <title>禾禾園 - 專業管理後台 V19.5 (法規薪資單完美同步版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -23,7 +23,6 @@
         .main-info { font-size: 15px; font-weight: 600; color: #202124; }
         .sub-info { font-size: 12px; color: var(--text-sub); margin-top: 4px;}
         
-        /* 統一按鈕基礎樣式 */
         .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; color: white !important; }
         .btn:hover { opacity: 0.85; transform: translateY(-1px); }
         .btn-primary { background: #1a73e8; }
@@ -80,12 +79,12 @@
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
         <div class="form-group"><label>所屬部門</label><select id="empDept"><option>業務部</option><option>倉儲部</option><option>運輸部</option><option>生產部</option><option>行政部</option><option>會計部</option></select></div>
         <div class="form-group"><label>計薪類別</label><select id="payType"><option>月薪</option><option>時薪</option></select></div>
-        <div class="form-group"><label>基本薪資</label><input type="number" id="empSalary"></div>
+        <div class="form-group"><label>基本薪資 (底薪)</label><input type="number" id="empSalary"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
-        <div class="form-group"><label>變動獎金</label><input type="number" id="bonus" value="0"></div>
-        <div class="form-group"><label>勞保自付</label><input type="number" id="laborIns" value="0"></div>
-        <div class="form-group"><label>健保自付</label><input type="number" id="healthIns" value="0"></div>
-        <div class="form-group"><label>眷屬人數</label><input type="number" id="dependents" value="0"></div>
+        <div class="form-group"><label>變動獎金 (月)</label><input type="number" id="bonus" value="0"></div>
+        <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
+        <div class="form-group"><label>健保自付額</label><input type="number" id="healthIns" value="0"></div>
+        <div class="form-group"><label>健保眷屬人數</label><input type="number" id="dependents" value="0"></div>
         <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存修改</button></div>
     </div>
     
@@ -95,6 +94,21 @@
             <tbody id="staffBody"></tbody>
         </table>
     </div>
+</div>
+
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+        <h1 style="margin:0;">📝 假單審核中心</h1>
+        <div style="background:#e8f0fe; padding:8px 15px; border-radius:8px; border:1px solid #cce0ff; display:flex; align-items:center; gap:10px;">
+            <label style="font-weight:bold; color:#1a73e8; font-size:14px;">🔍 篩選部門：</label>
+            <select id="leaveDeptFilter" onchange="render()" style="padding:6px 10px; border-radius:6px; border:1px solid #1a73e8; outline:none; font-weight:bold; color:#1a73e8; cursor:pointer;">
+                <option value="">顯示全公司假單</option>
+                <option value="業務部">業務部</option><option value="倉儲部">倉儲部</option><option value="運輸部">運輸部</option><option value="生產部">生產部</option><option value="行政部">行政部</option><option value="會計部">會計部</option>
+            </select>
+        </div>
+    </div>
+    <div class="tab-container"><button id="tab-pending" class="tab-btn active" onclick="switchTab('pending')">🔴 待處理假單</button><button id="tab-history" class="tab-btn" onclick="switchTab('history')">⚪ 歷史紀錄</button></div>
+    <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
@@ -122,21 +136,6 @@
             <tbody id="salaryBody"></tbody>
         </table>
     </div>
-</div>
-
-<div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-        <h1 style="margin:0;">📝 假單審核中心</h1>
-        <div style="background:#e8f0fe; padding:8px 15px; border-radius:8px; border:1px solid #cce0ff; display:flex; align-items:center; gap:10px;">
-            <label style="font-weight:bold; color:#1a73e8; font-size:14px;">🔍 篩選部門：</label>
-            <select id="leaveDeptFilter" onchange="render()" style="padding:6px 10px; border-radius:6px; border:1px solid #1a73e8; outline:none; font-weight:bold; color:#1a73e8; cursor:pointer;">
-                <option value="">顯示全公司假單</option>
-                <option value="業務部">業務部</option><option value="倉儲部">倉儲部</option><option value="運輸部">運輸部</option><option value="生產部">生產部</option><option value="行政部">行政部</option><option value="會計部">會計部</option>
-            </select>
-        </div>
-    </div>
-    <div class="tab-container"><button id="tab-pending" class="tab-btn active" onclick="switchTab('pending')">🔴 待處理假單</button><button id="tab-history" class="tab-btn" onclick="switchTab('history')">⚪ 歷史紀錄</button></div>
-    <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
 <script>
@@ -244,7 +243,7 @@
     }
 
     // ==========================================
-    // 💰 薪資功能區
+    // 💰 薪資功能區 (配合 V29.0 法規欄位平移)
     // ==========================================
     function renderSalary() {
         const month = document.getElementById('salaryMonth').value;
@@ -252,15 +251,17 @@
         if (!month || !db.Salary_Summary) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#aaa;">請先選擇結算月份</td></tr>'; return; }
         const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
         if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#d93025;">此月份尚未結算，請點擊上方執行鈕</td></tr>'; return; }
+        
         tbody.innerHTML = rows.map(r => {
-            const totalDeduct = Number(r[11] || 0) + Number(r[14] || 0) + Number(r[17] || 0);
-            return `<tr><td>${r[0].replace(/'/g, "")}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td>${r[4]} 小時</td><td>$${r[5]}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[20]}</h4></td></tr>`;
+            // 🌟 配合 V29.0 更新扣款欄位索引 (13遲到, 16事假, 19病假)
+            const totalDeduct = Number(r[13] || 0) + Number(r[16] || 0) + Number(r[19] || 0);
+            return `<tr><td>${r[0].replace(/'/g, "")}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td>${r[4]} 小時</td><td>$${r[5]}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[22]}</h4></td></tr>`;
         }).join('');
     }
 
     async function calculateSalary() {
         const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
-        if (!confirm(`確定執行 ${m} 月薪資結算？\n(將自動建立該月獨立存檔分頁！)`)) return;
+        if (!confirm(`確定執行 ${m} 月薪資結算？\n(將自動套用法定加班費率，並建立獨立存檔分頁！)`)) return;
         showLoading(`正在結算 ${m} 月薪資並建立獨立檔案...`);
         try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m }) }); alert("✅ 結算完成！獨立月份檔案已於雲端建立。"); await fetchData(); } catch (e) { alert("結算失敗"); hideLoading(); }
     }
