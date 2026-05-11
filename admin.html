@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.8 (無損疊加版：手機卡片式排版)</title>
+    <title>禾禾園 - 專業管理後台 V19.7 (無損疊加版：假單退件雙按鈕)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -39,65 +39,8 @@
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+        /* 🌟 【疊加樣式】假單操作雙按鈕排版 */
         .action-group { display: flex; gap: 5px; }
-
-        /* ========================================================
-           🌟 【全新疊加】手機版響應式卡片設計 (Responsive Card Layout)
-           ======================================================== */
-        @media screen and (max-width: 768px) {
-            body { padding: 10px; }
-            .container { padding: 15px; border-radius: 12px; margin-bottom: 15px; }
-            h1 { font-size: 18px; flex-direction: column; align-items: flex-start; gap: 10px; }
-            
-            /* 將表格強制轉為區塊顯示 */
-            table, thead, tbody, th, td, tr { display: block; }
-            
-            /* 隱藏原本的表頭 (電腦版才需要) */
-            thead tr { position: absolute; top: -9999px; left: -9999px; }
-            
-            /* 把每一橫列 (tr) 變成一張獨立的卡片 */
-            tr { border: 1px solid #ccc; border-radius: 10px; margin-bottom: 15px; padding: 15px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-            
-            /* 每一個格子 (td) 變成卡片裡的一行 */
-            td { border: none; border-bottom: 1px solid #eee; position: relative; padding-left: 40%; text-align: left; padding-top: 10px; padding-bottom: 10px; min-height: 40px; }
-            td:last-child { border-bottom: 0; }
-            
-            /* 利用 data-label 屬性，在手機版自動產生欄位標題 */
-            td:before { position: absolute; top: 12px; left: 10px; width: 35%; padding-right: 10px; white-space: nowrap; font-weight: bold; color: var(--text-sub); }
-            
-            /* 為假單審核區塊設定手機版標題 */
-            #leaveBody td:nth-of-type(1):before { content: "申請資訊"; }
-            #leaveBody td:nth-of-type(2):before { content: "起訖時間"; }
-            #leaveBody td:nth-of-type(3):before { content: "假別"; }
-            #leaveBody td:nth-of-type(4):before { content: "證明文件"; }
-            #leaveBody td:nth-of-type(5):before { content: "狀態"; }
-            #leaveBody td:nth-of-type(6):before { content: "核准操作"; }
-            
-            /* 為人事維護區塊設定手機版標題 */
-            #staffBody td:nth-of-type(1):before { content: "姓名"; }
-            #staffBody td:nth-of-type(2):before { content: "部門"; }
-            #staffBody td:nth-of-type(3):before { content: "薪資/類別"; }
-            #staffBody td:nth-of-type(4):before { content: "到職日"; }
-            #staffBody td:nth-of-type(5):before { content: "特休(總/剩)"; }
-            #staffBody td:nth-of-type(6):before { content: "操作"; }
-
-            /* 為薪資區塊設定手機版標題 */
-            #salaryBody td:nth-of-type(1):before { content: "結算月份"; }
-            #salaryBody td:nth-of-type(2):before { content: "姓名"; }
-            #salaryBody td:nth-of-type(3):before { content: "部門"; }
-            #salaryBody td:nth-of-type(4):before { content: "總工時"; }
-            #salaryBody td:nth-of-type(5):before { content: "基本薪資"; }
-            #salaryBody td:nth-of-type(6):before { content: "扣款"; }
-            #salaryBody td:nth-of-type(7):before { content: "實發總計"; }
-
-            /* 讓操作按鈕在手機上變大、好點 */
-            .action-group { flex-direction: column; width: 100%; gap: 10px; }
-            .action-group .btn { width: 100%; padding: 12px; font-size: 15px; }
-            #staffBody .btn { width: 48%; display: inline-block; padding: 10px; text-align: center;}
-            
-            /* 調整下拉選單寬度 */
-            .nav-actions select, .nav-actions button { width: 100%; margin-bottom: 5px; }
-        }
     </style>
 </head>
 <body>
@@ -252,6 +195,7 @@
                 let proofUrl = r[9] ? String(r[9]).trim() : "";
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
                 
+                // 🌟 【疊加修改】加上退回按鈕雙拼
                 let actionBtn = "-";
                 if (next && currentTab === 'pending') {
                     actionBtn = `
@@ -317,6 +261,7 @@
 
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
 
+    // 🌟 【疊加功能】呼叫退件 API 
     async function rejectLeave(id) { 
         if(!confirm("確定要退回這張假單嗎？\n退回後，系統會通知該員工，並自動在 Google 日曆上將此假單標示為「已退回」。")) return;
         showLoading("退件處理中..."); 
