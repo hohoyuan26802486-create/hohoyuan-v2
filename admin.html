@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.7 (無損疊加版：假單退件雙按鈕)</title>
+    <title>禾禾園 - 專業管理後台 V19.9 (恢復經典長表格 + 運輸部權限轉移)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -39,7 +39,6 @@
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* 🌟 【疊加樣式】假單操作雙按鈕排版 */
         .action-group { display: flex; gap: 5px; }
     </style>
 </head>
@@ -51,7 +50,7 @@
     <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統</div>
     <div class="nav-actions">
         <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:10px; border-radius:6px; outline:none; font-size:14px; cursor:pointer;">
-            <option value="業務部主管">業務部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="會計部">會計部</option><option value="人事部">人事部</option><option value="副總">副總</option>
+            <option value="業務部主管">業務部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="會計部主管">會計部主管</option><option value="人事部">人事部</option><option value="副總">副總</option>
         </select>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
@@ -187,15 +186,26 @@
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
-                if (role.includes(r[3].replace('部','')) && r[8] === '待主管審核') next = '待副總審核';
-                else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核' || r[8] === '待人事核銷')) next = '已生效';
+                
+                // 🌟 【維持疊加修改：將運輸部的核准權交給會計部】
+                let targetRole = r[3]; // 預設由該部門主管核准
+                if (r[3] === '運輸部') {
+                    targetRole = '會計部'; // 特例：運輸部假單，改由會計部主管核准
+                }
+
+                // 判斷登入者身份是否符合核准資格
+                if (role.includes(targetRole.replace('部','')) && r[8] === '待主管審核') {
+                    next = '待副總審核';
+                } else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核' || r[8] === '待人事核銷')) {
+                    next = '已生效';
+                }
                 
                 let agentText = r[10] && r[10] !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${r[10]}</div>` : '';
                 let reasonText = r[7] ? `<div class="sub-info">📝 事由：${r[7]}</div>` : '';
                 let proofUrl = r[9] ? String(r[9]).trim() : "";
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
                 
-                // 🌟 【疊加修改】加上退回按鈕雙拼
+                // 🌟 【維持疊加修改：退回按鈕雙拼】
                 let actionBtn = "-";
                 if (next && currentTab === 'pending') {
                     actionBtn = `
@@ -261,7 +271,6 @@
 
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
 
-    // 🌟 【疊加功能】呼叫退件 API 
     async function rejectLeave(id) { 
         if(!confirm("確定要退回這張假單嗎？\n退回後，系統會通知該員工，並自動在 Google 日曆上將此假單標示為「已退回」。")) return;
         showLoading("退件處理中..."); 
