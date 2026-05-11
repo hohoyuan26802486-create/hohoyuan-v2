@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.6 (上下班全面強制GPS版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.7 (手機裝置強制辨識版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -147,6 +147,9 @@
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; 
     let ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
+
+    // 🌟 【全新疊加防護】檢查使用者是否使用手機 (Android / iOS)
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
@@ -194,14 +197,12 @@
         try {
             const currentName = document.getElementById('attName').value;
             const isFlexWorker = FLEX_WORKERS.includes(currentName);
-            const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName);
             const holidayBox = document.getElementById('holidayTypeBox');
             holidayBox.style.display = isHolidayToday() ? "block" : "none";
 
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return;
             const type = typeInput.value;
-            const statusBox = document.getElementById('gpsStatusBox');
             const list = document.getElementById('statusList');
             const overtimeBox = document.getElementById('overtimeBox');
             if(overtimeBox) overtimeBox.style.display = "none";
@@ -246,7 +247,6 @@
         if(statusList) statusList.appendChild(div);
     }
 
-    // 🌟 【疊加升級：上下班都強制要有 GPS 座標】
     function updateGPSUI() {
         const box = document.getElementById('gpsStatusBox'); 
         const btn = document.getElementById('btnAtt');
@@ -256,6 +256,15 @@
         const typeInput = document.querySelector('input[name="attType"]:checked');
         const isTypeOut = typeInput && typeInput.value === "下班";
 
+        // 🌟 防弊大絕招：直接看是不是手機，不是手機就鎖死！
+        if (!isMobileDevice) {
+            box.innerHTML = "🖥️ 禁止使用電腦打卡<br>為了防弊，系統僅允許使用手機進行考勤操作！";
+            box.className = "gps-box gps-fail";
+            btn.disabled = true;
+            btn.innerText = "請使用手機打卡";
+            return; // 直接中斷，不給解鎖！
+        }
+
         const isFlexWorker = FLEX_WORKERS.includes(currentName);
         const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName); 
 
@@ -263,32 +272,29 @@
         if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         
-        // 2. 一般人打卡：【強制檢查是否有座標】，防電腦代打！
+        // 2. 一般人打卡檢查座標
         if (userLat === null || userLon === null) { 
-            box.innerHTML = "❌ 偵測不到手機定位 (防代打卡)<br>請用手機開啟，並允許定位權限！"; 
+            box.innerHTML = "❌ 偵測不到手機定位<br>請允許瀏覽器定位權限！"; 
             box.className = "gps-box gps-fail"; 
             btn.disabled = true; 
-            btn.innerText = "請先允許手機定位";
-            return; // 這裡直接 return，不給按鈕解鎖！
+            btn.innerText = "請先允許定位";
+            return;
         } 
 
         // 3. 有座標的情況下，再區分「上班」還是「下班」
         if (isTypeOut) { 
-            // 只要有座標證明是手機，下班就不檢查距離
             box.innerText = "✅ 取得定位，下班打卡 (免測距離)"; 
             box.className = "gps-box gps-ok"; 
             btn.disabled = false; 
             btn.innerText = "送出打卡"; 
         } 
         else if (isWithinRange) { 
-            // 上班必須要檢查是否在公司範圍
             box.innerText = "✅ 定位成功，已進入打卡範圍"; 
             box.className = "gps-box gps-ok"; 
             btn.disabled = false; 
             btn.innerText = "送出打卡";
         } 
         else { 
-            // 有座標但不在公司
             box.innerText = "❌ 距離太遠，請回公司再打卡"; 
             box.className = "gps-box gps-fail"; 
             btn.disabled = true; 
@@ -344,21 +350,18 @@
         });
     }
 
-    // 🌟 【疊加升級：送出前的最後攔截，不論上下班】
     async function submitAttendance() {
-        const name = document.getElementById('attName').value;
-        const type = document.querySelector('input[name="attType"]:checked').value;
-        
-        // 【關鍵修改】把檢查條件中的 type === "上班" 拿掉，讓「下班」也必須接受沒座標的攔截！
-        const isFlex = FLEX_WORKERS.includes(name);
-        const isNoGps = NO_GPS_WORKERS.includes(name);
-        if(!isFlex && !isNoGps && (!userLat || !userLon)) {
+        // 🌟 最後攔截點：就算駭客解除前端按鈕限制，這裡再擋一次！
+        if (!isMobileDevice) {
             return Swal.fire({
                 icon: 'error',
                 title: '打卡失敗',
-                text: '系統抓不到您的手機定位！請不要嘗試用電腦代打卡。如果您正在使用手機，請重新整理網頁並「允許位置存取權限」。'
+                text: '禁止使用電腦代打卡！系統偵測您並非使用行動裝置，請拿起您的手機進行操作。'
             });
         }
+
+        const name = document.getElementById('attName').value;
+        const type = document.querySelector('input[name="attType"]:checked').value;
 
         const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
         if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return Swal.fire('提示', '請填寫加班事由', 'warning');
