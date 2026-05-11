@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.5 (強制手機GPS防代打卡版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.6 (上下班全面強制GPS版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -135,7 +135,6 @@
 </div>
 
 <script>
-    // ⚠️ 這裡要放您最新的 Apps Script (大腦) 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     
     // 🌟 原有的特權名單 (連遲到都不算，免GPS)
@@ -225,7 +224,6 @@
                     } else { addStatusBtn("正常下班", true); }
                 }
             }
-            // 每次切換類型或選人，重新檢查一次 GPS 狀態是否符合解鎖條件
             updateGPSUI();
         } catch(e) { console.error(e); }
     }
@@ -248,7 +246,7 @@
         if(statusList) statusList.appendChild(div);
     }
 
-    // 🌟 【防代打卡第二道鎖】前端按鈕狀態邏輯
+    // 🌟 【疊加升級：上下班都強制要有 GPS 座標】
     function updateGPSUI() {
         const box = document.getElementById('gpsStatusBox'); 
         const btn = document.getElementById('btnAtt');
@@ -265,23 +263,32 @@
         if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         
-        // 2. 如果是下班打卡，原本的規則也是免檢查座標直接放行
-        if (isTypeOut) { box.innerText = "✅ 下班打卡 (免檢查範圍)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return;}
-
-        // 3. 一般人上班打卡：嚴格檢查座標
+        // 2. 一般人打卡：【強制檢查是否有座標】，防電腦代打！
         if (userLat === null || userLon === null) { 
             box.innerHTML = "❌ 偵測不到手機定位 (防代打卡)<br>請用手機開啟，並允許定位權限！"; 
             box.className = "gps-box gps-fail"; 
             btn.disabled = true; 
             btn.innerText = "請先允許手機定位";
+            return; // 這裡直接 return，不給按鈕解鎖！
+        } 
+
+        // 3. 有座標的情況下，再區分「上班」還是「下班」
+        if (isTypeOut) { 
+            // 只要有座標證明是手機，下班就不檢查距離
+            box.innerText = "✅ 取得定位，下班打卡 (免測距離)"; 
+            box.className = "gps-box gps-ok"; 
+            btn.disabled = false; 
+            btn.innerText = "送出打卡"; 
         } 
         else if (isWithinRange) { 
+            // 上班必須要檢查是否在公司範圍
             box.innerText = "✅ 定位成功，已進入打卡範圍"; 
             box.className = "gps-box gps-ok"; 
             btn.disabled = false; 
             btn.innerText = "送出打卡";
         } 
         else { 
+            // 有座標但不在公司
             box.innerText = "❌ 距離太遠，請回公司再打卡"; 
             box.className = "gps-box gps-fail"; 
             btn.disabled = true; 
@@ -337,15 +344,15 @@
         });
     }
 
-    // 🌟 【防代打卡第三道鎖】送出前的最後攔截
+    // 🌟 【疊加升級：送出前的最後攔截，不論上下班】
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
         
-        // 如果不是特權名單，也不是下班，且完全沒座標，直接攔截不給送！
+        // 【關鍵修改】把檢查條件中的 type === "上班" 拿掉，讓「下班」也必須接受沒座標的攔截！
         const isFlex = FLEX_WORKERS.includes(name);
         const isNoGps = NO_GPS_WORKERS.includes(name);
-        if(type === "上班" && !isFlex && !isNoGps && (!userLat || !userLon)) {
+        if(!isFlex && !isNoGps && (!userLat || !userLon)) {
             return Swal.fire({
                 icon: 'error',
                 title: '打卡失敗',
@@ -376,7 +383,7 @@
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
             } else { 
-                Swal.fire('失敗', result, 'error'); // 顯示後台退回的任何警告訊息
+                Swal.fire('失敗', result, 'error'); 
             }
         } catch (e) { 
             Swal.fire('錯誤', '網路連線異常，請稍後再試！', 'error');
@@ -385,7 +392,6 @@
         }
     }
 
-    // 圖片轉 Base64
     function getBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -421,7 +427,7 @@
             if (text === "Success") {
                 Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload());
             } else {
-                Swal.fire('失敗', text, 'error'); // 例如：顯示特休未滿三天的警告
+                Swal.fire('失敗', text, 'error');
             }
         } catch(e) {
             Swal.fire('錯誤', '網路異常，請稍後再試。', 'error');
@@ -483,12 +489,11 @@
         fetchEmployees(); 
         handleTypeChange();
         
-        // 🌟 啟動時立刻要求 GPS，如果不是特權人士，沒 GPS 就一直紅燈警告
         if(navigator.geolocation) {
             navigator.geolocation.watchPosition(pos => {
                 userLat = pos.coords.latitude; userLon = pos.coords.longitude;
                 isWithinRange = getDistance(userLat, userLon, TARGET_LAT, TARGET_LON) <= ALLOWED_DIST;
-                updateGPSUI(); // 即時更新按鈕與提示狀態
+                updateGPSUI(); 
             }, error => {
                 userLat = null; userLon = null;
                 updateGPSUI();
