@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.6 (刪除功能回歸版)</title>
+    <title>禾禾園 - 專業管理後台 V19.7 (無損疊加版：假單退件雙按鈕)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -38,6 +38,9 @@
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* 🌟 【疊加樣式】假單操作雙按鈕排版 */
+        .action-group { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
@@ -191,7 +194,17 @@
                 let reasonText = r[7] ? `<div class="sub-info">📝 事由：${r[7]}</div>` : '';
                 let proofUrl = r[9] ? String(r[9]).trim() : "";
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
-                let actionBtn = (next && currentTab === 'pending') ? `<button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">核准</button>` : "-";
+                
+                // 🌟 【疊加修改】加上退回按鈕雙拼
+                let actionBtn = "-";
+                if (next && currentTab === 'pending') {
+                    actionBtn = `
+                        <div class="action-group">
+                            <button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">✔️ 核准</button>
+                            <button class="btn btn-danger" onclick="rejectLeave('${r[0]}')">❌ 退回</button>
+                        </div>
+                    `;
+                }
 
                 return `<tr><td><div class="main-info">${r[2]} <small>(${r[3]})</small></div>${agentText}${reasonText}</td><td><div style="font-size:13px;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td><td><b>${r[4]}</b></td><td>${proof}</td><td><span style="color:#1a73e8;font-weight:bold;">${r[8]}</span></td><td>${actionBtn}</td></tr>`;
             }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">無資料</td></tr>';
@@ -206,7 +219,6 @@
             let total = Number(r[5]) || 0; let used = 0;
             if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             
-            // 🌟 這裡把「刪除」按鈕加回來了！
             return `<tr>
                 <td><b>${r[0]}</b></td>
                 <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1]}</span></td>
@@ -249,12 +261,20 @@
 
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
 
+    // 🌟 【疊加功能】呼叫退件 API 
+    async function rejectLeave(id) { 
+        if(!confirm("確定要退回這張假單嗎？\n退回後，系統會通知該員工，並自動在 Google 日曆上將此假單標示為「已退回」。")) return;
+        showLoading("退件處理中..."); 
+        await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: "已退回" })}); 
+        fetchData(); 
+        alert("❌ 假單已退回！"); 
+    }
+
     async function changeAdminPassword() {
         const newPwd = prompt("請設定新的管理員密碼："); if (!newPwd) return;
         if (confirm(`確定要將密碼更新為 [ ${newPwd} ] 嗎？`)) { showLoading("同步至雲端中..."); try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", newPassword: newPwd })}); alert("✅ 密碼更新成功！"); location.reload(); } catch (e) { alert("更新失敗"); hideLoading(); } }
     }
 
-    // 🌟 這裡也加回了負責刪除員工的 JavaScript 指令
     async function deleteEmp(name) {
         if(!confirm(`⚠️ 警告：確定要刪除員工「${name}」的資料嗎？刪除後無法復原！`)) return;
         showLoading("刪除中...");
@@ -262,14 +282,11 @@
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name })});
             alert("✅ 員工資料已成功刪除！");
             fetchData();
-        } catch (e) { 
-            alert("刪除失敗，請檢查網路連線。"); 
-            hideLoading(); 
-        }
+        } catch (e) { alert("刪除失敗，請檢查網路連線。"); hideLoading(); }
     }
 
     // ==========================================
-    // 💰 薪資功能區 (配合 V29.0 法規欄位平移)
+    // 💰 薪資功能區
     // ==========================================
     function renderSalary() {
         const month = document.getElementById('salaryMonth').value;
