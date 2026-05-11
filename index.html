@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 考勤系統 V18.5 (特權免定位版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.5 (強制手機GPS防代打卡版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #eef2f7; margin: 0; padding: 15px; display: flex; justify-content: center; }
-        .app-container { background: white; width: 100%; max-width: 480px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        .app-container { background: white; width: 100%; max-width: 480px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; position: relative;}
         
         .tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
         .tab { flex: 1; text-align: center; padding: 18px 10px; color: #5f6368; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 16px;}
@@ -37,19 +38,25 @@
         .gps-ok { background: #e6fffa; color: #234e52; border: 1px solid #38b2ac; display: block; }
         .gps-fail { background: #fff5f5; color: #742a2a; border: 1px solid #feb2b2; display: block; }
 
-        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
-        .btn-submit:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); transition: 0.2s;}
+        .btn-submit:disabled { background: #e0e0e0; color: #9e9e9e; cursor: not-allowed; box-shadow: none; }
         
         #unlockLink { text-align: right; margin-bottom: 10px; }
         #unlockLink a { font-size: 12px; color: var(--danger); text-decoration: none; font-weight: bold; }
         
         .holiday-box { display: none; background: #e8f0fe; border: 1px solid #aecbfa; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
         .holiday-box label { color: #1a73e8; font-weight: bold; margin-bottom: 8px; display: block; }
+
+        #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; border-radius: 20px;}
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div class="app-container">
+    <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">資料處理中...</div></div>
+
     <div class="tabs">
         <div class="tab active" onclick="switchTab('clockIn')">📍 打卡</div>
         <div class="tab" onclick="switchTab('leave')">📝 請假</div>
@@ -85,8 +92,8 @@
             <input type="text" id="overtimeReason" placeholder="例如：處理急件、庫存盤點..." style="border-color: #ffe69c;">
         </div>
 
-        <div id="gpsStatusBox" class="gps-box"></div>
-        <button id="btnAtt" class="btn-submit" onclick="submitAttendance()">送出打卡</button>
+        <div id="gpsStatusBox" class="gps-box gps-fail">📍 正在獲取手機定位... (請允許權限)</div>
+        <button id="btnAtt" class="btn-submit" onclick="submitAttendance()" disabled>等待定位中...</button>
     </div>
 
     <div id="leave" class="form-content">
@@ -115,7 +122,7 @@
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="原因"></div>
-        <div class="input-group"><label>📸 證明照片 (若無照片系統將自動標為待補件)</label><input type="file" id="lvFile" accept="image/*"></div>
+        <div class="input-group"><label>📸 證明照片 (若無照片系統將標為待補件)</label><input type="file" id="lvFile" accept="image/*"></div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
 
@@ -128,12 +135,13 @@
 </div>
 
 <script>
+    // ⚠️ 這裡要放您最新的 Apps Script (大腦) 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     
-    // 🌟 原有的彈性上班名單 (連遲到都不算)
+    // 🌟 原有的特權名單 (連遲到都不算，免GPS)
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
     
-    // 🌟 新增：特權免定位名單 (蔡政達只免除GPS，但仍會計算遲到與時數)
+    // 🌟 原有的免定位名單 (蔡政達只免除GPS，但仍會計算遲到與時數)
     const NO_GPS_WORKERS = ["蔡政達"];
 
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -141,6 +149,9 @@
     let ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
     
+    function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
     function isHolidayToday() {
         const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
         return (day === 0 || day === 6 || HOLIDAYS_2026.includes(dateStr));
@@ -200,33 +211,22 @@
             if(list) list.innerHTML = "";
 
             if (type === "上班") {
-                if(statusBox) statusBox.style.display = "block";
                 if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
                 else {
                     if (time < 440) addStatusBtn("個人因素提早上班", true);
                     else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
                     else addStatusBtn("遲到", true);
                 }
-                updateGPSUI();
             } else {
-                if(statusBox) statusBox.style.display = "none";
                 if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
                 else {
                     if (time >= 1010) { 
                         addStatusBtn("因個人因素延後下班", true); addStatusBtn("經主管核准加班", false);
                     } else { addStatusBtn("正常下班", true); }
                 }
-                
-                // 🌟 這裡把蔡政達也加入「免除下班定位檢查」的行列
-                if (navigator.geolocation && !isFlexWorker && !isNoGpsWorker) {
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        userLat = pos.coords.latitude; userLon = pos.coords.longitude;
-                    });
-                }
-                
-                const btnAtt = document.getElementById('btnAtt');
-                if(btnAtt) btnAtt.disabled = false;
             }
+            // 每次切換類型或選人，重新檢查一次 GPS 狀態是否符合解鎖條件
+            updateGPSUI();
         } catch(e) { console.error(e); }
     }
 
@@ -248,23 +248,49 @@
         if(statusList) statusList.appendChild(div);
     }
 
+    // 🌟 【防代打卡第二道鎖】前端按鈕狀態邏輯
     function updateGPSUI() {
-        const box = document.getElementById('gpsStatusBox'); const btn = document.getElementById('btnAtt');
+        const box = document.getElementById('gpsStatusBox'); 
+        const btn = document.getElementById('btnAtt');
         if(!box || !btn) return;
-        const currentName = document.getElementById('attName').value;
-        const isFlexWorker = FLEX_WORKERS.includes(currentName);
-        const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName); // 🌟 檢查是否為白名單
-
-        // 🌟 判斷並給予不同的放行提示
-        if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; return; }
-        if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; return; }
         
-        if (userLat === null) { box.innerText = "🛰️ 定位中..."; box.className = "gps-box gps-fail"; btn.disabled = true; } 
-        else if (isWithinRange) { box.innerText = "✅ 進入打卡範圍"; box.className = "gps-box gps-ok"; btn.disabled = false; } 
-        else { box.innerText = "❌ 距離太遠，請回公司"; box.className = "gps-box gps-fail"; btn.disabled = true; }
+        const currentName = document.getElementById('attName').value;
+        const typeInput = document.querySelector('input[name="attType"]:checked');
+        const isTypeOut = typeInput && typeInput.value === "下班";
+
+        const isFlexWorker = FLEX_WORKERS.includes(currentName);
+        const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName); 
+
+        // 1. 如果是特權名單：直接放行
+        if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
+        if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
+        
+        // 2. 如果是下班打卡，原本的規則也是免檢查座標直接放行
+        if (isTypeOut) { box.innerText = "✅ 下班打卡 (免檢查範圍)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return;}
+
+        // 3. 一般人上班打卡：嚴格檢查座標
+        if (userLat === null || userLon === null) { 
+            box.innerHTML = "❌ 偵測不到手機定位 (防代打卡)<br>請用手機開啟，並允許定位權限！"; 
+            box.className = "gps-box gps-fail"; 
+            btn.disabled = true; 
+            btn.innerText = "請先允許手機定位";
+        } 
+        else if (isWithinRange) { 
+            box.innerText = "✅ 定位成功，已進入打卡範圍"; 
+            box.className = "gps-box gps-ok"; 
+            btn.disabled = false; 
+            btn.innerText = "送出打卡";
+        } 
+        else { 
+            box.innerText = "❌ 距離太遠，請回公司再打卡"; 
+            box.className = "gps-box gps-fail"; 
+            btn.disabled = true; 
+            btn.innerText = "不在打卡範圍內";
+        }
     }
 
     async function fetchEmployees() {
+        showLoading("載入資料中...");
         try {
             const res = await fetch(CONFIG_URL); globalDB = await res.json();
             const validEmp = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
@@ -285,18 +311,50 @@
                 syncName(bound); 
             } else { syncName(document.getElementById('attName').value); }
             loadPendingProofs();
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            Swal.fire('錯誤', '連線失敗，請重新整理！', 'error');
+        } finally {
+            hideLoading();
+        }
     }
 
     function unlockDevice() {
-        if (prompt("🔐 HR 密碼：") === "456") { localStorage.removeItem('bound_user'); alert("🔓 已解除鎖定"); location.reload(); } else { alert("❌ 密碼錯誤"); }
+        Swal.fire({
+            title: '解鎖設備',
+            input: 'password',
+            inputLabel: '請輸入 HR 專用密碼',
+            showCancelButton: true,
+            confirmButtonText: '解鎖'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if(result.value === "456") {
+                    localStorage.removeItem('bound_user');
+                    Swal.fire('成功', '已解除設備鎖定', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('失敗', '密碼錯誤', 'error');
+                }
+            }
+        });
     }
 
+    // 🌟 【防代打卡第三道鎖】送出前的最後攔截
     async function submitAttendance() {
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
+        
+        // 如果不是特權名單，也不是下班，且完全沒座標，直接攔截不給送！
+        const isFlex = FLEX_WORKERS.includes(name);
+        const isNoGps = NO_GPS_WORKERS.includes(name);
+        if(type === "上班" && !isFlex && !isNoGps && (!userLat || !userLon)) {
+            return Swal.fire({
+                icon: 'error',
+                title: '打卡失敗',
+                text: '系統抓不到您的手機定位！請不要嘗試用電腦代打卡。如果您正在使用手機，請重新整理網頁並「允許位置存取權限」。'
+            });
+        }
+
         const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
-        if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return alert("⚠️ 請填寫加班事由");
+        if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return Swal.fire('提示', '請填寫加班事由', 'warning');
         
         let finalStatus = selectedStatus;
         if (isHolidayToday()) {
@@ -304,20 +362,37 @@
             finalStatus = `【${holidayChoice}】` + selectedStatus;
         }
         
-        const btn = document.getElementById('btnAtt'); btn.innerText = "⏳ 傳送中..."; btn.disabled = true;
+        showLoading("打卡資料傳送中...");
         try {
             const response = await fetch(CONFIG_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat, lon: userLon }) 
+                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
             });
             const result = await response.text();
+            
             if (result === "Duplicate") {
-                alert(`⚠️ 系統提示：${name}，今天打過【${type}】卡囉！`); btn.disabled = false; btn.innerText = "送出打卡";
+                Swal.fire('注意', `${name}，今天已經打過【${type}】卡囉！`, 'info');
             } else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
-                alert("✅ 打卡成功！"); location.reload();
-            } else { alert("❌ 錯誤：" + result); btn.disabled = false; btn.innerText = "送出打卡"; }
-        } catch (e) { alert("❌ 連線失敗"); btn.disabled = false; btn.innerText = "送出打卡"; }
+                Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
+            } else { 
+                Swal.fire('失敗', result, 'error'); // 顯示後台退回的任何警告訊息
+            }
+        } catch (e) { 
+            Swal.fire('錯誤', '網路連線異常，請稍後再試！', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // 圖片轉 Base64
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+        });
     }
 
     async function submitLeave() {
@@ -329,25 +404,29 @@
         const agent = document.getElementById('lvAgent').value;
         const fileInput = document.getElementById('lvFile');
         
-        if (!start || !end) return alert("⚠️ 請選擇開始與結束時間！");
+        if (!start || !end) return Swal.fire('提示', '請選擇開始與結束時間！', 'warning');
 
-        const btn = document.getElementById('btnLv'); 
-        btn.innerText = "⏳ 假單傳送中..."; 
-        btn.disabled = true;
-
+        showLoading("假單上傳中...");
         const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "" };
 
-        if (fileInput.files.length > 0) {
-            const reader = new FileReader();
-            reader.onload = async function() {
-                p.imageFile = reader.result.split(',')[1];
+        try {
+            if (fileInput.files.length > 0) {
+                p.imageFile = await getBase64(fileInput.files[0]);
                 p.mimeType = fileInput.files[0].type;
                 p.fileName = fileInput.files[0].name;
-                await sendData(p, "✅ 假單與照片已成功送出！");
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        } else {
-            await sendData(p, "✅ 假單已成功送出！(如需證明請記得補件)");
+            }
+            
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            const text = await res.text(); 
+            if (text === "Success") {
+                Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload());
+            } else {
+                Swal.fire('失敗', text, 'error'); // 例如：顯示特休未滿三天的警告
+            }
+        } catch(e) {
+            Swal.fire('錯誤', '網路異常，請稍後再試。', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
@@ -367,32 +446,31 @@
     async function submitProof() {
         const rowIdx = document.getElementById('prfSelect').value;
         const fileInput = document.getElementById('prfFile');
-        if (!rowIdx) return alert("沒有需要補件的紀錄");
-        if (fileInput.files.length === 0) return alert("⚠️ 請選擇要上傳的照片！");
+        if (!rowIdx) return Swal.fire('提示', '沒有需要補件的紀錄', 'warning');
+        if (fileInput.files.length === 0) return Swal.fire('提示', '請選擇要上傳的照片！', 'warning');
         
-        const btn = document.getElementById('btnPrf'); 
-        btn.innerText = "⏳ 照片上傳中..."; 
-        btn.disabled = true;
-
-        const reader = new FileReader();
-        reader.onload = async function() {
-            const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: reader.result.split(',')[1], mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            await sendData(p, "✅ 補件照片上傳成功！");
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    }
-
-    async function sendData(p, customSuccessMessage = "✅ 處理成功！") { 
-        try { 
+        showLoading("照片上傳中...");
+        
+        try {
+            const p = { 
+                action: "uploadLeaveProof", 
+                id: rowIdx, 
+                imageFile: await getBase64(fileInput.files[0]), 
+                mimeType: fileInput.files[0].type, 
+                fileName: fileInput.files[0].name 
+            };
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
-            if (text === "Success") alert(customSuccessMessage); 
-            else alert("❌ 異常：" + text); 
-            location.reload(); 
-        } catch (e) { 
-            alert("網路錯誤，請確認連線"); 
-            location.reload(); 
-        } 
+            if (text === "Success") {
+                Swal.fire('成功', '補件成功！', 'success').then(() => location.reload());
+            } else {
+                Swal.fire('失敗', text, 'error');
+            }
+        } catch (e) {
+            Swal.fire('錯誤', '網路異常，請稍後再試。', 'error');
+        } finally {
+            hideLoading();
+        }
     }
 
     function switchTab(id) {
@@ -402,14 +480,21 @@
     }
 
     window.onload = () => {
-        fetchEmployees(); handleTypeChange();
+        fetchEmployees(); 
+        handleTypeChange();
+        
+        // 🌟 啟動時立刻要求 GPS，如果不是特權人士，沒 GPS 就一直紅燈警告
         if(navigator.geolocation) {
             navigator.geolocation.watchPosition(pos => {
                 userLat = pos.coords.latitude; userLon = pos.coords.longitude;
                 isWithinRange = getDistance(userLat, userLon, TARGET_LAT, TARGET_LON) <= ALLOWED_DIST;
-                const typeInput = document.querySelector('input[name="attType"]:checked');
-                if(typeInput && typeInput.value === "上班") updateGPSUI();
-            }, null, { enableHighAccuracy: true });
+                updateGPSUI(); // 即時更新按鈕與提示狀態
+            }, error => {
+                userLat = null; userLon = null;
+                updateGPSUI();
+            }, { enableHighAccuracy: true });
+        } else {
+            updateGPSUI();
         }
     };
 </script>
