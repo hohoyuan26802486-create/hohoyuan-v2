@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.7 (手機裝置強制辨識 + 網址校正版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.9 (自選上下班 + 網址校正版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -116,13 +116,11 @@
                 🏖️ 目前特休餘額：<span id="annualLeaveCount" style="color: #d93025; font-size: 18px;">-</span> 天
             </div>
         </div>
-        
         <div class="input-group"><label>🤝 職位代理人</label><select id="lvAgent"><option value="無">無</option></select></div>
-        
         <div class="input-group"><label>📅 開始時間</label><input type="datetime-local" id="lvStart"></div>
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="原因"></div>
-        <div class="input-group"><label>📸 證明照片 (若無照片系統將標為待補件)</label><input type="file" id="lvFile" accept="image/*"></div>
+        <div class="input-group"><label>📸 證明照片</label><input type="file" id="lvFile" accept="image/*"></div>
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
 
@@ -135,21 +133,16 @@
 </div>
 
 <script>
-    // 🌟 已為您替換為最新、正確的 Google Apps Script 大腦網址！
+    // 🌟 已更新為您最新的 Apps Script 大腦網址！
     const API_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
-    // 🌟 原有的特權名單 (連遲到都不算，免GPS)
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
-    
-    // 🌟 原有的免定位名單 (蔡政達只免除GPS，但仍會計算遲到與時數)
     const NO_GPS_WORKERS = ["蔡政達"];
-
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     const TARGET_LAT = 24.956646; const TARGET_LON = 121.393925; 
     let ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
 
-    // 🌟 【防代打卡】檢查使用者是否使用手機 (Android / iOS)
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
@@ -252,52 +245,22 @@
         const box = document.getElementById('gpsStatusBox'); 
         const btn = document.getElementById('btnAtt');
         if(!box || !btn) return;
-        
         const currentName = document.getElementById('attName').value;
         const typeInput = document.querySelector('input[name="attType"]:checked');
         const isTypeOut = typeInput && typeInput.value === "下班";
 
-        // 🌟 防弊大絕招：直接看是不是手機，不是手機就鎖死！
         if (!isMobileDevice) {
-            box.innerHTML = "🖥️ 禁止使用電腦打卡<br>為了防弊，系統僅允許使用手機進行考勤操作！";
-            box.className = "gps-box gps-fail";
-            btn.disabled = true;
-            btn.innerText = "請使用手機打卡";
-            return; 
+            box.innerHTML = "🖥️ 禁止使用電腦打卡<br>請拿起您的手機進行操作。";
+            box.className = "gps-box gps-fail"; btn.disabled = true; btn.innerText = "請使用手機打卡"; return; 
         }
-
         const isFlexWorker = FLEX_WORKERS.includes(currentName);
         const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName); 
-
-        if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
-        if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
-        
+        if (isFlexWorker || isNoGpsWorker) { box.innerText = "🏃 免定位模式已啟動"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         if (userLat === null || userLon === null) { 
-            box.innerHTML = "❌ 偵測不到手機定位<br>請允許瀏覽器定位權限！"; 
-            box.className = "gps-box gps-fail"; 
-            btn.disabled = true; 
-            btn.innerText = "請先允許定位";
-            return;
+            box.innerHTML = "❌ 偵測不到手機定位<br>請允許瀏覽器定位權限！"; box.className = "gps-box gps-fail"; btn.disabled = true; btn.innerText = "請先允許定位"; return;
         } 
-
-        if (isTypeOut) { 
-            box.innerText = "✅ 取得定位，下班打卡 (免測距離)"; 
-            box.className = "gps-box gps-ok"; 
-            btn.disabled = false; 
-            btn.innerText = "送出打卡"; 
-        } 
-        else if (isWithinRange) { 
-            box.innerText = "✅ 定位成功，已進入打卡範圍"; 
-            box.className = "gps-box gps-ok"; 
-            btn.disabled = false; 
-            btn.innerText = "送出打卡";
-        } 
-        else { 
-            box.innerText = "❌ 距離太遠，請回公司再打卡"; 
-            box.className = "gps-box gps-fail"; 
-            btn.disabled = true; 
-            btn.innerText = "不在打卡範圍內";
-        }
+        if (isTypeOut || isWithinRange) { box.innerText = "✅ 定位成功"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; } 
+        else { box.innerText = "❌ 距離太遠，請回公司再打卡"; box.className = "gps-box gps-fail"; btn.disabled = true; btn.innerText = "不在打卡範圍內"; }
     }
 
     async function fetchEmployees() {
@@ -306,14 +269,10 @@
             const res = await fetch(API_URL); globalDB = await res.json();
             const validEmp = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
             const opts = validEmp.map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
-            
-            const optsAgent = `<option value="無">無</option>` + opts;
-            
             document.getElementById('attName').innerHTML = opts; 
             document.getElementById('lvName').innerHTML = opts; 
             document.getElementById('prfName').innerHTML = opts;
-            document.getElementById('lvAgent').innerHTML = optsAgent;
-
+            document.getElementById('lvAgent').innerHTML = `<option value="無">無</option>` + opts;
             const bound = localStorage.getItem('bound_user');
             if(bound) {
                 document.getElementById('attName').value = bound; document.getElementById('attName').disabled = true;
@@ -322,80 +281,46 @@
                 syncName(bound); 
             } else { syncName(document.getElementById('attName').value); }
             loadPendingProofs();
-        } catch (e) { 
-            Swal.fire('錯誤', '連線失敗，請重新整理！', 'error');
-        } finally {
-            hideLoading();
-        }
+        } catch (e) { Swal.fire('錯誤', '連線失敗，請重新整理！', 'error'); } 
+        finally { hideLoading(); }
     }
 
     function unlockDevice() {
-        Swal.fire({
-            title: '解鎖設備',
-            input: 'password',
-            inputLabel: '請輸入 HR 專用密碼',
-            showCancelButton: true,
-            confirmButtonText: '解鎖'
+        Swal.fire({ title: '解鎖設備', input: 'password', inputLabel: '請輸入 HR 專用密碼', showCancelButton: true, confirmButtonText: '解鎖'
         }).then((result) => {
             if (result.isConfirmed) {
-                if(result.value === "456") {
-                    localStorage.removeItem('bound_user');
-                    Swal.fire('成功', '已解除設備鎖定', 'success').then(() => location.reload());
-                } else {
-                    Swal.fire('失敗', '密碼錯誤', 'error');
-                }
+                if(result.value === "456") { localStorage.removeItem('bound_user'); Swal.fire('成功', '已解除設備鎖定', 'success').then(() => location.reload()); } 
+                else { Swal.fire('失敗', '密碼錯誤', 'error'); }
             }
         });
     }
 
     async function submitAttendance() {
-        if (!isMobileDevice) {
-            return Swal.fire({
-                icon: 'error',
-                title: '打卡失敗',
-                text: '禁止使用電腦代打卡！系統偵測您並非使用行動裝置，請拿起您的手機進行操作。'
-            });
-        }
-
+        if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
-
         const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
         if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return Swal.fire('提示', '請填寫加班事由', 'warning');
-        
         let finalStatus = selectedStatus;
-        if (isHolidayToday()) {
-            const holidayChoice = document.getElementById('holidayType').value;
-            finalStatus = `【${holidayChoice}】` + selectedStatus;
-        }
-        
+        if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         showLoading("打卡資料傳送中...");
         try {
             const response = await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
+                method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
             });
             const result = await response.text();
-            
-            if (result === "Duplicate") {
-                Swal.fire('注意', `${name}，今天已經打過【${type}】卡囉！`, 'info');
-            } else if (result === "Success") {
+            if (result === "Duplicate") { Swal.fire('注意', `${name}，今天已經打過【${type}】卡囉！`, 'info'); } 
+            else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
-            } else { 
-                Swal.fire('失敗', result, 'error'); 
-            }
-        } catch (e) { 
-            Swal.fire('錯誤', '網路連線異常，請稍後再試！', 'error');
-        } finally {
-            hideLoading();
-        }
+            } else { Swal.fire('失敗', result, 'error'); }
+        } catch (e) { Swal.fire('錯誤', '網路連線異常，請稍後再試！', 'error'); } 
+        finally { hideLoading(); }
     }
 
     function getBase64(file) {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
+            const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onload = () => resolve(reader.result.split(',')[1]);
             reader.onerror = error => reject(error);
         });
@@ -409,44 +334,29 @@
         const reason = document.getElementById('lvReason').value;
         const agent = document.getElementById('lvAgent').value;
         const fileInput = document.getElementById('lvFile');
-        
         if (!start || !end) return Swal.fire('提示', '請選擇開始與結束時間！', 'warning');
-
         showLoading("假單上傳中...");
         const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "" };
-
         try {
             if (fileInput.files.length > 0) {
                 p.imageFile = await getBase64(fileInput.files[0]);
-                p.mimeType = fileInput.files[0].type;
-                p.fileName = fileInput.files[0].name;
+                p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
-            
             const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
-            if (text === "Success") {
-                Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload());
-            } else {
-                Swal.fire('失敗', text, 'error');
-            }
-        } catch(e) {
-            Swal.fire('錯誤', '網路異常，請稍後再試。', 'error');
-        } finally {
-            hideLoading();
-        }
+            if (text === "Success") { Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload()); } 
+            else { Swal.fire('失敗', text, 'error'); }
+        } catch(e) { Swal.fire('錯誤', '網路異常，請稍後再試。', 'error'); } 
+        finally { hideLoading(); }
     }
 
     function loadPendingProofs() {
         const name = document.getElementById('prfName').value;
-        const sel = document.getElementById('prfSelect');
-        sel.innerHTML = "";
+        const sel = document.getElementById('prfSelect'); sel.innerHTML = "";
         if (!globalDB || !globalDB.leave) return;
         const pending = globalDB.leave.filter(r => r[2] === name && r[9] === "待補件");
-        if (pending.length === 0) {
-            sel.innerHTML = "<option value=''>✅ 您目前沒有缺件的假單</option>";
-        } else {
-            pending.forEach(r => { sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; });
-        }
+        if (pending.length === 0) { sel.innerHTML = "<option value=''>✅ 您目前沒有缺件的假單</option>"; } 
+        else { pending.forEach(r => { sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; }); }
     }
 
     async function submitProof() {
@@ -454,29 +364,15 @@
         const fileInput = document.getElementById('prfFile');
         if (!rowIdx) return Swal.fire('提示', '沒有需要補件的紀錄', 'warning');
         if (fileInput.files.length === 0) return Swal.fire('提示', '請選擇要上傳的照片！', 'warning');
-        
         showLoading("照片上傳中...");
-        
         try {
-            const p = { 
-                action: "uploadLeaveProof", 
-                id: rowIdx, 
-                imageFile: await getBase64(fileInput.files[0]), 
-                mimeType: fileInput.files[0].type, 
-                fileName: fileInput.files[0].name 
-            };
+            const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
             const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
-            if (text === "Success") {
-                Swal.fire('成功', '補件成功！', 'success').then(() => location.reload());
-            } else {
-                Swal.fire('失敗', text, 'error');
-            }
-        } catch (e) {
-            Swal.fire('錯誤', '網路異常，請稍後再試。', 'error');
-        } finally {
-            hideLoading();
-        }
+            if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); } 
+            else { Swal.fire('失敗', text, 'error'); }
+        } catch (e) { Swal.fire('錯誤', '網路異常，請稍後再試。', 'error'); } 
+        finally { hideLoading(); }
     }
 
     function switchTab(id) {
@@ -486,21 +382,18 @@
     }
 
     window.onload = () => {
+        // 🌟 移除自動切換邏輯，保持為手動選擇
         fetchEmployees(); 
         handleTypeChange();
-        
         if(navigator.geolocation) {
             navigator.geolocation.watchPosition(pos => {
                 userLat = pos.coords.latitude; userLon = pos.coords.longitude;
                 isWithinRange = getDistance(userLat, userLon, TARGET_LAT, TARGET_LON) <= ALLOWED_DIST;
                 updateGPSUI(); 
             }, error => {
-                userLat = null; userLon = null;
-                updateGPSUI();
+                userLat = null; userLon = null; updateGPSUI();
             }, { enableHighAccuracy: true });
-        } else {
-            updateGPSUI();
-        }
+        } else { updateGPSUI(); }
     };
 </script>
 </body>
