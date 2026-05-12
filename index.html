@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.7 (手機裝置強制辨識版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.7 (手機裝置強制辨識 + 網址校正版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -135,7 +135,8 @@
 </div>
 
 <script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
+    // 🌟 已更新為您最新的 Apps Script 大腦網址，連接到真正的資料庫！
+    const API_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
     
     // 🌟 原有的特權名單 (連遲到都不算，免GPS)
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
@@ -148,7 +149,7 @@
     let ALLOWED_DIST = 1.0; 
     let userLat = null, userLon = null, isWithinRange = false, globalDB = null, selectedStatus = "";
 
-    // 🌟 【全新疊加防護】檢查使用者是否使用手機 (Android / iOS)
+    // 🌟 【防代打卡】檢查使用者是否使用手機 (Android / iOS)
     const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
@@ -262,17 +263,15 @@
             box.className = "gps-box gps-fail";
             btn.disabled = true;
             btn.innerText = "請使用手機打卡";
-            return; // 直接中斷，不給解鎖！
+            return; 
         }
 
         const isFlexWorker = FLEX_WORKERS.includes(currentName);
         const isNoGpsWorker = NO_GPS_WORKERS.includes(currentName); 
 
-        // 1. 如果是特權名單：直接放行
         if (isFlexWorker) { box.innerText = "🏠 彈性上班模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         if (isNoGpsWorker) { box.innerText = "🏃 外勤/專案模式 (免定位)"; box.className = "gps-box gps-ok"; btn.disabled = false; btn.innerText = "送出打卡"; return; }
         
-        // 2. 一般人打卡檢查座標
         if (userLat === null || userLon === null) { 
             box.innerHTML = "❌ 偵測不到手機定位<br>請允許瀏覽器定位權限！"; 
             box.className = "gps-box gps-fail"; 
@@ -281,7 +280,6 @@
             return;
         } 
 
-        // 3. 有座標的情況下，再區分「上班」還是「下班」
         if (isTypeOut) { 
             box.innerText = "✅ 取得定位，下班打卡 (免測距離)"; 
             box.className = "gps-box gps-ok"; 
@@ -305,7 +303,7 @@
     async function fetchEmployees() {
         showLoading("載入資料中...");
         try {
-            const res = await fetch(CONFIG_URL); globalDB = await res.json();
+            const res = await fetch(API_URL); globalDB = await res.json();
             const validEmp = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
             const opts = validEmp.map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
             
@@ -351,7 +349,6 @@
     }
 
     async function submitAttendance() {
-        // 🌟 最後攔截點：就算駭客解除前端按鈕限制，這裡再擋一次！
         if (!isMobileDevice) {
             return Swal.fire({
                 icon: 'error',
@@ -374,7 +371,7 @@
         
         showLoading("打卡資料傳送中...");
         try {
-            const response = await fetch(CONFIG_URL, { 
+            const response = await fetch(API_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
             });
@@ -425,7 +422,7 @@
                 p.fileName = fileInput.files[0].name;
             }
             
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
             if (text === "Success") {
                 Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload());
@@ -468,7 +465,7 @@
                 mimeType: fileInput.files[0].type, 
                 fileName: fileInput.files[0].name 
             };
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
             if (text === "Success") {
                 Swal.fire('成功', '補件成功！', 'success').then(() => location.reload());
