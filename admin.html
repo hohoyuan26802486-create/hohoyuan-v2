@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.9 (恢復經典長表格 + 運輸部權限轉移)</title>
+    <title>禾禾園 - 專業管理後台 V19.10 (防彈升級版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -141,12 +141,11 @@
 </div>
 
 <script>
-    // 🌟 這裡已經接上了您最新的大腦通訊網址！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     let db = {}; let currentTab = 'pending';
 
     function formatShortTime(timeStr) {
-        if (!timeStr) return ""; const d = new Date(timeStr); if (isNaN(d.getTime())) return timeStr;
+        if (!timeStr) return ""; const d = new Date(timeStr); if (isNaN(d.getTime())) return String(timeStr);
         const pad = (n) => n.toString().padStart(2, '0');
         return `${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
@@ -177,27 +176,33 @@
         if (role === '人事部' || role === '副總') { hrBox.style.display = 'block'; salaryBox.style.display = 'block'; renderStaff(document.getElementById('filterDept').value); } else { hrBox.style.display = 'none'; salaryBox.style.display = 'none'; }
 
         if(db.leave) {
-            let leaveData = db.leave.filter(r => r[0] !== "ID" && r[0] !== "單號 (ID)" && r[0] !== "");
+            let leaveData = db.leave.filter(r => r[0] && r[0] !== "ID" && r[0] !== "單號 (ID)");
             const leaveFilter = document.getElementById('leaveDeptFilter').value;
-            if (leaveFilter) { leaveData = leaveData.filter(r => r[3] === leaveFilter); }
+            if (leaveFilter) { leaveData = leaveData.filter(r => String(r[3] || "") === leaveFilter); }
             leaveData.sort((a, b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
 
-            if (currentTab === 'pending') { leaveData = leaveData.filter(r => r[8] && r[8].includes('待')); } 
-            else { leaveData = leaveData.filter(r => r[8] && (r[8].includes('已') || !r[8].includes('待'))); }
+            // 🌟 防彈處理：確保字串不會因為空值出錯
+            if (currentTab === 'pending') { 
+                leaveData = leaveData.filter(r => String(r[8] || "").includes('待')); 
+            } else { 
+                leaveData = leaveData.filter(r => String(r[8] || "").includes('已') || !String(r[8] || "").includes('待')); 
+            }
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
                 
-                // 🌟 【維持疊加修改：將運輸部的核准權交給會計部】
-                let targetRole = r[3]; // 預設由該部門主管核准
-                if (r[3] === '運輸部') {
-                    targetRole = '會計部'; // 特例：運輸部假單，改由會計部主管核准
+                // 🌟 防彈處理：空值強制轉成字串
+                let targetRole = String(r[3] || ""); 
+                if (targetRole === '運輸部') {
+                    targetRole = '會計部'; 
                 }
 
+                let status = String(r[8] || "");
+
                 // 判斷登入者身份是否符合核准資格
-                if (role.includes(targetRole.replace('部','')) && r[8] === '待主管審核') {
+                if (targetRole && role.includes(targetRole.replace('部','')) && status === '待主管審核') {
                     next = '待副總審核';
-                } else if (role === '副總' && (r[8] === '待副總審核' || r[8] === '待人事審核' || r[8] === '待人事核銷')) {
+                } else if (role === '副總' && (status === '待副總審核' || status === '待人事審核' || status === '待人事核銷')) {
                     next = '已生效';
                 }
                 
@@ -206,7 +211,6 @@
                 let proofUrl = r[9] ? String(r[9]).trim() : "";
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
                 
-                // 🌟 【維持疊加修改：退回按鈕雙拼】
                 let actionBtn = "-";
                 if (next && currentTab === 'pending') {
                     actionBtn = `
@@ -217,27 +221,27 @@
                     `;
                 }
 
-                return `<tr><td><div class="main-info">${r[2]} <small>(${r[3]})</small></div>${agentText}${reasonText}</td><td><div style="font-size:13px;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td><td><b>${r[4]}</b></td><td>${proof}</td><td><span style="color:#1a73e8;font-weight:bold;">${r[8]}</span></td><td>${actionBtn}</td></tr>`;
+                return `<tr><td><div class="main-info">${r[2] || "未知"} <small>(${r[3] || "未知"})</small></div>${agentText}${reasonText}</td><td><div style="font-size:13px;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td><td><b>${r[4] || ""}</b></td><td>${proof}</td><td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td><td>${actionBtn}</td></tr>`;
             }).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">無資料</td></tr>';
         }
     }
 
     function renderStaff(filterDept = "") {
         if(!db.employees) return;
-        let staffData = db.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
+        let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名");
         if (filterDept) { staffData = staffData.filter(r => r[1] === filterDept); }
         document.getElementById('staffBody').innerHTML = staffData.map(r => {
             let total = Number(r[5]) || 0; let used = 0;
             if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             
             return `<tr>
-                <td><b>${r[0]}</b></td>
-                <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1]}</span></td>
-                <td>$${r[3]}</td>
+                <td><b>${r[0] || ""}</b></td>
+                <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td>
+                <td>$${r[3] || 0}</td>
                 <td>${r[4] ? new Date(r[4]).toLocaleDateString() : '-'}</td>
                 <td><b>${total} / ${Math.max(0, total-used)}</b></td>
                 <td>
-                    <button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1]}')">編輯</button>
+                    <button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button>
                     <button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button>
                 </td>
             </tr>`;
@@ -247,16 +251,16 @@
     function updateEmpDropdown() {
         const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp');
         empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept);
-        if (dept && db.employees) { db.employees.filter(r => r[1] === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); }
+        if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); }
     }
 
     function loadEmpDetails() {
         const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
-            document.getElementById('empName').value = emp[0]; document.getElementById('empDept').value = emp[1]; document.getElementById('payType').value = emp[2];
-            document.getElementById('empSalary').value = emp[3]; document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
-            document.getElementById('bonus').value = emp[6]; document.getElementById('laborIns').value = emp[7]; document.getElementById('healthIns').value = emp[8]; document.getElementById('dependents').value = emp[9];
+            document.getElementById('empName').value = emp[0] || ""; document.getElementById('empDept').value = emp[1] || ""; document.getElementById('payType').value = emp[2] || "月薪";
+            document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
+            document.getElementById('bonus').value = emp[6] || 0; document.getElementById('laborIns').value = emp[7] || 0; document.getElementById('healthIns').value = emp[8] || 0; document.getElementById('dependents').value = emp[9] || 0;
         }
     }
 
@@ -307,7 +311,7 @@
         
         tbody.innerHTML = rows.map(r => {
             const totalDeduct = Number(r[13] || 0) + Number(r[16] || 0) + Number(r[19] || 0);
-            return `<tr><td>${r[0].replace(/'/g, "")}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td>${r[4]} 小時</td><td>$${r[5]}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[22]}</h4></td></tr>`;
+            return `<tr><td>${String(r[0] || "").replace(/'/g, "")}</td><td><b>${r[1] || ""}</b></td><td>${r[2] || ""}</td><td>${r[4] || 0} 小時</td><td>$${r[5] || 0}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[22] || 0}</h4></td></tr>`;
         }).join('');
     }
 
@@ -325,4 +329,14 @@
     }
 
     function exportExcel() {
-        const m = document.getElementById('salaryMonth').value
+        const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
+        const headers = db.Salary_Summary[0]; const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(m));
+        if (rows.length === 0) return alert("⚠️ 尚未結算！");
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
+    }
+
+    fetchData();
+</script>
+</body>
+</html>
