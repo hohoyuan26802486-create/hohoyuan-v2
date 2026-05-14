@@ -141,7 +141,8 @@
 </div>
 
 <script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbx0clQCOIOULOi58C0ffABTWNEwDa3KFVUF0TK9FCcj-O1aFLtxWkIF0IOv7bn_Wml4RA/exec";
+    // 🌟 這裡已經接上了您最新的大腦通訊網址！
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     let db = {}; let currentTab = 'pending';
 
     function formatShortTime(timeStr) {
@@ -324,14 +325,4 @@
     }
 
     function exportExcel() {
-        const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
-        const headers = db.Salary_Summary[0]; const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(m));
-        if (rows.length === 0) return alert("⚠️ 尚未結算！");
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
-    }
-
-    fetchData();
-</script>
-</body>
-</html>
+        const m = document.getElementById('salaryMonth').value
