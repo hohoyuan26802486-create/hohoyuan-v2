@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.10 (防彈升級版)</title>
+    <title>禾禾園 - 專業管理後台 V19.12 (X光除錯防彈版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -181,7 +181,6 @@
             if (leaveFilter) { leaveData = leaveData.filter(r => String(r[3] || "") === leaveFilter); }
             leaveData.sort((a, b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
 
-            // 🌟 防彈處理：確保字串不會因為空值出錯
             if (currentTab === 'pending') { 
                 leaveData = leaveData.filter(r => String(r[8] || "").includes('待')); 
             } else { 
@@ -190,16 +189,10 @@
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
-                
-                // 🌟 防彈處理：空值強制轉成字串
                 let targetRole = String(r[3] || ""); 
-                if (targetRole === '運輸部') {
-                    targetRole = '會計部'; 
-                }
-
+                if (targetRole === '運輸部') { targetRole = '會計部'; }
                 let status = String(r[8] || "");
 
-                // 判斷登入者身份是否符合核准資格
                 if (targetRole && role.includes(targetRole.replace('部','')) && status === '待主管審核') {
                     next = '待副總審核';
                 } else if (role === '副總' && (status === '待副總審核' || status === '待人事審核' || status === '待人事核銷')) {
@@ -300,7 +293,7 @@
     }
 
     // ==========================================
-    // 💰 薪資功能區
+    // 💰 薪資功能區 (升級 X光診斷版)
     // ==========================================
     function renderSalary() {
         const month = document.getElementById('salaryMonth').value;
@@ -315,17 +308,45 @@
         }).join('');
     }
 
+    // 🌟 X 光診斷：顯示真正的錯誤訊息
     async function calculateSalary() {
         const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
         if (!confirm(`確定執行 ${m} 月薪資結算？\n(將自動套用法定加班費率，並建立獨立存檔分頁！)`)) return;
+        
         showLoading(`正在結算 ${m} 月薪資並建立獨立檔案...`);
-        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m }) }); alert("✅ 結算完成！獨立月份檔案已於雲端建立。"); await fetchData(); } catch (e) { alert("結算失敗"); hideLoading(); }
+        try { 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m }) }); 
+            if (!res.ok) throw new Error(`無法連線到 Google (代碼 ${res.status})，請確認 Apps Script 有「建立新版本」！`);
+            
+            const text = await res.text();
+            if (text !== "Success") throw new Error("大腦運算失敗：\n" + text);
+
+            alert("✅ 結算完成！獨立月份檔案已於雲端建立。"); 
+            await fetchData(); 
+        } catch (e) { 
+            alert("❌ 結算發生錯誤！\n\n原因：" + e.message); 
+        } finally {
+            hideLoading(); 
+        }
     }
 
+    // 🌟 X 光診斷：顯示真正的錯誤訊息
     async function generatePDF() {
         const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
         showLoading(`正在生成 ${m} 月 PDF 薪資單...`);
-        try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m }) }); alert("✅ PDF 產生完畢！請至雲端硬碟查看。"); } catch (e) { alert("PDF 生成失敗"); } finally { hideLoading(); }
+        try { 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m }) }); 
+            if (!res.ok) throw new Error(`無法連線到 Google (代碼 ${res.status})，請確認 Apps Script 有「建立新版本」！`);
+            
+            const text = await res.text();
+            if (text !== "Success") throw new Error("大腦產出 PDF 失敗：\n" + text);
+
+            alert("✅ PDF 產生完畢！請至雲端硬碟查看。"); 
+        } catch (e) { 
+            alert("❌ PDF 產生錯誤！\n\n原因：" + e.message); 
+        } finally { 
+            hideLoading(); 
+        }
     }
 
     function exportExcel() {
