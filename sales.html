@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.46</title>
+    <title>禾禾園 - 業務神速報價系統 V1.47</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -37,8 +37,6 @@
         .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
-        
-        /* 擴充欄位專用樣式 */
         .details-panel { background: #fff; padding: 15px; border-radius: 12px; border: 1px dashed #ccc; margin-top: -10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; }
         .details-panel .input-group { flex: 1; min-width: 180px; }
         .details-panel .input-group label { color: #555; font-size: 13px; }
@@ -50,7 +48,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.46</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.47</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -104,13 +102,7 @@
         
         <div class="input-group" style="flex: 1;">
             <label style="color:#1a73e8;">💼 負責業務</label>
-            <select id="qSalesName" onchange="saveDraft()">
-                <option value="洪文斗">洪文斗</option>
-                <option value="葉慈潤">葉慈潤</option>
-                <option value="徐偉強">徐偉強</option>
-                <option value="蔡政達">蔡政達</option>
-                <option value="公司業務部" selected>公司業務部</option>
-            </select>
+            <select id="qSalesName" onchange="saveDraft()"></select>
         </div>
 
         <div class="input-group" style="flex: 2;">
@@ -171,8 +163,10 @@
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     
     let db = {}; let quoteCart = []; 
+    // 🌟 動態業務聯絡簿
+    let salesMobiles = {}; 
+    let salesEmails = {};
 
-    const SALES_MOBILES = { '洪文斗': '0912631569', '葉慈潤': '0906126091', '徐偉強': '0983500675', '蔡政達': '0960005486', '公司業務部': '02-26802486' };
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
     const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋', '式', '趟'];
 
@@ -220,7 +214,10 @@
                 if(draft.contact) document.getElementById('qContact').value = draft.contact;
                 if(draft.phone) document.getElementById('qPhone').value = draft.phone;
                 if(draft.address) document.getElementById('qAddress').value = draft.address;
-                if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName;
+                
+                // 等待下拉選單建好之後再恢復選擇的業務
+                setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
+                
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
                 if(draft.cart) quoteCart = draft.cart;
@@ -275,6 +272,34 @@
             const cList = document.getElementById('clientList'); cList.innerHTML = "";
             for(let i=1; i<db.Customers.length; i++) {
                 let r = db.Customers[i]; if(r[0]) { let o = document.createElement('option'); o.value = r[0]; cList.appendChild(o); }
+            }
+        }
+        // 🌟 初始化動態業務名單
+        if(db.Sales) {
+            const sList = document.getElementById('qSalesName');
+            sList.innerHTML = "";
+            salesMobiles = {};
+            salesEmails = {};
+            
+            for(let i=1; i<db.Sales.length; i++) {
+                let r = db.Sales[i];
+                if(r[0]) {
+                    let name = r[0];
+                    salesMobiles[name] = r[1] || "";
+                    salesEmails[name] = r[2] || "";
+                    let o = document.createElement('option');
+                    o.value = name;
+                    o.innerText = name;
+                    sList.appendChild(o);
+                }
+            }
+            // 系統防呆：如果試算表裡沒有建「公司業務部」，系統自動補上一個預設的
+            if(!salesMobiles['公司業務部']) {
+                let o = document.createElement('option');
+                o.value = '公司業務部';
+                o.innerText = '公司業務部';
+                sList.appendChild(o);
+                salesMobiles['公司業務部'] = '02-26802486';
             }
         }
     }
@@ -529,7 +554,7 @@
             if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
             return { 
                 name: i.name, 
-                spec: cleanSpec, // 保留原始規格，單位會獨立顯示在單位欄位
+                spec: cleanSpec,  
                 qty: i.qty, 
                 unit: i.unit, 
                 price: i.price, 
@@ -539,7 +564,6 @@
             };
         });
 
-        // 打包所有資料給後端 (新增了詳細的客戶資訊欄位)
         const p = { 
             action: "saveQuotation", 
             clientName: client, 
@@ -548,7 +572,8 @@
             phone: document.getElementById('qPhone').value.trim(),
             address: document.getElementById('qAddress').value.trim(),
             salesName: salesName, 
-            salesMobile: SALES_MOBILES[salesName], 
+            // 🌟 這裡自動使用動態抓取的電話，如果找不到就給預設公司電話
+            salesMobile: salesMobiles[salesName] || "02-26802486", 
             taxType: document.getElementById('qTaxType').value, 
             cartSum: cartSum, 
             taxAmt: taxAmt, 
