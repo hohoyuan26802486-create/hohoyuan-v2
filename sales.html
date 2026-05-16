@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.48</title>
+    <title>禾禾園 - 業務神速報價系統 V1.49</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -41,6 +41,15 @@
         .details-panel .input-group { flex: 1; min-width: 180px; }
         .details-panel .input-group label { color: #555; font-size: 13px; }
         .details-panel .input-group input { padding: 8px; font-size: 14px; }
+        
+        /* 🚨 漲價預警專用動畫與樣式 */
+        .price-alert { 
+            color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; 
+            border-radius: 4px; margin-top: 6px; display: inline-block; 
+            animation: blinker 1.5s linear infinite; font-weight: bold; 
+            box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4);
+        }
+        @keyframes blinker { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
@@ -48,7 +57,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.48</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.49 (情報雷達版)</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -130,7 +139,7 @@
                     <th style="width:50px; text-align:center;">項次</th>
                     <th>品名</th>
                     <th style="width:140px;">數量 / 單位</th>
-                    <th style="width:120px;">單價(✏️)</th>
+                    <th style="width:130px;">單價(✏️)</th>
                     <th style="width:80px;">小計</th>
                     <th style="width:160px;">備註</th>
                     <th style="width:70px;">操作</th>
@@ -152,7 +161,7 @@
         </div>
     </div>
 
-    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; gap: 15px;">
+    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px; gap: 15px;">
         <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 200px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
         <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px; flex: 2; min-width: 200px;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
     </div>
@@ -162,13 +171,13 @@
     // ⚠️ 請確保這是您最新發佈的 URL
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     
-    let db = {}; let quoteCart = []; 
+    let db = {}; 
+    let quoteCart = []; 
     let salesMobiles = {}; 
     let salesEmails = {};
+    let globalAlerts = []; // 🌟 新增：存放漲價警報的陣列
 
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
-    
-    // 🌟 這裡更新為您專屬的單位選單 🌟
     const COMMON_UNITS = ['盒', '包', '箱', '袋', '罐', '斤', 'kg', '桶', '磅', '兩', 'g'];
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
@@ -215,9 +224,7 @@
                 if(draft.contact) document.getElementById('qContact').value = draft.contact;
                 if(draft.phone) document.getElementById('qPhone').value = draft.phone;
                 if(draft.address) document.getElementById('qAddress').value = draft.address;
-                
                 setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
-                
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
                 if(draft.cart) quoteCart = draft.cart;
@@ -279,25 +286,28 @@
             sList.innerHTML = "";
             salesMobiles = {};
             salesEmails = {};
-            
             for(let i=1; i<db.Sales.length; i++) {
                 let r = db.Sales[i];
                 if(r[0]) {
                     let name = r[0];
                     salesMobiles[name] = r[1] || "";
                     salesEmails[name] = r[2] || "";
-                    let o = document.createElement('option');
-                    o.value = name;
-                    o.innerText = name;
-                    sList.appendChild(o);
+                    let o = document.createElement('option'); o.value = name; o.innerText = name; sList.appendChild(o);
                 }
             }
             if(!salesMobiles['公司業務部']) {
-                let o = document.createElement('option');
-                o.value = '公司業務部';
-                o.innerText = '公司業務部';
-                sList.appendChild(o);
+                let o = document.createElement('option'); o.value = '公司業務部'; o.innerText = '公司業務部'; sList.appendChild(o);
                 salesMobiles['公司業務部'] = '02-26802486';
+            }
+        }
+        // 🌟 處理漲價情報庫
+        globalAlerts = [];
+        if(db.PriceAlerts) {
+            for(let i=1; i<db.PriceAlerts.length; i++) {
+                let r = db.PriceAlerts[i];
+                if(r[0]) {
+                    globalAlerts.push({ name: r[0], increase: r[1], note: r[2] });
+                }
             }
         }
     }
@@ -321,9 +331,7 @@
         let historyList = [];
         for(let i = 1; i < db.Quotations.length; i++) {
             let row = db.Quotations[i];
-            if(row[2] === clientName) {
-                historyList.push(row);
-            }
+            if(row[2] === clientName) { historyList.push(row); }
         }
 
         if(historyList.length > 0) {
@@ -360,7 +368,6 @@
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
             
-            // 💡 嘗試使用產品本身的單位，如果不在我們的新清單中，就預設為「包」
             let pUnit = product[6] || product[2];
             let safeUnit = COMMON_UNITS.includes(pUnit) ? pUnit : "包";
 
@@ -497,6 +504,13 @@
             let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
 
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
+            
+            // 🚨 AI情報比對：如果這筆商品在情報庫裡，生成紅色閃爍警報！
+            let alertHtml = "";
+            let alertMatch = globalAlerts.find(a => a.name === item.name);
+            if(alertMatch) {
+                alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
+            }
 
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
@@ -516,6 +530,7 @@
                 <td>
                     <input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))">
                     <span class="cost-label">成本: $<span class="cost-value">${displayCost}</span></span>
+                    ${alertHtml}
                 </td>
                 <td><b>${subtotal}</b></td>
                 <td><input type="text" class="remark-input" placeholder="選填備註..." value="${safeRemark}" onchange="updateCart(${item.id}, 'remark', this.value)"></td>
