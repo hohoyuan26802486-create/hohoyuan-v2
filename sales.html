@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.45</title>
+    <title>禾禾園 - 業務神速報價系統 V1.46</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -24,22 +24,25 @@
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
         .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
-        .helper-input:focus { box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 850px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; font-size: 14px; }
         td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
         .quote-input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
         .editable-price { background-color: #fffde7; border: 2px solid #fbc02d; color: #d93025; font-weight: bold; width: 100%; }
-        .editable-price:focus { border-color: #f57f17; outline: none; box-shadow: 0 0 5px rgba(245,127,23,0.5); }
         .unit-select { padding: 8px; border: 1px solid #1a73e8; border-radius: 6px; font-size: 14px; background-color: #e8f0fe; color: #1a73e8; font-weight: bold; cursor: pointer; outline: none; }
         .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
-        .remark-input:focus { border-color: #1a73e8; }
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
+        
+        /* 擴充欄位專用樣式 */
+        .details-panel { background: #fff; padding: 15px; border-radius: 12px; border: 1px dashed #ccc; margin-top: -10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; }
+        .details-panel .input-group { flex: 1; min-width: 180px; }
+        .details-panel .input-group label { color: #555; font-size: 13px; }
+        .details-panel .input-group input { padding: 8px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -47,7 +50,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.45</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.46</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -86,7 +89,7 @@
 
     <div class="form-row">
         <div class="input-group" style="flex: 2; position: relative;">
-            <label style="color:#5f6368;">👤 客戶名稱 (必填)</label>
+            <label style="color:#1a73e8;">👤 客戶名稱 (必填)</label>
             <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="clientChanged(this.value)">
             <datalist id="clientList"></datalist>
 
@@ -100,7 +103,7 @@
         </div>
         
         <div class="input-group" style="flex: 1;">
-            <label style="color:#5f6368;">💼 負責業務</label>
+            <label style="color:#1a73e8;">💼 負責業務</label>
             <select id="qSalesName" onchange="saveDraft()">
                 <option value="洪文斗">洪文斗</option>
                 <option value="葉慈潤">葉慈潤</option>
@@ -111,13 +114,21 @@
         </div>
 
         <div class="input-group" style="flex: 2;">
-            <label style="color:#5f6368;">🔍 加入商品</label>
+            <label style="color:#1a73e8;">🔍 加入商品</label>
             <div style="display: flex; gap: 8px;">
                 <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
                 <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手動增加品項</button>
             </div>
             <datalist id="productList"></datalist>
         </div>
+    </div>
+
+    <div class="details-panel">
+        <div style="width: 100%; color: #888; font-size: 12px; font-weight: bold; margin-bottom: -5px;">📜 正式報價單 PDF 專用資訊 (非必填)</div>
+        <div class="input-group"><label>🏢 統一編號</label><input type="text" id="qTaxId" oninput="saveDraft()" placeholder="客戶統編"></div>
+        <div class="input-group"><label>👤 聯絡人</label><input type="text" id="qContact" oninput="saveDraft()" placeholder="收件人姓名"></div>
+        <div class="input-group"><label>📞 聯繫電話</label><input type="text" id="qPhone" oninput="saveDraft()" placeholder="客戶電話"></div>
+        <div class="input-group" style="flex: 2; min-width: 250px;"><label>🚚 送貨地址</label><input type="text" id="qAddress" oninput="saveDraft()" placeholder="送貨完整地址"></div>
     </div>
 
     <div style="overflow-x: auto;">
@@ -151,18 +162,17 @@
 
     <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; gap: 15px;">
         <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 200px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
-        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px; flex: 2; min-width: 200px;" onclick="saveQuote()">🚀 產生 PDF 報價單</button>
+        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px; flex: 2; min-width: 200px;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
     </div>
 </div>
 
 <script>
-    // ⚠️ 請確保這是您剛才「建立新版本」部署的正確網址
+    // ⚠️ 這裡請確保是您最新發佈的 URL
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     
     let db = {}; let quoteCart = []; 
 
     const SALES_MOBILES = { '洪文斗': '0912631569', '葉慈潤': '0906126091', '徐偉強': '0983500675', '蔡政達': '0960005486', '公司業務部': '02-26802486' };
-    const SALES_EMAILS = { '洪文斗': '', '葉慈潤': '', '徐偉強': '', '蔡政達': 'alan03081228@gmail.com', '公司業務部': '' };
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
     const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋', '式', '趟'];
 
@@ -183,6 +193,10 @@
     function saveDraft() {
         const draft = {
             client: document.getElementById('qClient').value,
+            taxId: document.getElementById('qTaxId').value,
+            contact: document.getElementById('qContact').value,
+            phone: document.getElementById('qPhone').value,
+            address: document.getElementById('qAddress').value,
             salesName: document.getElementById('qSalesName').value,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
@@ -202,6 +216,10 @@
                     document.getElementById('qClient').value = draft.client;
                     updateHistoryDropdown(draft.client); 
                 }
+                if(draft.taxId) document.getElementById('qTaxId').value = draft.taxId;
+                if(draft.contact) document.getElementById('qContact').value = draft.contact;
+                if(draft.phone) document.getElementById('qPhone').value = draft.phone;
+                if(draft.address) document.getElementById('qAddress').value = draft.address;
                 if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName;
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
@@ -216,6 +234,10 @@
         if(confirm("確定要清空目前畫面上的所有資料，準備打下一張新單嗎？")) {
             quoteCart = [];
             document.getElementById('qClient').value = "";
+            document.getElementById('qTaxId').value = "";
+            document.getElementById('qContact').value = "";
+            document.getElementById('qPhone').value = "";
+            document.getElementById('qAddress').value = "";
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
             document.getElementById('historyBlock').style.display = "none";
@@ -286,7 +308,7 @@
                 let option = document.createElement('option');
                 option.value = row[0]; 
                 let fileName = `${row[0]}_${row[2]}_報價單`; 
-                option.innerText = `📄 ${fileName} (總計: $${row[3] || row[4]})`;
+                option.innerText = `📄 ${fileName} (總計: $${row[3]})`;
                 select.appendChild(option);
             });
             block.style.display = 'block'; 
@@ -507,7 +529,7 @@
             if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
             return { 
                 name: i.name, 
-                spec: i.unit,  
+                spec: cleanSpec, // 保留原始規格，單位會獨立顯示在單位欄位
                 qty: i.qty, 
                 unit: i.unit, 
                 price: i.price, 
@@ -517,12 +539,16 @@
             };
         });
 
+        // 打包所有資料給後端 (新增了詳細的客戶資訊欄位)
         const p = { 
             action: "saveQuotation", 
             clientName: client, 
+            taxId: document.getElementById('qTaxId').value.trim(),
+            contact: document.getElementById('qContact').value.trim(),
+            phone: document.getElementById('qPhone').value.trim(),
+            address: document.getElementById('qAddress').value.trim(),
             salesName: salesName, 
             salesMobile: SALES_MOBILES[salesName], 
-            salesEmail: SALES_EMAILS[salesName],
             taxType: document.getElementById('qTaxType').value, 
             cartSum: cartSum, 
             taxAmt: taxAmt, 
