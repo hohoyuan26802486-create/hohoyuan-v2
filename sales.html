@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.40</title>
+    <title>禾禾園 - 業務神速報價系統 V1.41</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -38,6 +38,10 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
         .remark-input:focus { border-color: #1a73e8; }
+        
+        /* 💡 幫成本欄位加上特別的標示樣式 */
+        .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
+        .cost-value { font-weight: bold; color: #2c3e50; }
     </style>
 </head>
 <body>
@@ -45,7 +49,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.40</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.41</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -125,7 +129,7 @@
                     <th style="width:50px; text-align:center;">項次</th>
                     <th>品名</th>
                     <th style="width:130px;">數量 / 單位</th>
-                    <th style="width:110px;">單價(✏️)</th>
+                    <th style="width:120px;">單價(✏️)</th>
                     <th style="width:80px;">小計</th>
                     <th style="width:160px;">備註</th>
                     <th style="width:70px;">操作</th>
@@ -154,7 +158,6 @@
 </div>
 
 <script>
-    // 🚨 修正：換回「報價系統」專用的正確網址！！！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     let db = {}; let quoteCart = []; 
 
@@ -399,11 +402,14 @@
         
         tbody.innerHTML = quoteCart.map((item, index) => {
             let subtotal = Math.round(item.qty * item.price);
-            cartSum += subtotal; totalCost += Math.round(item.qty * (item.cost || 0));
+            let itemCost = Number(item.cost) || 0; // 確保成本是數字
+            cartSum += subtotal; 
+            totalCost += Math.round(item.qty * itemCost);
             
             let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
             let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
 
+            // 💡 在單價下方，加入「顯示成本」的標籤
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
                 <td><b>${item.name}</b><br><small style="color:#777;">${safeSpec}</small></td>
@@ -415,7 +421,10 @@
                         </select>
                     </div>
                 </td>
-                <td><input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))"></td>
+                <td>
+                    <input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))">
+                    <span class="cost-label">成本: $<span class="cost-value">${itemCost}</span></span>
+                </td>
                 <td><b>${subtotal}</b></td>
                 <td><input type="text" class="remark-input" placeholder="選填備註..." value="${safeRemark}" onchange="updateCart(${item.id}, 'remark', this.value)"></td>
                 <td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td>
