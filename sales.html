@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.41</title>
+    <title>禾禾園 - 業務神速報價系統 V1.42</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -39,7 +39,6 @@
         .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
         .remark-input:focus { border-color: #1a73e8; }
         
-        /* 💡 幫成本欄位加上特別的標示樣式 */
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
     </style>
@@ -49,7 +48,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.41</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.42</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -128,7 +127,7 @@
                 <tr>
                     <th style="width:50px; text-align:center;">項次</th>
                     <th>品名</th>
-                    <th style="width:130px;">數量 / 單位</th>
+                    <th style="width:140px;">數量 / 單位</th>
                     <th style="width:120px;">單價(✏️)</th>
                     <th style="width:80px;">小計</th>
                     <th style="width:160px;">備註</th>
@@ -314,7 +313,21 @@
             let taxType = document.getElementById('qTaxType').value;
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
-            quoteCart.push({ id: Date.now(), no: product[0], name: product[1], spec: product[2] || "", cost: cost, qty: 1, unit: product[6] || "", price: Math.round(cost * multiplier), remark: "" });
+            
+            // 💡 紀錄原始 ERP 成本 (baseCost)，並預設拆件除數為 1
+            quoteCart.push({ 
+                id: Date.now(), 
+                no: product[0], 
+                name: product[1], 
+                spec: product[2] || "", 
+                baseCost: cost, 
+                divider: 1, 
+                cost: cost, 
+                qty: 1, 
+                unit: product[6] || product[2] || "箱", 
+                price: Math.round(cost * multiplier), 
+                remark: "" 
+            });
             document.getElementById('qSearch').value = ""; renderCart();
         }
     }
@@ -336,6 +349,8 @@
             no: "手動新增", 
             name: name, 
             spec: spec, 
+            baseCost: Number(cost),
+            divider: 1,
             cost: Number(cost), 
             qty: 1, 
             unit: "包", 
@@ -366,6 +381,8 @@
                     qty: i.qty,
                     unit: i.unit,
                     price: i.price,
+                    baseCost: i.cost, 
+                    divider: 1,
                     cost: i.cost,
                     remark: (i.remark === "undefined" || !i.remark) ? "" : i.remark
                 }));
@@ -378,6 +395,26 @@
             alert("連線異常");
         } finally {
             hideLoading();
+        }
+    }
+
+    // 💡 處理拆件除數的核心邏輯
+    function updateDivider(id, val) {
+        if (!val || val <= 0) val = 1;
+        let item = quoteCart.find(i => i.id === id);
+        if (item) {
+            item.divider = val;
+            item.cost = item.baseCost / val; // 自動把原始成本除以入數
+            
+            // 如果不是手動新增的商品，自動依據新成本重算建議售價
+            if (item.no !== "手動新增" && item.no !== "臨時自訂" && item.no !== "已載入商品") {
+                let currentLevel = document.getElementById('qLevel').value;
+                let taxType = document.getElementById('qTaxType').value;
+                let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
+                let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
+                item.price = Math.round(item.cost * multiplier);
+            }
+            renderCart();
         }
     }
 
@@ -402,28 +439,34 @@
         
         tbody.innerHTML = quoteCart.map((item, index) => {
             let subtotal = Math.round(item.qty * item.price);
-            let itemCost = Number(item.cost) || 0; // 確保成本是數字
+            let itemCost = Number(item.cost) || 0; 
             cartSum += subtotal; 
             totalCost += Math.round(item.qty * itemCost);
             
             let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
             let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
 
-            // 💡 在單價下方，加入「顯示成本」的標籤
+            // 💡 處理成本小數點顯示 (避免 100/3 出現無限小數)
+            let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
+
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
                 <td><b>${item.name}</b><br><small style="color:#777;">${safeSpec}</small></td>
                 <td>
-                    <div style="display:flex; gap:5px;">
+                    <div style="display:flex; gap:5px; margin-bottom: 8px;">
                         <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:60px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
                         <select class="unit-select" onchange="updateCart(${item.id}, 'unit', this.value)">
                             ${COMMON_UNITS.map(u => `<option value="${u}" ${u===item.unit?'selected':''}>${u}</option>`).join('')}
                         </select>
                     </div>
+                    <div style="font-size: 12px; color: #d35400; background: #fffde7; padding: 4px 6px; border-radius: 4px; border: 1px dashed #fbc02d; display: inline-block;">
+                        拆件除以: 
+                        <input type="number" value="${item.divider || 1}" style="width: 40px; padding: 2px; text-align: center; border: 1px solid #ccc; border-radius: 4px; outline:none;" onchange="updateDivider(${item.id}, Number(this.value))"> 入
+                    </div>
                 </td>
                 <td>
                     <input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))">
-                    <span class="cost-label">成本: $<span class="cost-value">${itemCost}</span></span>
+                    <span class="cost-label">成本: $<span class="cost-value">${displayCost}</span></span>
                 </td>
                 <td><b>${subtotal}</b></td>
                 <td><input type="text" class="remark-input" placeholder="選填備註..." value="${safeRemark}" onchange="updateCart(${item.id}, 'remark', this.value)"></td>
