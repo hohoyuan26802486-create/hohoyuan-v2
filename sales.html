@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.47</title>
+    <title>禾禾園 - 業務神速報價系統 V1.48</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -48,7 +48,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.47</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.48</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -159,16 +159,17 @@
 </div>
 
 <script>
-    // ⚠️ 這裡請確保是您最新發佈的 URL
+    // ⚠️ 請確保這是您最新發佈的 URL
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     
     let db = {}; let quoteCart = []; 
-    // 🌟 動態業務聯絡簿
     let salesMobiles = {}; 
     let salesEmails = {};
 
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
-    const COMMON_UNITS = ['箱', '斤', '公斤', '公克', '包', '盒', '罐', '瓶', '件', '袋', '式', '趟'];
+    
+    // 🌟 這裡更新為您專屬的單位選單 🌟
+    const COMMON_UNITS = ['盒', '包', '箱', '袋', '罐', '斤', 'kg', '桶', '磅', '兩', 'g'];
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
     function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
@@ -215,7 +216,6 @@
                 if(draft.phone) document.getElementById('qPhone').value = draft.phone;
                 if(draft.address) document.getElementById('qAddress').value = draft.address;
                 
-                // 等待下拉選單建好之後再恢復選擇的業務
                 setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
                 
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
@@ -274,7 +274,6 @@
                 let r = db.Customers[i]; if(r[0]) { let o = document.createElement('option'); o.value = r[0]; cList.appendChild(o); }
             }
         }
-        // 🌟 初始化動態業務名單
         if(db.Sales) {
             const sList = document.getElementById('qSalesName');
             sList.innerHTML = "";
@@ -293,7 +292,6 @@
                     sList.appendChild(o);
                 }
             }
-            // 系統防呆：如果試算表裡沒有建「公司業務部」，系統自動補上一個預設的
             if(!salesMobiles['公司業務部']) {
                 let o = document.createElement('option');
                 o.value = '公司業務部';
@@ -362,6 +360,10 @@
             let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
             let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
             
+            // 💡 嘗試使用產品本身的單位，如果不在我們的新清單中，就預設為「包」
+            let pUnit = product[6] || product[2];
+            let safeUnit = COMMON_UNITS.includes(pUnit) ? pUnit : "包";
+
             quoteCart.push({ 
                 id: Date.now(), 
                 no: product[0], 
@@ -371,7 +373,7 @@
                 divider: 1, 
                 cost: cost, 
                 qty: 1, 
-                unit: product[6] || product[2] || "箱", 
+                unit: safeUnit, 
                 price: Math.round(cost * multiplier), 
                 remark: "" 
             });
@@ -426,7 +428,7 @@
                     name: i.name,
                     spec: i.spec,
                     qty: i.qty,
-                    unit: i.unit,
+                    unit: COMMON_UNITS.includes(i.unit) ? i.unit : "包",
                     price: i.price,
                     baseCost: i.cost, 
                     divider: 1,
@@ -572,7 +574,6 @@
             phone: document.getElementById('qPhone').value.trim(),
             address: document.getElementById('qAddress').value.trim(),
             salesName: salesName, 
-            // 🌟 這裡自動使用動態抓取的電話，如果找不到就給預設公司電話
             salesMobile: salesMobiles[salesName] || "02-26802486", 
             taxType: document.getElementById('qTaxType').value, 
             cartSum: cartSum, 
@@ -590,7 +591,7 @@
             if(text.startsWith("Success")) { 
                 window.open(text.split("|")[1], '_blank'); 
                 alert("✅ 報價單 PDF 已成功產生並存檔！");
-                fetchData(); // 重新同步以抓取最新紀錄
+                fetchData(); 
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
