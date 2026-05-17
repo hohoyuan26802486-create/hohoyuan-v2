@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.49</title>
+    <title>禾禾園 - 業務神速報價系統 V1.50</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -41,8 +41,6 @@
         .details-panel .input-group { flex: 1; min-width: 180px; }
         .details-panel .input-group label { color: #555; font-size: 13px; }
         .details-panel .input-group input { padding: 8px; font-size: 14px; }
-        
-        /* 🚨 漲價預警專用動畫與樣式 */
         .price-alert { 
             color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; 
             border-radius: 4px; margin-top: 6px; display: inline-block; 
@@ -57,7 +55,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.49 (情報雷達版)</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.50</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -163,19 +161,22 @@
 
     <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px; gap: 15px;">
         <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 200px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
-        <button class="btn btn-success" style="font-size: 18px; padding: 15px 40px; flex: 2; min-width: 200px;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
+        <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 10px;" id="actionButtons">
+            <button id="submitBtn" class="btn btn-success" style="font-size: 18px; padding: 15px 40px; width: 100%;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
+            <a id="manualPdfBtn" href="#" target="_blank" class="btn btn-primary" style="display: none; justify-content: center; font-size: 18px; padding: 15px 40px; text-decoration: none;">📄 點此手動開啟 PDF 報價單</a>
+        </div>
     </div>
 </div>
 
 <script>
-    // ⚠️ 請確保這是您最新發佈的 URL
+    // ⚠️ 確保此網址是您最新部署的 Apps Script 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     
     let db = {}; 
     let quoteCart = []; 
     let salesMobiles = {}; 
     let salesEmails = {};
-    let globalAlerts = []; // 🌟 新增：存放漲價警報的陣列
+    let globalAlerts = []; 
 
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
     const COMMON_UNITS = ['盒', '包', '箱', '袋', '罐', '斤', 'kg', '桶', '磅', '兩', 'g'];
@@ -245,6 +246,8 @@
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
             document.getElementById('historyBlock').style.display = "none";
+            document.getElementById('manualPdfBtn').style.display = "none"; // 隱藏按鈕
+            document.getElementById('submitBtn').style.display = "block"; // 恢復按鈕
             localStorage.removeItem('hohoyuan_quote_draft');
             document.getElementById('saveStatus').innerText = "";
             renderCart();
@@ -300,7 +303,6 @@
                 salesMobiles['公司業務部'] = '02-26802486';
             }
         }
-        // 🌟 處理漲價情報庫
         globalAlerts = [];
         if(db.PriceAlerts) {
             for(let i=1; i<db.PriceAlerts.length; i++) {
@@ -505,7 +507,6 @@
 
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
-            // 🚨 AI情報比對：如果這筆商品在情報庫裡，生成紅色閃爍警報！
             let alertHtml = "";
             let alertMatch = globalAlerts.find(a => a.name === item.name);
             if(alertMatch) {
@@ -603,9 +604,23 @@
         try { 
             const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); 
             const text = await res.text(); 
+            
             if(text.startsWith("Success")) { 
-                window.open(text.split("|")[1], '_blank'); 
-                alert("✅ 報價單 PDF 已成功產生並存檔！");
+                let pdfUrl = text.split("|")[1];
+                
+                // 嘗試開啟新視窗
+                let newWin = window.open(pdfUrl, '_blank'); 
+                
+                // 🌟 AI 蘋果防阻擋機制 🌟
+                if(!newWin || newWin.closed || typeof newWin.closed == 'undefined') {
+                    alert("✅ 報價單已產生！\n\n⚠️ 但您的蘋果設備(iPad/iPhone)阻擋了自動彈出。\n\n👉 請點擊畫面右下角出現的藍色【📄 點此手動開啟 PDF】按鈕！");
+                    document.getElementById('manualPdfBtn').href = pdfUrl;
+                    document.getElementById('manualPdfBtn').style.display = "flex";
+                    document.getElementById('submitBtn').style.display = "none";
+                } else {
+                    alert("✅ 報價單 PDF 已成功產生並存檔！");
+                }
+                
                 fetchData(); 
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
