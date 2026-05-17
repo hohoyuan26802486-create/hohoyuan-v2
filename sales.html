@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.50</title>
+    <title>禾禾園 - 業務神速報價系統 V1.51</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -55,7 +55,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.50</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.51</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -246,8 +246,8 @@
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
             document.getElementById('historyBlock').style.display = "none";
-            document.getElementById('manualPdfBtn').style.display = "none"; // 隱藏按鈕
-            document.getElementById('submitBtn').style.display = "block"; // 恢復按鈕
+            document.getElementById('manualPdfBtn').style.display = "none"; 
+            document.getElementById('submitBtn').style.display = "block"; 
             localStorage.removeItem('hohoyuan_quote_draft');
             document.getElementById('saveStatus').innerText = "";
             renderCart();
@@ -390,34 +390,41 @@
         }
     }
 
+    // 🌟 V1.51 修復：手動新增商品的數字防呆
     function addCustomItem() {
         let name = prompt("📌 [步驟 1/4] 請輸入【品名】：\n(例如：大油皮)");
         if (!name) return;
         
         let spec = prompt(`📌 [步驟 2/4] 請輸入「${name}」的【規格大小】：\n(例如：3斤裝 / 若無可直接按確定留白)`) || "";
         
-        let cost = prompt(`📌 [步驟 3/4] 請輸入「${name}」的【成本】：\n(請輸入數字，若無請填 0)`) || 0;
-        if (isNaN(cost)) cost = 0;
+        let costInput = prompt(`📌 [步驟 3/4] 請輸入「${name}」的【成本】：\n(請輸入純數字，若無請填 0)`);
+        let cost = parseFloat(costInput);
+        if (isNaN(cost)) cost = 0; 
 
-        let price = prompt(`📌 [步驟 4/4] 請輸入「${name}」的【報價 (單價)】：\n(請輸入數字)`);
-        if (!price || isNaN(price)) return alert("❌ 報價錯誤，請填寫數字！");
+        let priceInput = prompt(`📌 [步驟 4/4] 請輸入「${name}」的【報價 (單價)】：\n(請輸入純數字)`);
+        let price = parseFloat(priceInput);
+        
+        if (isNaN(price)) {
+            return alert("❌ 報價單價錯誤，請務必填寫純數字！");
+        }
 
         quoteCart.push({ 
             id: Date.now(), 
             no: "手動新增", 
             name: name, 
             spec: spec, 
-            baseCost: Number(cost),
+            baseCost: cost,
             divider: 1,
-            cost: Number(cost), 
+            cost: cost, 
             qty: 1, 
             unit: "包", 
-            price: Number(price),
+            price: price,
             remark: "" 
         });
         renderCart();
     }
 
+    // 🌟 V1.51 修復：舊單備註 NaN/undefined 清洗
     async function loadSelectedHistory() {
         let id = document.getElementById('qHistorySelect').value;
         if(!id) return alert("請先在選單中點選一張報價單！");
@@ -431,19 +438,25 @@
             const data = await res.json();
             
             if(data && data.items && data.items.length > 0) {
-                quoteCart = data.items.map(i => ({
-                    id: Date.now() + Math.random(),
-                    no: "已載入商品", 
-                    name: i.name,
-                    spec: i.spec,
-                    qty: i.qty,
-                    unit: COMMON_UNITS.includes(i.unit) ? i.unit : "包",
-                    price: i.price,
-                    baseCost: i.cost, 
-                    divider: 1,
-                    cost: i.cost,
-                    remark: (i.remark === "undefined" || !i.remark) ? "" : i.remark
-                }));
+                quoteCart = data.items.map(i => {
+                    let cleanRemark = i.remark;
+                    if (cleanRemark === "undefined" || cleanRemark === "null" || cleanRemark === null || cleanRemark === undefined) {
+                        cleanRemark = "";
+                    }
+                    return {
+                        id: Date.now() + Math.random(),
+                        no: "已載入商品", 
+                        name: i.name,
+                        spec: i.spec,
+                        qty: i.qty,
+                        unit: COMMON_UNITS.includes(i.unit) ? i.unit : "包",
+                        price: i.price,
+                        baseCost: i.cost, 
+                        divider: 1,
+                        cost: i.cost,
+                        remark: cleanRemark
+                    };
+                });
                 renderCart();
                 alert("✅ 舊單明細載入成功！");
             } else {
@@ -502,13 +515,26 @@
             cartSum += subtotal; 
             totalCost += Math.round(item.qty * itemCost);
             
-            let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
-            let safeSpec = (item.spec === "undefined" || !item.spec) ? "" : item.spec;
+            let safeRemark = (item.remark === "undefined" || item.remark === "null" || !item.remark) ? "" : item.remark;
+            let safeSpec = (item.spec === "undefined" || item.spec === "null" || !item.spec) ? "" : item.spec;
 
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
             let alertHtml = "";
-            let alertMatch = globalAlerts.find(a => a.name === item.name);
+            // 🌟 智慧模糊比對引擎
+            let alertMatch = globalAlerts.find(a => {
+                let alertName = String(a.name).trim().toLowerCase();
+                let cartName = String(item.name).trim().toLowerCase();
+                if (cartName === alertName) return true;
+                if (alertName.length >= 2 && cartName.includes(alertName)) return true;
+                if (cartName.length >= 2 && alertName.includes(cartName)) return true;
+                let keywords = alertName.replace(/[()（）*\/+\-]/g, ' ').split(' ').filter(k => k.length >= 2);
+                for(let kw of keywords) {
+                    if (cartName.includes(kw)) return true;
+                }
+                return false;
+            });
+
             if(alertMatch) {
                 alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
             }
@@ -578,7 +604,7 @@
                 price: i.price, 
                 cost: i.cost || 0, 
                 subtotal: Math.round(i.qty*i.price), 
-                remark: (i.remark === "undefined" || !i.remark) ? "" : i.remark 
+                remark: (i.remark === "undefined" || i.remark === "null" || !i.remark) ? "" : i.remark 
             };
         });
 
@@ -608,10 +634,8 @@
             if(text.startsWith("Success")) { 
                 let pdfUrl = text.split("|")[1];
                 
-                // 嘗試開啟新視窗
                 let newWin = window.open(pdfUrl, '_blank'); 
                 
-                // 🌟 AI 蘋果防阻擋機制 🌟
                 if(!newWin || newWin.closed || typeof newWin.closed == 'undefined') {
                     alert("✅ 報價單已產生！\n\n⚠️ 但您的蘋果設備(iPad/iPhone)阻擋了自動彈出。\n\n👉 請點擊畫面右下角出現的藍色【📄 點此手動開啟 PDF】按鈕！");
                     document.getElementById('manualPdfBtn').href = pdfUrl;
@@ -642,7 +666,7 @@
                     let itemCost = item.cost || 0;
                     let itemProfit = Math.round((item.price - itemCost) * item.qty); 
                     let marginPercent = item.price > 0 ? ((item.price - itemCost) / item.price * 100).toFixed(1) + "%" : "0%";
-                    let safeRemark = (item.remark === "undefined" || !item.remark) ? "" : item.remark;
+                    let safeRemark = (item.remark === "undefined" || item.remark === "null" || !item.remark) ? "" : item.remark;
                     
                     let cleanSpec = item.spec;
                     if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
