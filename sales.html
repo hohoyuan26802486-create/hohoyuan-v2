@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.51</title>
+    <title>禾禾園 - 業務神速報價系統 V1.52</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -55,7 +55,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.51</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.52</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -116,7 +116,7 @@
             <label style="color:#1a73e8;">🔍 加入商品</label>
             <div style="display: flex; gap: 8px;">
                 <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
-                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手動增加品項</button>
+                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手 মতামত加品項</button>
             </div>
             <datalist id="productList"></datalist>
         </div>
@@ -390,7 +390,6 @@
         }
     }
 
-    // 🌟 V1.51 修復：手動新增商品的數字防呆
     function addCustomItem() {
         let name = prompt("📌 [步驟 1/4] 請輸入【品名】：\n(例如：大油皮)");
         if (!name) return;
@@ -424,7 +423,6 @@
         renderCart();
     }
 
-    // 🌟 V1.51 修復：舊單備註 NaN/undefined 清洗
     async function loadSelectedHistory() {
         let id = document.getElementById('qHistorySelect').value;
         if(!id) return alert("請先在選單中點選一張報價單！");
@@ -443,9 +441,20 @@
                     if (cleanRemark === "undefined" || cleanRemark === "null" || cleanRemark === null || cleanRemark === undefined) {
                         cleanRemark = "";
                     }
+                    
+                    // 🌟 V1.52 修正：從商品庫自動找回真正的「料號」
+                    let actualItemNo = "手動新增"; 
+                    if (db.Products) {
+                        let matchedProduct = db.Products.find(p => p[1] === i.name);
+                        if (matchedProduct && matchedProduct[0]) {
+                            actualItemNo = matchedProduct[0];
+                        }
+                    }
+
                     return {
                         id: Date.now() + Math.random(),
-                        no: "已載入商品", 
+                        no: actualItemNo, // 🌟 填入真正的料號
+                        isLoadedHistory: true, // 🌟 加上專屬歷史標記，保護舊單價不被洗掉
                         name: i.name,
                         spec: i.spec,
                         qty: i.qty,
@@ -479,7 +488,8 @@
             }
             item.cost = item.baseCost / val; 
             
-            if (item.no !== "手動新增" && item.no !== "臨時自訂" && item.no !== "已載入商品") {
+            // 🌟 V1.52 修正：不使用 no 判斷，改用 isLoadedHistory 標記
+            if (item.no !== "手動新增" && item.no !== "臨時自訂" && !item.isLoadedHistory) {
                 let currentLevel = document.getElementById('qLevel').value;
                 let taxType = document.getElementById('qTaxType').value;
                 let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
@@ -497,7 +507,8 @@
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
         
         quoteCart.forEach(item => { 
-            if (item.no !== "手動新增" && item.no !== "臨時自訂" && item.no !== "已載入商品") {
+            // 🌟 V1.52 修正：不使用 no 判斷，改用 isLoadedHistory 標記
+            if (item.no !== "手動新增" && item.no !== "臨時自訂" && !item.isLoadedHistory) {
                 item.price = Math.round(item.cost * multiplier); 
             }
         });
@@ -521,7 +532,6 @@
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
             let alertHtml = "";
-            // 🌟 智慧模糊比對引擎
             let alertMatch = globalAlerts.find(a => {
                 let alertName = String(a.name).trim().toLowerCase();
                 let cartName = String(item.name).trim().toLowerCase();
@@ -684,7 +694,7 @@
                         marginPercent,
                         safeRemark,
                         taxType,
-                        item.no
+                        item.no // 🌟 V1.52：這裡會完美輸出找回來的真實料號！
                     ]);
                 });
 
