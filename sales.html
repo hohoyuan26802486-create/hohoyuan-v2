@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.54</title>
+    <title>禾禾園 - 業務神速報價系統 V1.55</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -55,7 +55,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.54</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.55</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -371,6 +371,7 @@
             
             let pUnit = product[6] || product[2];
             let safeUnit = COMMON_UNITS.includes(pUnit) ? pUnit : "包";
+            let defaultPrice = Math.round(cost * multiplier);
 
             quoteCart.push({ 
                 id: Date.now(), 
@@ -382,7 +383,8 @@
                 cost: cost, 
                 qty: 1, 
                 unit: safeUnit, 
-                price: Math.round(cost * multiplier), 
+                price: defaultPrice,
+                basePrice: defaultPrice, // 🌟 V1.55 紀錄原始售價基準
                 remark: "" 
             });
             document.getElementById('qSearch').value = ""; renderCart();
@@ -417,6 +419,7 @@
             qty: 1, 
             unit: "包", 
             price: price,
+            basePrice: price, // 🌟 V1.55 紀錄原始售價基準
             remark: "" 
         });
         renderCart();
@@ -458,6 +461,7 @@
                         qty: i.qty,
                         unit: COMMON_UNITS.includes(i.unit) ? i.unit : "包",
                         price: i.price,
+                        basePrice: i.price, // 🌟 V1.55 紀錄舊單載入時的「原始歷史售價」
                         baseCost: i.cost, 
                         divider: 1,
                         cost: i.cost,
@@ -476,17 +480,24 @@
         }
     }
 
+    // 🌟 V1.55 修復：完美整合歷史舊單與拆件除以的邏輯
     function updateDivider(id, val) {
         if (!val || val <= 0) val = 1;
         let item = quoteCart.find(i => i.id === id);
         if (item) {
             item.divider = val;
-            if (item.baseCost === undefined || isNaN(item.baseCost)) {
-                item.baseCost = Number(item.cost) || 0;
-            }
+            
+            // 處理成本除法
+            if (item.baseCost === undefined || isNaN(item.baseCost)) item.baseCost = Number(item.cost) || 0;
             item.cost = item.baseCost / val; 
             
-            if (item.no !== "手動新增" && item.no !== "臨時自訂" && !item.isLoadedHistory) {
+            // 處理售價除法
+            if (item.no === "手動新增" || item.no === "臨時自訂" || item.isLoadedHistory) {
+                // 如果是歷史單或手動新增，保留原始價格鎖定，只做單純的除法換算！
+                if (item.basePrice === undefined || isNaN(item.basePrice)) item.basePrice = Number(item.price) || 0;
+                item.price = Math.round(item.basePrice / val);
+            } else {
+                // 如果是資料庫拉出的新商品，就照著最新的等級倍率乘上去
                 let currentLevel = document.getElementById('qLevel').value;
                 let taxType = document.getElementById('qTaxType').value;
                 let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
@@ -528,21 +539,13 @@
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
             let alertHtml = "";
-            
-            // 🌟 V1.54 絕對嚴格比對引擎
             let alertMatch = globalAlerts.find(a => {
                 let alertName = String(a.name).trim().toUpperCase();
                 let cartName = String(item.name).trim().toUpperCase();
                 
-                // 阻擋空白或單一字元，避免亂亮燈
                 if (!alertName || alertName.length < 2) return false; 
-                
-                // 1. 完全包含 (情報: 沙拉油 -> 購物車必須有 沙拉油)
-                if (cartName.includes(alertName)) {
-                    return true;
-                }
+                if (cartName.includes(alertName)) return true;
 
-                // 2. 嚴格多重關鍵字配對 (情報: 李錦記 蠔油 -> 購物車必須同時有李錦記 AND 蠔油)
                 if (alertName.includes(' ')) {
                     let keywords = alertName.split(' ').filter(k => k.trim().length > 0);
                     if (keywords.length > 0) {
@@ -550,7 +553,6 @@
                         if (allMatch) return true;
                     }
                 }
-                
                 return false;
             });
 
@@ -597,7 +599,21 @@
         if (doSave) saveDraft(); 
     }
 
-    function updateCart(id, field, value) { let item = quoteCart.find(i => i.id === id); if(item) { item[field] = value; renderCart(); } }
+    // 🌟 V1.55 修復：如果在拆件後手動改價，會自動反推記憶新的基準價！
+    function updateCart(id, field, value) { 
+        let item = quoteCart.find(i => i.id === id); 
+        if(item) { 
+            item[field] = value; 
+            
+            if (field === 'price') {
+                // 如果手動改了畫面上的「售價」，自動反推並記憶新的 basePrice，確保後續拆件不凸槌
+                item.basePrice = value * (item.divider || 1);
+            }
+            
+            renderCart(); 
+        } 
+    }
+
     function removeQuoteItem(id) { quoteCart = quoteCart.filter(i => i.id !== id); renderCart(); }
 
     async function saveQuote() {
