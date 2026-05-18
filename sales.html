@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.52</title>
+    <title>禾禾園 - 業務神速報價系統 V1.53</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -55,7 +55,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.52</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.53</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -116,7 +116,7 @@
             <label style="color:#1a73e8;">🔍 加入商品</label>
             <div style="display: flex; gap: 8px;">
                 <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
-                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手 মতামত加品項</button>
+                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手動增加品項</button>
             </div>
             <datalist id="productList"></datalist>
         </div>
@@ -169,7 +169,6 @@
 </div>
 
 <script>
-    // ⚠️ 確保此網址是您最新部署的 Apps Script 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
     
     let db = {}; 
@@ -442,7 +441,6 @@
                         cleanRemark = "";
                     }
                     
-                    // 🌟 V1.52 修正：從商品庫自動找回真正的「料號」
                     let actualItemNo = "手動新增"; 
                     if (db.Products) {
                         let matchedProduct = db.Products.find(p => p[1] === i.name);
@@ -453,8 +451,8 @@
 
                     return {
                         id: Date.now() + Math.random(),
-                        no: actualItemNo, // 🌟 填入真正的料號
-                        isLoadedHistory: true, // 🌟 加上專屬歷史標記，保護舊單價不被洗掉
+                        no: actualItemNo, 
+                        isLoadedHistory: true,
                         name: i.name,
                         spec: i.spec,
                         qty: i.qty,
@@ -488,7 +486,6 @@
             }
             item.cost = item.baseCost / val; 
             
-            // 🌟 V1.52 修正：不使用 no 判斷，改用 isLoadedHistory 標記
             if (item.no !== "手動新增" && item.no !== "臨時自訂" && !item.isLoadedHistory) {
                 let currentLevel = document.getElementById('qLevel').value;
                 let taxType = document.getElementById('qTaxType').value;
@@ -507,7 +504,6 @@
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
         
         quoteCart.forEach(item => { 
-            // 🌟 V1.52 修正：不使用 no 判斷，改用 isLoadedHistory 標記
             if (item.no !== "手動新增" && item.no !== "臨時自訂" && !item.isLoadedHistory) {
                 item.price = Math.round(item.cost * multiplier); 
             }
@@ -532,16 +528,23 @@
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
             let alertHtml = "";
+            // 🌟 V1.53：嚴格 AND 模糊比對引擎
             let alertMatch = globalAlerts.find(a => {
                 let alertName = String(a.name).trim().toLowerCase();
                 let cartName = String(item.name).trim().toLowerCase();
-                if (cartName === alertName) return true;
-                if (alertName.length >= 2 && cartName.includes(alertName)) return true;
-                if (cartName.length >= 2 && alertName.includes(cartName)) return true;
-                let keywords = alertName.replace(/[()（）*\/+\-]/g, ' ').split(' ').filter(k => k.length >= 2);
-                for(let kw of keywords) {
-                    if (cartName.includes(kw)) return true;
+                
+                if (cartName === alertName) return true; // 100% 完全一樣，放行
+                if (alertName.length >= 2 && cartName.includes(alertName)) return true; // 品名直接包含情報字眼，放行
+                
+                // 將情報拆成多個關鍵字，過濾掉特殊符號
+                let keywords = alertName.replace(/[()（）*\/+\-\s]/g, ' ').split(' ').filter(k => k.trim().length >= 2);
+                
+                if (keywords.length > 0) {
+                    // 🌟 嚴格模式：必須「每一個」拆解出來的關鍵字，都出現在品名裡！
+                    let isAllMatched = keywords.every(kw => cartName.includes(kw));
+                    if (isAllMatched) return true;
                 }
+                
                 return false;
             });
 
@@ -694,7 +697,7 @@
                         marginPercent,
                         safeRemark,
                         taxType,
-                        item.no // 🌟 V1.52：這裡會完美輸出找回來的真實料號！
+                        item.no
                     ]);
                 });
 
