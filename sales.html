@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.53</title>
+    <title>禾禾園 - 業務神速報價系統 V1.54</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -55,7 +55,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.53</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.54</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -528,21 +528,27 @@
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
             let alertHtml = "";
-            // 🌟 V1.53：嚴格 AND 模糊比對引擎
+            
+            // 🌟 V1.54 絕對嚴格比對引擎
             let alertMatch = globalAlerts.find(a => {
-                let alertName = String(a.name).trim().toLowerCase();
-                let cartName = String(item.name).trim().toLowerCase();
+                let alertName = String(a.name).trim().toUpperCase();
+                let cartName = String(item.name).trim().toUpperCase();
                 
-                if (cartName === alertName) return true; // 100% 完全一樣，放行
-                if (alertName.length >= 2 && cartName.includes(alertName)) return true; // 品名直接包含情報字眼，放行
+                // 阻擋空白或單一字元，避免亂亮燈
+                if (!alertName || alertName.length < 2) return false; 
                 
-                // 將情報拆成多個關鍵字，過濾掉特殊符號
-                let keywords = alertName.replace(/[()（）*\/+\-\s]/g, ' ').split(' ').filter(k => k.trim().length >= 2);
-                
-                if (keywords.length > 0) {
-                    // 🌟 嚴格模式：必須「每一個」拆解出來的關鍵字，都出現在品名裡！
-                    let isAllMatched = keywords.every(kw => cartName.includes(kw));
-                    if (isAllMatched) return true;
+                // 1. 完全包含 (情報: 沙拉油 -> 購物車必須有 沙拉油)
+                if (cartName.includes(alertName)) {
+                    return true;
+                }
+
+                // 2. 嚴格多重關鍵字配對 (情報: 李錦記 蠔油 -> 購物車必須同時有李錦記 AND 蠔油)
+                if (alertName.includes(' ')) {
+                    let keywords = alertName.split(' ').filter(k => k.trim().length > 0);
+                    if (keywords.length > 0) {
+                        let allMatch = keywords.every(kw => cartName.includes(kw));
+                        if (allMatch) return true;
+                    }
                 }
                 
                 return false;
@@ -697,7 +703,7 @@
                         marginPercent,
                         safeRemark,
                         taxType,
-                        item.no
+                        item.no 
                     ]);
                 });
 
