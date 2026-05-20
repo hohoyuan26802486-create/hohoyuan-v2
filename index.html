@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.10 (彈性上下班版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.12</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -31,7 +31,7 @@
         .type-toggle input:checked + label { background: var(--primary); color: white; border-color: var(--primary); }
 
         .status-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-        .status-btn { flex: 1; min-width: 140px; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; text-align: center; font-size: 14px; cursor: pointer; background: #f8f9fa; font-weight: 600; }
+        .status-btn { flex: 1; min-width: 130px; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; text-align: center; font-size: 14px; cursor: pointer; background: #f8f9fa; font-weight: 600; }
         .status-btn.selected { background: #e8f0fe; border-color: var(--primary); color: var(--primary); }
 
         .gps-box { padding: 12px; border-radius: 10px; text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 20px; display: none; }
@@ -88,7 +88,7 @@
         </div>
 
         <div class="input-group" id="overtimeBox" style="display: none; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
-            <label style="color: #856404;">📝 請填寫加班事由</label>
+            <label style="color: #856404;">📝 請填寫事由 (加班/值班必填)</label>
             <input type="text" id="overtimeReason" placeholder="例如：處理急件、庫存盤點..." style="border-color: #ffe69c;">
         </div>
 
@@ -135,7 +135,6 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
-    // 🌟 彈性與免定位人員名單維持原設定
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
     const NO_GPS_WORKERS = ["蔡政達"];
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -205,19 +204,28 @@
             if(list) list.innerHTML = "";
 
             if (type === "上班") {
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
-                else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性上班)", true); 
+                } else {
                     if (time < 440) addStatusBtn("個人因素提早上班", true);
                     else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
                     else addStatusBtn("遲到", true);
+                    
+                    addStatusBtn("請假後上班", false); 
+                    addStatusBtn("外出回廠上班", false);
                 }
             } else {
-                // 🌟 V37.10 升級：下班打卡時，彈性人員按鈕改為「彈性下班」
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
-                else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性下班)", true); 
+                } else {
                     if (time >= 1010) { 
-                        addStatusBtn("因個人因素延後下班", true); addStatusBtn("經主管核准加班", false);
+                        addStatusBtn("因個人因素延後下班", true); 
+                        addStatusBtn("經主管核准加班", false);
                     } else { addStatusBtn("正常下班", true); }
+                    
+                    // 🌟 V37.12 更新：字眼優化為「值班(換補休)」
+                    addStatusBtn("值班(換補休)", false); 
+                    addStatusBtn("外出暫時下班", false);
                 }
             }
             updateGPSUI();
@@ -230,13 +238,14 @@
         if(isSelected) {
             selectedStatus = txt;
             const ob = document.getElementById('overtimeBox');
-            if(ob) ob.style.display = (txt === "經主管核准加班") ? "block" : "none";
+            // 🌟 確保選到「加班」或「值班」時，填寫事由的框框都會跳出來
+            if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
         }
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); selectedStatus = txt;
             const ob = document.getElementById('overtimeBox');
-            if(ob) ob.style.display = (txt === "經主管核准加班") ? "block" : "none";
+            if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
         };
         const statusList = document.getElementById('statusList');
         if(statusList) statusList.appendChild(div);
@@ -301,7 +310,7 @@
         const name = document.getElementById('attName').value;
         const type = document.querySelector('input[name="attType"]:checked').value;
         const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
-        if (selectedStatus === "經主管核准加班" && !overtimeReason.trim()) return Swal.fire('提示', '請填寫加班事由', 'warning');
+        if ((selectedStatus.includes("加班") || selectedStatus.includes("值班")) && !overtimeReason.trim()) return Swal.fire('提示', '請填寫事由', 'warning');
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         showLoading("打卡資料傳送中...");
@@ -310,7 +319,8 @@
                 method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
             });
             const result = await response.text();
-            if (result === "Duplicate") { Swal.fire('注意', `${name}，今天已經打過【${type}】卡囉！`, 'info'); } 
+            
+            if (result === "Duplicate") { Swal.fire('注意', `${name}，您剛剛已經打過卡了喔！請勿在5分鐘內連續重複點擊！`, 'warning'); } 
             else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
