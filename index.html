@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.9 (網址校正版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.10 (彈性上下班版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -133,9 +133,9 @@
 </div>
 
 <script>
-    // 🌟 這裡已經幫您換上最新的通訊網址了！
     const API_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
+    // 🌟 彈性與免定位人員名單維持原設定
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
     const NO_GPS_WORKERS = ["蔡政達"];
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -212,7 +212,8 @@
                     else addStatusBtn("遲到", true);
                 }
             } else {
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
+                // 🌟 V37.10 升級：下班打卡時，彈性人員按鈕改為「彈性下班」
+                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
                 else {
                     if (time >= 1010) { 
                         addStatusBtn("因個人因素延後下班", true); addStatusBtn("經主管核准加班", false);
