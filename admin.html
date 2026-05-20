@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.19</title>
+    <title>禾禾園 - 專業管理後台 V19.20 (跨部門授權版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -191,14 +191,29 @@
 
             document.getElementById('leaveBody').innerHTML = leaveData.map(r => {
                 let next = '';
-                let targetRole = String(r[3] || ""); 
-                if (targetRole === '運輸部') { targetRole = '會計部'; }
+                let empDept = String(r[3] || ""); 
                 let status = String(r[8] || "");
+                let canApprove = false;
 
-                if (targetRole && role.includes(targetRole.replace('部','')) && status === '待主管審核') {
-                    next = '待副總審核';
-                } else if (role === '副總' && (status === '待副總審核' || status === '待人事審核' || status === '待人事核銷')) {
-                    next = '已生效';
+                // 🌟 V19.20 升級：跨部門審核與幹部直屬審核邏輯
+                if (status === '待主管審核') {
+                    if (empDept === '業務行政部' || empDept === '打單行政部' || empDept === '採購部' || empDept === '業務部') {
+                        // 賦予業務部主管跨部門審核權
+                        if (role === '業務部主管') canApprove = true;
+                    } else if (empDept === '運輸部') {
+                        if (role === '運輸部主管' || role === '會計部主管') canApprove = true; 
+                    } else {
+                        // 常規部門對齊 (例如: 倉儲部 -> 倉儲部主管)
+                        if (role === empDept + '主管') canApprove = true;
+                    }
+                    if (canApprove) next = '待副總審核';
+
+                } else if (status === '待副總審核' || status === '待人事審核' || status === '待人事核銷') {
+                    // 副總負責審核幹部請假，或進行最後確認
+                    if (role === '副總') {
+                        canApprove = true;
+                        next = '已生效';
+                    }
                 }
                 
                 let agentText = r[10] && r[10] !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${r[10]}</div>` : '';
@@ -207,7 +222,7 @@
                 let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無");
                 
                 let actionBtn = "-";
-                if (next && currentTab === 'pending') {
+                if (canApprove && currentTab === 'pending') {
                     actionBtn = `
                         <div class="action-group">
                             <button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">✔️ 核准</button>
@@ -246,7 +261,7 @@
     function updateEmpDropdown() {
         const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp');
         empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept);
-        if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]} (${r[1]})</option>`; }); }
+        if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); }
     }
 
     function loadEmpDetails() {
