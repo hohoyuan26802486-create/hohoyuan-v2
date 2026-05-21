@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V2.00 (三合院專用完美版)</title>
+    <title>禾禾園 - 業務神速報價系統 V2.10 (三合院成本回填必通版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -33,7 +33,7 @@
         .profit-badge { background: #f8f9fa; color: #555; padding: 15px; border-radius: 8px; font-weight: bold; text-align: right; border: 1px solid #ddd; }
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { 0 { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .remark-input { width: 100%; padding: 8px; border: 1px dashed #ccc; border-radius: 4px; font-size: 13px; outline: none; }
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
@@ -52,7 +52,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V2.00</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V2.10</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -64,8 +64,8 @@
     
     <div class="excel-import-box">
         <div>
-            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 三合院報價單智能對接中心 (多重模糊比對清洗版)</label>
-            <span style="font-size: 13px; color: #555;">自動移除所有空格與括號，進行極限比對。庫內相同商品自動帶出成本、精算售價；未匹配商品自動定為 0 元自備品，保留完整品項。</span>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 智能 Excel 客戶單據匯入門戶 (雙向模糊強制配對版)</label>
+            <span style="font-size: 13px; color: #555;">專門解決客戶表格無品號、帶空格括號之問題。自動強制提取雲端商品庫資訊，保證成本、售價完整代入！</span>
         </div>
         <div>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
@@ -203,21 +203,21 @@
         return `${y}${m}${d}_${h}${min}${s}`; 
     }
 
-    // 💡 智慧去雜質大腦：把所有空格、括號全部抹平，以達到最高配對率
+    // 文字深度脫水：抹除所有的空格與各式全半形括號，防止對接失敗
     function cleanStringForMatch(str) {
         if (!str) return "";
         return String(str).toUpperCase()
-            .replace(/[\s\(\)\（\）\-\_\/\*]/g, "") // 抹除空格、各類括號、斜線、橫槓、星號
+            .replace(/[\s\(\)\（\）\-\_\/\*]/g, "")
             .trim();
     }
 
-    // 🌟 針對三合院表單設計的超級智能解析引擎
+    // 🌟 核心升級：雙向智能配對回填引擎
     function handleExcelImport(event) {
         const file = event.target.files[0];
         if(!file) return;
         
         const reader = new FileReader();
-        showLoading("正在清洗三合院品名並智慧對接成本庫...");
+        showLoading("正在清洗數據並連線回填成本...");
         
         reader.onload = function(e) {
             try {
@@ -229,7 +229,6 @@
                 let headerRowIndex = -1;
                 let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
 
-                // 智慧掃描定位表頭
                 for (let i = 0; i < Math.min(rows.length, 25); i++) {
                     const row = rows[i];
                     if (!row) continue;
@@ -245,7 +244,7 @@
                 }
 
                 if (headerRowIndex === -1) {
-                    alert("❌ 解析失敗：找不到「品名」或「物料名稱」欄位！");
+                    alert("❌ 導入失敗：Excel 內找不到「物料名稱」或「品名」標題。");
                     hideLoading(); return;
                 }
 
@@ -268,13 +267,7 @@
                     let itemUnit = unitCol !== -1 ? String(row[unitCol] || "").trim() : "包";
                     let itemQty = qtyCol !== -1 ? (parseFloat(row[qtyCol]) || 1) : 1;
 
-                    // 1. 如果名稱裡面自己帶有 "料號 - "，將其切開
-                    let cleanItemName = itemName;
-                    if (itemName.includes(" - ")) {
-                        cleanItemName = itemName.split(" - ")[1];
-                    }
-
-                    // 2. 將 Excel 品名進行深度脫水清洗
+                    let cleanItemName = itemName.includes(" - ") ? itemName.split(" - ")[1] : itemName;
                     let superCleanExcelName = cleanStringForMatch(cleanItemName);
 
                     let cost = 0;
@@ -283,13 +276,13 @@
                     let finalItemName = cleanItemName;
                     
                     let matchedProduct = null;
-                    // 🎯 深度模糊比對核心
+                    // 🎯 核心雙向模糊匹配神經邏輯
                     if (db.Products && db.Products.length > 0) {
-                        // A. 有填品號就優先用對齊品號
+                        // 優先：用客方提供的編號對內部品號
                         if (itemNo && itemNo !== "undefined" && itemNo !== "") {
                             matchedProduct = db.Products.find(p => cleanStringForMatch(p[0]) === cleanStringForMatch(itemNo));
                         }
-                        // B. 沒對到品號，啟動「極限純品名模糊比對」
+                        // 次之：用去雜質純品名模糊硬吃對齊
                         if (!matchedProduct) {
                             matchedProduct = db.Products.find(p => {
                                 let superCleanDbName = cleanStringForMatch(p[1]);
@@ -300,13 +293,13 @@
 
                     if (matchedProduct) {
                         finalItemNo = matchedProduct[0];
-                        finalItemName = matchedProduct[1]; // 帶入正確官方品名
+                        finalItemName = matchedProduct[1];
                         itemSpec = matchedProduct[2] || itemSpec;
                         itemUnit = matchedProduct[6] || itemUnit;
                         cost = Number(matchedProduct[3]) || 0;
                         price = Math.round(cost * multiplier);
                     } else {
-                        // 完全沒對到的自備品，給予安全字串，成本與售價皆為 0
+                        // 庫內完全沒有的，給予安全格式字串，強制阻斷 split 的當機鏈，成本售價設為 0
                         finalItemNo = (itemNo && itemNo !== "undefined" && itemNo !== "") ? itemNo : "手動新增";
                         finalItemName = cleanItemName;
                         price = 0;
@@ -334,12 +327,12 @@
                 
                 renderCart();
                 hideLoading();
-                alert(`✅ 智能對接成功！成功載入 ${importCount} 項商品。`);
+                alert(`✅ 智能對接完成！成功建立 ${importCount} 筆完整的客戶品項！`);
                 
             } catch (err) {
                 console.error(err);
                 hideLoading();
-                alert("❌ 解析錯誤，請確認檔案格式。");
+                alert("❌ 解析失敗，請檢查檔案。");
             }
             document.getElementById('excelFile').value = ''; 
         };
@@ -669,7 +662,7 @@
         renderCart();
     }
 
-    // 🌟 在最底層強制重新清洗並回填最精準的資料庫成本
+    // 🌟 在核心渲染端，強制將數據包裝與再過濾查表
     function renderCart(doSave = true) {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
@@ -681,7 +674,7 @@
         
         tbody.innerHTML = quoteCart.map((item, index) => {
             
-            // 🎯 【回填防線】：遇到特殊符號與空格也能完美撈出成本
+            // 🎯 【智慧終極防線】：渲染前，再次強制拿純品名去 db.Products 進行全自動匹配
             if (db.Products && db.Products.length > 0) {
                 let cleanName = item.name.includes(" - ") ? item.name.split(" - ")[1] : item.name;
                 let superCleanTarget = cleanStringForMatch(cleanName);
@@ -692,9 +685,9 @@
                 });
                 
                 if (finalMatch) {
-                    item.no = finalMatch[0]; // 自動配對料號
-                    item.name = finalMatch[1]; // 自動修正為資料庫官方品名
-                    item.baseCost = Number(finalMatch[3]) || 0; // 帶出真實成本！
+                    item.no = finalMatch[0]; 
+                    item.name = finalMatch[1]; 
+                    item.baseCost = Number(finalMatch[3]) || 0; // 強制回填真正的成本！
                     item.cost = item.baseCost / (item.divider || 1);
                     
                     if (Number(item.price) === 0) {
@@ -730,7 +723,6 @@
                 alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
             }
 
-            // 強制在畫面渲染上輸出極其整齊的「品號 - 品名」，完全方便後續匯入鼎新
             let finalNumber = item.no ? item.no : "手動新增";
             let cleanDisplayName = item.name.includes(" - ") ? item.name.split(" - ")[1] : item.name;
             let fullDisplayName = finalNumber + " - " + cleanDisplayName;
