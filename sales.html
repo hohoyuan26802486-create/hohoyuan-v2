@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V1.75</title>
+    <title>禾禾園 - 業務神速報價系統 V1.80 (終極無損整合版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -38,11 +38,6 @@
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
         .details-panel { background: #fff; padding: 15px; border-radius: 12px; border: 1px dashed #ccc; margin-top: -10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; }
-        .details-panel .input-group { flex: 1; min-width: 180px; }
-        .details-panel .input-group label { color: #555; font-size: 13px; }
-        .details-panel .input-group input { padding: 8px; font-size: 14px; }
-        .price-alert { color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; animation: blinker 1.5s linear infinite; font-weight: bold; box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4); }
-        @keyframes blinker { 50% { opacity: 0.3; } }
         
         .excel-import-box {
             background: #e3f2fd; padding: 20px; border-radius: 12px; border: 2px dashed #1a73e8;
@@ -55,7 +50,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.75</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V1.80</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -67,8 +62,8 @@
     
     <div class="excel-import-box">
         <div>
-            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 智能 Excel 客戶表單對接匯入 (料號/成本完全同步版)</label>
-            <span style="font-size: 13px; color: #555;">一鍵比對 100 項商品：庫內相同商品自動帶出成本、換算售價；未匹配之商品自動定為 0 元客製自備品，100% 留存鼎新編號。</span>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 智能 Excel 客戶表單對接匯入 (料號/成本防護完美整合版)</label>
+            <span style="font-size: 13px; color: #555;">比對 100 項商品：相同商品自動帶出成本、換算售價；未匹配之商品自動定為 0 元客製自備品，完整留存100%品項供鼎新對接。</span>
         </div>
         <div>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
@@ -206,13 +201,13 @@
         return `${y}${m}${d}_${h}${min}${s}`; 
     }
 
-    // 🌟 核心修正：自動分析、模糊去頭去尾的強健型 Excel 解析器
+    // 🌟 全新重寫的無損防當機 Excel 對接引擎
     function handleExcelImport(event) {
         const file = event.target.files[0];
         if(!file) return;
         
         const reader = new FileReader();
-        showLoading("正在從雲端資料庫比對成本與品號...");
+        showLoading("正在智能比對雲端商品資料庫...");
         
         reader.onload = function(e) {
             try {
@@ -239,7 +234,7 @@
                 }
 
                 if (headerRowIndex === -1) {
-                    alert("❌ 導入失敗：Excel 內找不到「物料名稱」或「品名」的表頭欄位。");
+                    alert("❌ 格式不相符：Excel 內找不到「物料名稱」或「品名」標題。");
                     hideLoading(); return;
                 }
 
@@ -262,7 +257,6 @@
                     let itemUnit = unitCol !== -1 ? String(row[unitCol] || "").trim() : "包";
                     let itemQty = qtyCol !== -1 ? (parseFloat(row[qtyCol]) || 1) : 1;
 
-                    // 如果客戶 Excel 品名自己帶了料號，幫他切乾淨，以便去對試算表
                     let cleanItemName = itemName;
                     if (itemName.includes(" - ")) {
                         cleanItemName = itemName.split(" - ")[1];
@@ -274,7 +268,7 @@
                     let finalItemName = "";
                     
                     let matchedProduct = null;
-                    // 修正：從真正有資料的 db.Products 去抓取情報！
+                    // 🎯 修正關鍵：精準向真正有料的 db.Products 資料庫比對！
                     if (db.Products && db.Products.length > 0) {
                         if (itemNo && itemNo !== "undefined") {
                             matchedProduct = db.Products.find(p => String(p[0]).trim() === itemNo);
@@ -286,12 +280,13 @@
 
                     if (matchedProduct) {
                         finalItemNo = matchedProduct[0];
-                        finalItemName = matchedProduct[1];
+                        finalItemName = matchedProduct[1]; // 存入純品名，渲染器會幫忙加品號
                         itemSpec = matchedProduct[2] || itemSpec;
                         itemUnit = matchedProduct[6] || itemUnit;
                         cost = Number(matchedProduct[3]) || 0;
                         price = Math.round(cost * multiplier);
                     } else {
+                        // 🌟 重點防呆：庫內沒有的商品，給予安全格式，阻斷 split 當機，單價/成本為 0 元
                         finalItemNo = (itemNo && itemNo !== "undefined") ? itemNo : "客戶自備品";
                         finalItemName = cleanItemName;
                         price = 0;
@@ -311,7 +306,7 @@
                         unit: COMMON_UNITS.includes(itemUnit) ? itemUnit : "包", 
                         price: price,
                         basePrice: price, 
-                        remark: matchedProduct ? "" : "⚠️ 庫內無此產品(自動報價0元)" 
+                        remark: matchedProduct ? "" : "⚠️ 我端無此品項(自動報價0元)" 
                     });
                     
                     importCount++;
@@ -319,12 +314,12 @@
                 
                 renderCart();
                 hideLoading();
-                alert(`✅ 智能對接完成！共成功讀取 ${importCount} 項商品。\n\n對應到的庫內商品已自動加成計算售價與載入成本！`);
+                alert(`✅ 智能比對完成！成功匯入 ${importCount} 項商品。\n\n相同商品已自動帶出成本並精算售價！自備品已定為0元。`);
                 
             } catch (err) {
                 console.error(err);
                 hideLoading();
-                alert("❌ 解析失敗，請確認檔案格式。");
+                alert("❌ 解析錯誤，請檢查您的檔案。");
             }
             document.getElementById('excelFile').value = ''; 
         };
@@ -691,15 +686,18 @@
                 alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
             }
 
-            // 🌟 核心防護：渲染時一律在前端包裝成 [品號 - 品名] 的標準顯示
-            let displayName = item.name;
-            if (!displayName.startsWith(item.no + " - ")) {
-                displayName = item.no + " - " + displayName;
+            // 🌟 核心防護：渲染時如果沒有 [料號 - ]，自動組合，並且絕對不允許 null 或 undefined 出現！
+            let itemNumber = item.no ? item.no : "客戶自備品";
+            let displayName = item.name ? item.name : "未知名商品";
+            
+            let fullDisplayName = displayName;
+            if (!displayName.startsWith(itemNumber + " - ")) {
+                fullDisplayName = itemNumber + " - " + displayName;
             }
 
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
-                <td><b>${displayName}</b><br><small style="color:#777;">${safeSpec}</small></td>
+                <td><b>${fullDisplayName}</b><br><small style="color:#777;">${safeSpec}</small></td>
                 <td>
                     <div style="display:flex; gap:5px; margin-bottom: 8px;">
                         <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:60px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
