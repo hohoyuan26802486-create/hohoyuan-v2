@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V3.0</title>
+    <title>禾禾園 - 業務神速報價系統 V3.0 (精準對照完整版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -22,7 +22,7 @@
         .input-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
         .input-group label { font-size: 14px; font-weight: bold; color: #1a73e8; margin-bottom: 8px; }
         .input-group input, .input-group select { padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px; outline: none; }
-        .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; }
+        .helper-row { background: #fffde7; border-left: 5px solid #fbc02d; padding: 15px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .helper-input { padding: 10px; border: 1px solid #fbc02d; border-radius: 8px; font-size: 16px; font-weight: bold; width: 120px; outline: none; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 850px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #ddd; background: #f8f9fa; font-size: 14px; }
@@ -38,7 +38,14 @@
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
         .details-panel { background: #fff; padding: 15px; border-radius: 12px; border: 1px dashed #ccc; margin-top: -10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; }
-        .excel-import-box { background: #e3f2fd; padding: 20px; border-radius: 12px; border: 2px dashed #1a73e8; margin-bottom: 20px; }
+        .details-panel .input-group { flex: 1; min-width: 180px; }
+        .price-alert { color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; animation: blinker 1.5s linear infinite; font-weight: bold; box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4); }
+        @keyframes blinker { 50% { opacity: 0.3; } }
+        
+        .excel-import-box {
+            background: #e3f2fd; padding: 20px; border-radius: 12px; border: 2px dashed #1a73e8;
+            margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
@@ -55,28 +62,44 @@
 </div>
 
 <div class="container">
+    
     <div class="excel-import-box">
-        <label style="color:#1a73e8; font-weight:bold; display:block; margin-bottom:10px;">📥 精準對接 Excel (自動比對庫內成本，無對應則留白)：</label>
-        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" onchange="handleExcelImport(event)">
+        <div>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 智能 Excel 客戶表單匯入 (精準對照不報價版)</label>
+            <span style="font-size: 13px; color: #555;">嚴格對接庫內商品：匹配成功帶出成本並精算售價；未匹配之商品一律留白不報價（0元），乾淨俐落！</span>
+        </div>
+        <div>
+            <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
+            <button type="button" class="btn btn-success" style="font-size:15px; padding:12px 25px;" onclick="document.getElementById('excelFile').click()">📂 選擇檔案並精準對接</button>
+        </div>
     </div>
 
     <div class="control-panel">
         <div class="input-group">
             <label>客戶等級屬性</label>
             <select id="qLevel" onchange="inputChanged()">
-                <option value="A">A - 中餐宴會 (未稅 8%)</option><option value="B">B - 一般中餐 (未稅 10%)</option><option value="C">C - 西餐連鎖 (未稅 12%)</option><option value="D">D - 西餐 (未稅 15%)</option><option value="E" selected>E - 中央廚房 (未稅 5%)</option>
+                <option value="A">A - 中餐宴會 (未稅 8%)</option>
+                <option value="B">B - 一般中餐 (未稅 10%)</option>
+                <option value="C">C - 西餐連鎖 (未稅 12%)</option>
+                <option value="D">D - 西餐 (未稅 15%)</option>
+                <option value="E" selected>E - 中央廚房 (未稅 5%)</option>
             </select>
         </div>
         <div class="input-group">
             <label>稅金計算方式</label>
-            <select id="qTaxType" onchange="inputChanged()"><option value="未稅" selected>未稅報價 (結帳外加 5%)</option><option value="含稅">含稅報價 (單價直接含稅)</option></select>
+            <select id="qTaxType" onchange="inputChanged()">
+                <option value="未稅" selected>未稅報價 (結帳外加 5%)</option>
+                <option value="含稅">含稅報價 (單價直接含稅)</option>
+            </select>
         </div>
     </div>
-    
+
     <div class="helper-row">
         <div style="font-weight:bold; color:#f57f17; font-size:16px;">⚖️ 散裝換算小幫手：</div>
+        <div style="color:#555; font-size:14px;">輸入公克數 ➔</div>
         <input type="number" id="calcGrams" class="helper-input" placeholder="例如: 150" oninput="quickCalc()">
-        <input type="text" id="calcResult" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:280px; outline:none;">
+        <div style="font-weight:bold; color:#555; font-size:16px;">g = </div>
+        <input type="text" id="calcResult" placeholder="此處自動顯示" readonly style="background:transparent; border:none; font-weight:bold; color:#d93025; font-size:18px; width:280px; outline:none;">
     </div>
 
     <div class="form-row">
@@ -84,6 +107,7 @@
             <label style="color:#1a73e8;">👤 客戶名稱 (必填)</label>
             <input list="clientList" id="qClient" placeholder="選擇客戶..." onchange="clientChanged(this.value)">
             <datalist id="clientList"></datalist>
+
             <div id="historyBlock" style="display:none; margin-top: 15px; background: #fffde7; padding: 12px; border-radius: 8px; border: 2px dashed #fbc02d;">
                 <label style="color: #d35400; font-size: 14px;">🔙 載入此客戶舊報價單：</label>
                 <div style="display:flex; gap:8px; margin-top: 5px;">
@@ -92,93 +116,777 @@
                 </div>
             </div>
         </div>
-        <div class="input-group"><label>💼 負責業務</label><select id="qSalesName" onchange="saveDraft()"></select></div>
-        <div class="input-group" style="flex: 2;"><label>🔍 加入商品</label>
+        
+        <div class="input-group" style="flex: 1;">
+            <label style="color:#1a73e8;">💼 負責業務</label>
+            <select id="qSalesName" onchange="saveDraft()"></select>
+        </div>
+
+        <div class="input-group" style="flex: 2;">
+            <label style="color:#1a73e8;">🔍 加入商品</label>
             <div style="display: flex; gap: 8px;">
                 <input list="productList" id="qSearch" placeholder="搜尋資料庫商品..." onchange="addQuoteItem(this.value)" style="flex: 1; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; font-size: 15px;">
-                <button class="btn btn-outline" style="padding: 0 15px;" onclick="addCustomItem()">➕ 手動增加品項</button>
+                <button class="btn btn-outline" style="padding: 0 15px; border-color: #1a73e8; color: #1a73e8; font-weight:bold; white-space:nowrap;" onclick="addCustomItem()">➕ 手動增加品項</button>
             </div>
             <datalist id="productList"></datalist>
         </div>
     </div>
 
     <div class="details-panel">
-        <div class="input-group"><label>🏢 統一編號</label><input type="text" id="qTaxId" oninput="saveDraft()"></div>
-        <div class="input-group"><label>👤 聯絡人</label><input type="text" id="qContact" oninput="saveDraft()"></div>
-        <div class="input-group"><label>📞 聯繫電話</label><input type="text" id="qPhone" oninput="saveDraft()"></div>
-        <div class="input-group" style="flex: 2;"><label>🚚 送貨地址</label><input type="text" id="qAddress" oninput="saveDraft()"></div>
+        <div style="width: 100%; color: #888; font-size: 12px; font-weight: bold; margin-bottom: -5px;">📜 正式報價單 PDF 專用資訊 (非必填)</div>
+        <div class="input-group"><label>🏢 統一編號</label><input type="text" id="qTaxId" oninput="saveDraft()" placeholder="客戶統編"></div>
+        <div class="input-group"><label>👤 聯絡人</label><input type="text" id="qContact" oninput="saveDraft()" placeholder="收件人姓名"></div>
+        <div class="input-group"><label>📞 聯繫電話</label><input type="text" id="qPhone" oninput="saveDraft()" placeholder="客戶電話"></div>
+        <div class="input-group" style="flex: 2; min-width: 250px;"><label>🚚 送貨地址</label><input type="text" id="qAddress" oninput="saveDraft()" placeholder="送貨完整地址"></div>
     </div>
 
-    <table>
-        <thead><tr><th>項次</th><th>品名</th><th>數量/單位</th><th>單價(✏️)</th><th>小計</th><th>備註</th><th>操作</th></tr></thead>
-        <tbody id="quoteBody"></tbody>
-    </table>
-
-    <div style="display:flex; justify-content: space-between; align-items: flex-end; margin-top: 20px;">
-        <div id="profitDisplay" class="profit-badge">請加入商品...</div>
-        <div style="font-size: 26px; font-weight: bold;"><span id="totalLabel">總計：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span></div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50px; text-align:center;">項次</th>
+                    <th>品名</th>
+                    <th style="width:140px;">數量 / 單位</th>
+                    <th style="width:130px;">單價(✏️)</th>
+                    <th style="width:80px;">小計</th>
+                    <th style="width:160px;">備註</th>
+                    <th style="width:70px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="quoteBody"></tbody>
+        </table>
     </div>
 
-    <button id="submitBtn" class="btn btn-success" style="width:100%; padding:15px; font-size:18px;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
+    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; margin-top: 20px; gap: 20px;">
+        <div id="profitDisplay" class="profit-badge" style="text-align: left; flex: 1; min-width: 250px;">請加入商品...</div>
+        
+        <div style="text-align: right; min-width: 200px;">
+            <div id="taxDetailBlock" style="color: #555; font-size: 16px; margin-bottom: 10px; display: none;">
+                銷售合計：NT$ <span id="spanCartSum">0</span><br>
+                營業稅 (5%)：NT$ <span id="spanTaxAmt">0</span>
+            </div>
+            <div style="font-size: 26px; font-weight: bold;"><span id="totalLabel">總計：</span>NT$ <span id="qTotalSales" style="color:#1a73e8;">0</span></div>
+        </div>
+    </div>
+
+    <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px; gap: 15px;">
+        <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 200px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
+        <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 10px;" id="actionButtons">
+            <button id="submitBtn" class="btn btn-success" style="font-size: 18px; padding: 15px 40px; width: 100%;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
+            <a id="manualPdfBtn" href="#" target="_blank" class="btn btn-primary" style="display: none; justify-content: center; font-size: 18px; padding: 15px 40px; text-decoration: none;">📄 點此手動開啟 PDF 報價單</a>
+        </div>
+    </div>
 </div>
 
 <script>
-    // --- 核心：精準對照匯入引擎 ---
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzDiyl5jnsgoRqcU9pGhrMwH5LkSotib35XVscJLxaQ2_UMtYrUURh_zY8fDDk7I1JY/exec";
+    
+    let db = {}; 
+    let quoteCart = []; 
+    let salesMobiles = {}; 
+    let salesEmails = {};
+    let globalAlerts = []; 
+
+    const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
+    const COMMON_UNITS = ['盒', '包', '箱', '袋', '罐', '斤', 'kg', '桶', '磅', '兩', 'g'];
+
+    function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
+    function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+
+    function getFormattedTimeString() {
+        let now = new Date();
+        let y = now.getFullYear();
+        let m = String(now.getMonth() + 1).padStart(2, '0');
+        let d = String(now.getDate()).padStart(2, '0');
+        let h = String(now.getHours()).padStart(2, '0');
+        let min = String(now.getMinutes()).padStart(2, '0');
+        let s = String(now.getSeconds()).padStart(2, '0');
+        return `${y}${m}${d}_${h}${min}${s}`; 
+    }
+
+    // ==========================================
+    // 📥 全新：Excel 精準對照匯入引擎
+    // ==========================================
     function handleExcelImport(event) {
         const file = event.target.files[0];
         if(!file) return;
-        showLoading("正在精準對接內部成本資料...");
+        
         const reader = new FileReader();
+        showLoading("正在精準對接雲端商品庫...");
+        
         reader.onload = function(e) {
             try {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-                
-                // 自動偵測表頭 (第3列)
-                const nameIdx = 1; // 假設品名在第2欄(B欄)
-                const qtyIdx = 3;  // 假設數量在第4欄(D欄)
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
-                for (let i = 3; i < rows.length; i++) {
-                    let name = String(rows[i][nameIdx] || "").trim();
-                    if (!name) continue;
+                let headerRowIndex = -1;
+                let nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
 
-                    // 精準比對：只比對庫內有的
-                    let product = db.Products ? db.Products.find(p => p[1] === name) : null;
-                    
-                    if (product) {
-                        // 有對到：帶入所有參數 (料號+名稱+成本)
-                        addQuoteItemToCart(`${product[0]} - ${product[1]}`, product[3]);
-                    } else {
-                        // 沒對到：直接原名匯入，價格為0，留給您手動處理
-                        addQuoteItemToCart(name, 0);
+                // 智慧定位表頭
+                for (let i = 0; i < Math.min(rows.length, 25); i++) {
+                    const row = rows[i];
+                    if (!row) continue;
+                    for (let j = 0; j < row.length; j++) {
+                        const cellVal = String(row[j] || "").trim();
+                        if (cellVal === "物料名稱" || cellVal === "品名" || cellVal.includes("名稱")) { 
+                            headerRowIndex = i; nameCol = j; 
+                        } 
+                        else if (cellVal.includes("規格") || cellVal.includes("說明")) specCol = j;
+                        else if (cellVal.includes("單位")) unitCol = j;
+                        else if (cellVal.includes("數量")) qtyCol = j;
                     }
+                    if (headerRowIndex !== -1) break;
                 }
-            } catch(e) { alert("檔案讀取失敗"); } finally { hideLoading(); }
+
+                if (headerRowIndex === -1) {
+                    alert("❌ 導入失敗：Excel 內找不到「物料名稱」或「品名」標題。");
+                    hideLoading(); return;
+                }
+
+                let currentLevel = document.getElementById('qLevel').value;
+                let taxType = document.getElementById('qTaxType').value;
+                let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
+                let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
+
+                let importCount = 0;
+                let matchCount = 0;
+                
+                for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    let itemName = nameCol !== -1 ? String(row[nameCol] || "").trim() : "";
+                    if (!itemName || itemName === "undefined" || itemName === "物料名稱" || itemName.includes("報價期間")) continue; 
+
+                    let itemSpec = specCol !== -1 ? String(row[specCol] || "").trim() : "";
+                    let itemUnit = unitCol !== -1 ? String(row[unitCol] || "").trim() : "包";
+                    let itemQty = qtyCol !== -1 ? (parseFloat(row[qtyCol]) || 1) : 1;
+
+                    let cost = 0;
+                    let price = 0;
+                    let finalItemNo = "客戶自備品"; 
+                    let finalItemName = itemName;
+                    let alertRemark = "";
+                    
+                    // 🎯 【絕對精準對照】：拿客人的純品名去我們的庫內找
+                    let matchedProduct = null;
+                    if (db.Products && db.Products.length > 0) {
+                        matchedProduct = db.Products.find(p => String(p[1]).trim() === itemName.trim());
+                    }
+
+                    if (matchedProduct) {
+                        // 有對到：抓正確的品號、成本、精算售價
+                        finalItemNo = matchedProduct[0];
+                        finalItemName = matchedProduct[1]; 
+                        itemSpec = matchedProduct[2] || itemSpec;
+                        itemUnit = matchedProduct[6] || itemUnit;
+                        cost = Number(matchedProduct[3]) || 0;
+                        price = Math.round(cost * multiplier);
+                        alertRemark = "";
+                        matchCount++;
+                    } else {
+                        // 沒對到：不報價，價格成本都是 0，留空，讓畫面極度乾淨
+                        cost = 0;
+                        price = 0;
+                        alertRemark = "";
+                    }
+
+                    // 將資料安全推入原本系統的陣列中
+                    quoteCart.push({ 
+                        id: Date.now() + Math.random() + i, 
+                        no: finalItemNo, 
+                        name: finalItemName, 
+                        spec: itemSpec, 
+                        baseCost: cost, 
+                        divider: 1, 
+                        cost: cost, 
+                        qty: itemQty, 
+                        unit: COMMON_UNITS.includes(itemUnit) ? itemUnit : "包", 
+                        price: price,
+                        basePrice: price, 
+                        remark: alertRemark 
+                    });
+                    
+                    importCount++;
+                }
+                
+                renderCart();
+                hideLoading();
+                alert(`✅ 精準對接完成！\n\n共匯入: ${importCount} 項\n✅ 庫內成功匹配: ${matchCount} 項\n\n(未匹配到的商品已自動保留空白不報價)`);
+                
+            } catch (err) {
+                console.error(err);
+                hideLoading();
+                alert("❌ 解析錯誤，請檢查您的檔案格式。");
+            }
+            document.getElementById('excelFile').value = ''; 
         };
         reader.readAsArrayBuffer(file);
     }
 
-    function addQuoteItemToCart(name, cost) {
+    function saveDraft() {
+        const draft = {
+            client: document.getElementById('qClient').value,
+            taxId: document.getElementById('qTaxId').value,
+            contact: document.getElementById('qContact').value,
+            phone: document.getElementById('qPhone').value,
+            address: document.getElementById('qAddress').value,
+            salesName: document.getElementById('qSalesName').value,
+            level: document.getElementById('qLevel').value,
+            taxType: document.getElementById('qTaxType').value,
+            cart: quoteCart
+        };
+        localStorage.setItem('hohoyuan_quote_draft', JSON.stringify(draft));
+        let now = new Date();
+        document.getElementById('saveStatus').innerText = `已自動存檔 (${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()})`;
+    }
+
+    function loadDraft() {
+        const saved = localStorage.getItem('hohoyuan_quote_draft');
+        if(saved) {
+            try {
+                const draft = JSON.parse(saved);
+                if(draft.client) {
+                    document.getElementById('qClient').value = draft.client;
+                    updateHistoryDropdown(draft.client); 
+                }
+                if(draft.taxId) document.getElementById('qTaxId').value = draft.taxId;
+                if(draft.contact) document.getElementById('qContact').value = draft.contact;
+                if(draft.phone) document.getElementById('qPhone').value = draft.phone;
+                if(draft.address) document.getElementById('qAddress').value = draft.address;
+                setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
+                if(draft.level) document.getElementById('qLevel').value = draft.level;
+                if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
+                if(draft.cart) quoteCart = draft.cart;
+                renderCart(false);
+                document.getElementById('saveStatus').innerText = "已恢復上次未完成的報價單";
+            } catch(e) {}
+        }
+    }
+
+    function clearDraft() {
+        if(confirm("確定要清空目前畫面上的所有資料，準備打下一張新單嗎？")) {
+            quoteCart = [];
+            document.getElementById('qClient').value = "";
+            document.getElementById('qTaxId').value = "";
+            document.getElementById('qContact').value = "";
+            document.getElementById('qPhone').value = "";
+            document.getElementById('qAddress').value = "";
+            document.getElementById('calcGrams').value = "";
+            document.getElementById('calcResult').value = "";
+            document.getElementById('historyBlock').style.display = "none";
+            document.getElementById('manualPdfBtn').style.display = "none"; 
+            document.getElementById('submitBtn').style.display = "block"; 
+            localStorage.removeItem('hohoyuan_quote_draft');
+            document.getElementById('saveStatus').innerText = "";
+            renderCart();
+        }
+    }
+
+    function quickCalc() {
+        let g = document.getElementById('calcGrams').value;
+        if (!g || g <= 0) { document.getElementById('calcResult').value = ""; return; }
+        let jin = (g / 600).toFixed(3).replace(/\.?0+$/, ''); 
+        let kg = (g / 1000).toFixed(3).replace(/\.?0+$/, '');
+        document.getElementById('calcResult').value = `【 ${jin} 斤 】或【 ${kg} 公斤 】`;
+    }
+
+    async function fetchData() { 
+        showLoading("資料載入中...");
+        try { 
+            const res = await fetch(CONFIG_URL); db = await res.json(); 
+            initLists();
+            loadDraft();
+        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+    }
+
+    function initLists() {
+        if(db.Products) {
+            const pList = document.getElementById('productList'); pList.innerHTML = "";
+            for(let i=1; i<db.Products.length; i++) {
+                let r = db.Products[i]; if(r[0]) { let o = document.createElement('option'); o.value = `${r[0]} - ${r[1]}`; pList.appendChild(o); }
+            }
+        }
+        if(db.Customers) {
+            const cList = document.getElementById('clientList'); cList.innerHTML = "";
+            for(let i=1; i<db.Customers.length; i++) {
+                let r = db.Customers[i]; if(r[0]) { let o = document.createElement('option'); o.value = r[0]; cList.appendChild(o); }
+            }
+        }
+        if(db.Sales) {
+            const sList = document.getElementById('qSalesName');
+            sList.innerHTML = "";
+            salesMobiles = {};
+            salesEmails = {};
+            for(let i=1; i<db.Sales.length; i++) {
+                let r = db.Sales[i];
+                if(r[0]) {
+                    let name = r[0];
+                    salesMobiles[name] = r[1] || "";
+                    salesEmails[name] = r[2] || "";
+                    let o = document.createElement('option'); o.value = name; o.innerText = name; sList.appendChild(o);
+                }
+            }
+            if(!salesMobiles['公司業務部']) {
+                let o = document.createElement('option'); o.value = '公司業務部'; o.innerText = '公司業務部'; sList.appendChild(o);
+                salesMobiles['公司業務部'] = '02-26802486';
+            }
+        }
+        globalAlerts = [];
+        if(db.PriceAlerts) {
+            for(let i=1; i<db.PriceAlerts.length; i++) {
+                let r = db.PriceAlerts[i];
+                if(r[0]) {
+                    globalAlerts.push({ name: r[0], increase: r[1], note: r[2] });
+                }
+            }
+        }
+    }
+
+    function clientChanged(name) { 
+        detectClientLevel(name); 
+        updateHistoryDropdown(name); 
+        saveDraft(); 
+    }
+
+    function updateHistoryDropdown(clientName) {
+        const block = document.getElementById('historyBlock');
+        const select = document.getElementById('qHistorySelect');
+        select.innerHTML = '<option value="">-- 請選擇想修改的歷史紀錄 --</option>';
+
+        if(!clientName || !db.Quotations) {
+            block.style.display = 'none';
+            return;
+        }
+
+        let historyList = [];
+        for(let i = 1; i < db.Quotations.length; i++) {
+            let row = db.Quotations[i];
+            if(row[2] === clientName) { historyList.push(row); }
+        }
+
+        if(historyList.length > 0) {
+            historyList.reverse().forEach(row => {
+                let option = document.createElement('option');
+                option.value = row[0]; 
+                let fileName = `${row[0]}_${row[2]}_報價單`; 
+                option.innerText = `📄 ${fileName} (總計: $${row[3]})`;
+                select.appendChild(option);
+            });
+            block.style.display = 'block'; 
+        } else {
+            block.style.display = 'none'; 
+        }
+    }
+
+    function inputChanged() { recalculateCartPrices(); saveDraft(); }
+
+    function detectClientLevel(name) {
+        if(!db.Customers) return;
+        const client = db.Customers.find(r => r[0] === name);
+        let level = 'E'; if(client && client[1]) { level = client[1].toUpperCase(); if(!PRICING_RULES[level]) level = 'E'; }
+        document.getElementById('qLevel').value = level; recalculateCartPrices();
+    }
+
+    function addQuoteItem(searchValue) {
+        if(!searchValue) return;
+        let itemNo = searchValue.split(" - ")[0];
+        let product = db.Products.find(r => r[0] == itemNo);
+        if(product) {
+            let cost = Number(product[3]) || 0;
+            let currentLevel = document.getElementById('qLevel').value;
+            let taxType = document.getElementById('qTaxType').value;
+            let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
+            let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
+            
+            let pUnit = product[6] || product[2];
+            let safeUnit = COMMON_UNITS.includes(pUnit) ? pUnit : "包";
+            let defaultPrice = Math.round(cost * multiplier);
+
+            quoteCart.push({ 
+                id: Date.now() + Math.random(), 
+                no: product[0], 
+                name: product[1], 
+                spec: product[2] || "", 
+                baseCost: cost, 
+                divider: 1, 
+                cost: cost, 
+                qty: 1, 
+                unit: safeUnit, 
+                price: defaultPrice,
+                basePrice: defaultPrice, 
+                remark: "" 
+            });
+            document.getElementById('qSearch').value = ""; renderCart();
+        }
+    }
+
+    function addCustomItem() {
+        let name = prompt("📌 [步驟 1/4] 請輸入【品名】：\n(例如：大油皮)");
+        if (!name) return;
+        
+        let spec = prompt(`📌 [步驟 2/4] 請輸入「${name}」的【規格大小】：\n(例如：3斤裝 / 若無可直接按確定留白)`) || "";
+        
+        let costInput = prompt(`📌 [步驟 3/4] 請輸入「${name}」的【成本】：\n(請輸入純數字，若無請填 0)`);
+        let cost = parseFloat(costInput);
+        if (isNaN(cost)) cost = 0; 
+
+        let priceInput = prompt(`📌 [步驟 4/4] 請輸入「${name}」的【報價 (單價)】：\n(請輸入純數字)`);
+        let price = parseFloat(priceInput);
+        
+        if (isNaN(price)) {
+            return alert("❌ 報價單價錯誤，請務必填寫純數字！");
+        }
+
+        quoteCart.push({ 
+            id: Date.now() + Math.random(), 
+            no: "手動新增", 
+            name: name, 
+            spec: spec, 
+            baseCost: cost,
+            divider: 1,
+            cost: cost, 
+            qty: 1, 
+            unit: "包", 
+            price: price,
+            basePrice: price, 
+            remark: "" 
+        });
+        renderCart();
+    }
+
+    async function loadSelectedHistory() {
+        let id = document.getElementById('qHistorySelect').value;
+        if(!id) return alert("請先在選單中點選一張報價單！");
+        
+        showLoading("正在從雲端抓取明細...");
+        try {
+            const res = await fetch(CONFIG_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "loadOldQuote", quoteId: id })
+            });
+            const data = await res.json();
+            
+            if(data && data.items && data.items.length > 0) {
+                quoteCart = data.items.map(i => {
+                    let cleanRemark = i.remark;
+                    if (cleanRemark === "undefined" || cleanRemark === "null" || cleanRemark === null || cleanRemark === undefined) {
+                        cleanRemark = "";
+                    }
+                    
+                    let actualItemNo = "手動新增"; 
+                    if (db.Products) {
+                        let matchedProduct = db.Products.find(p => p[1] === i.name || (p[0] + " - " + p[1]) === i.name);
+                        if (matchedProduct && matchedProduct[0]) {
+                            actualItemNo = matchedProduct[0];
+                        }
+                    }
+
+                    return {
+                        id: Date.now() + Math.random(),
+                        no: actualItemNo, 
+                        isLoadedHistory: true,
+                        name: i.name,
+                        spec: i.spec,
+                        qty: i.qty,
+                        unit: COMMON_UNITS.includes(i.unit) ? i.unit : "包",
+                        price: i.price,
+                        basePrice: i.price, 
+                        baseCost: i.cost, 
+                        divider: 1,
+                        cost: i.cost,
+                        remark: cleanRemark
+                    };
+                });
+                renderCart();
+                alert("✅ 舊單明細載入成功！");
+            } else {
+                alert("❌ 找不到該單號的明細資料。(可能是舊系統尚未存入明細)");
+            }
+        } catch(e) {
+            alert("連線異常");
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function updateDivider(id, val) {
+        if (!val || val <= 0) val = 1;
+        let item = quoteCart.find(i => i.id === id);
+        if (item) {
+            item.divider = val;
+            
+            if (item.baseCost === undefined || isNaN(item.baseCost)) item.baseCost = Number(item.cost) || 0;
+            item.cost = item.baseCost / val; 
+            
+            if (item.no === "手動新增" || item.no === "臨時自訂" || item.isLoadedHistory) {
+                if (item.basePrice === undefined || isNaN(item.basePrice)) item.basePrice = Number(item.price) || 0;
+                item.price = Math.round(item.basePrice / val);
+            } else {
+                let currentLevel = document.getElementById('qLevel').value;
+                let taxType = document.getElementById('qTaxType').value;
+                let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
+                let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
+                item.price = Math.round(item.cost * multiplier);
+            }
+            renderCart();
+        }
+    }
+
+    function recalculateCartPrices() {
         let currentLevel = document.getElementById('qLevel').value;
         let taxType = document.getElementById('qTaxType').value;
         let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
         
-        quoteCart.push({ 
-            id: Date.now() + Math.random(), 
-            name: name, 
-            cost: cost, 
-            price: cost > 0 ? Math.round(cost * multiplier) : 0, 
-            qty: 1, 
-            unit: '包', 
-            remark: cost > 0 ? "" : "無對應成本" 
+        quoteCart.forEach(item => { 
+            if (item.no !== "手動新增" && item.no !== "臨時自訂" && !item.isLoadedHistory) {
+                item.price = Math.round(item.cost * multiplier); 
+            }
         });
         renderCart();
     }
 
-    // --- 這裡放入您原本 V1.55 的所有原始函式 (fetchData, renderCart, saveQuote, 等...) ---
-    // 我已經確認過，不需要再動任何其他程式碼，這份結構最穩！
-    // 請將原本 V1.55 裡剩下的腳本貼在這行之後即可。
+    function renderCart(doSave = true) {
+        let tbody = document.getElementById('quoteBody');
+        let taxType = document.getElementById('qTaxType').value;
+        let cartSum = 0, totalCost = 0;
+        
+        tbody.innerHTML = quoteCart.map((item, index) => {
+            let subtotal = Math.round(item.qty * item.price);
+            let itemCost = Number(item.cost) || 0; 
+            cartSum += subtotal; 
+            totalCost += Math.round(item.qty * itemCost);
+            
+            let safeRemark = (item.remark === "undefined" || item.remark === "null" || !item.remark) ? "" : item.remark;
+            let safeSpec = (item.spec === "undefined" || item.spec === "null" || !item.spec) ? "" : item.spec;
+
+            let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
+            
+            let alertHtml = "";
+            let alertMatch = globalAlerts.find(a => {
+                let alertName = String(a.name).trim().toUpperCase();
+                let cartName = String(item.name).trim().toUpperCase();
+                
+                if (!alertName || alertName.length < 2) return false; 
+                if (cartName.includes(alertName)) return true;
+
+                if (alertName.includes(' ')) {
+                    let keywords = alertName.split(' ').filter(k => k.trim().length > 0);
+                    if (keywords.length > 0) {
+                        return keywords.every(kw => cartName.includes(kw));
+                    }
+                }
+                return false;
+            });
+
+            if(alertMatch) {
+                alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
+            }
+
+            // 安全顯示品名：如果他有品號，才幫他加上品號前綴，避免 undefined 當機
+            let displayName = item.name;
+            if (item.no && item.no !== "客戶自備品" && item.no !== "手動新增") {
+                if (!displayName.includes(item.no)) {
+                    displayName = item.no + " - " + item.name;
+                }
+            }
+
+            return `<tr>
+                <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
+                <td><b>${displayName}</b><br><small style="color:#777;">${safeSpec}</small></td>
+                <td>
+                    <div style="display:flex; gap:5px; margin-bottom: 8px;">
+                        <input type="number" class="quote-input" value="${item.qty}" step="any" style="width:60px;" onchange="updateCart(${item.id}, 'qty', Number(this.value))">
+                        <select class="unit-select" onchange="updateCart(${item.id}, 'unit', this.value)">
+                            ${COMMON_UNITS.map(u => `<option value="${u}" ${u===item.unit?'selected':''}>${u}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="font-size: 12px; color: #d35400; background: #fffde7; padding: 4px 6px; border-radius: 4px; border: 1px dashed #fbc02d; display: inline-block;">
+                        拆件除以: 
+                        <input type="number" value="${item.divider || 1}" style="width: 40px; padding: 2px; text-align: center; border: 1px solid #ccc; border-radius: 4px; outline:none;" onchange="updateDivider(${item.id}, Number(this.value))"> 入
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))">
+                    <span class="cost-label">成本: $<span class="cost-value">${displayCost}</span></span>
+                    ${alertHtml}
+                </td>
+                <td><b>${subtotal}</b></td>
+                <td><input type="text" class="remark-input" placeholder="選填備註..." value="${safeRemark}" onchange="updateCart(${item.id}, 'remark', this.value)"></td>
+                <td><button class="btn btn-danger" onclick="removeQuoteItem(${item.id})">刪除</button></td>
+            </tr>`;
+        }).join('');
+        
+        let taxAmt = (taxType === "未稅") ? Math.round(cartSum * 0.05) : 0;
+        let finalTotal = cartSum + taxAmt;
+        document.getElementById('spanCartSum').innerText = cartSum; document.getElementById('spanTaxAmt').innerText = taxAmt;
+        document.getElementById('taxDetailBlock').style.display = (taxType === "未稅") ? "block" : "none";
+        document.getElementById('qTotalSales').innerText = finalTotal;
+        document.getElementById('totalLabel').innerText = (taxType === "未稅") ? "總計 (含稅)：" : "總計：";
+        let pureRev = (taxType === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
+        let profit = pureRev - totalCost;
+        document.getElementById('profitDisplay').innerHTML = `⚠️ 毛利計算已自動排除營業稅<br>本次總成本：$${totalCost} | 預估純利潤：$${profit} (${pureRev>0?((profit/pureRev)*100).toFixed(1):0}%)`;
+        
+        if (doSave) saveDraft(); 
+    }
+
+    function updateCart(id, field, value) { 
+        let item = quoteCart.find(i => i.id === id); 
+        if(item) { 
+            item[field] = value; 
+            
+            if (field === 'price') {
+                item.basePrice = value * (item.divider || 1);
+            }
+            
+            renderCart(); 
+        } 
+    }
+
+    function removeQuoteItem(id) { quoteCart = quoteCart.filter(i => i.id !== id); renderCart(); }
+
+    async function saveQuote() {
+        let client = document.getElementById('qClient').value.trim();
+        let salesName = document.getElementById('qSalesName').value;
+
+        if(!client || quoteCart.length === 0) return alert("⚠️ 請輸入客戶並加入商品");
+        showLoading("產生 PDF 中...");
+        let cartSum = quoteCart.reduce((s, i) => s + Math.round(i.qty * i.price), 0);
+        let taxAmt = (document.getElementById('qTaxType').value === "未稅") ? Math.round(cartSum * 0.05) : 0;
+        let pureRev = (document.getElementById('qTaxType').value === "含稅") ? Math.round(cartSum / 1.05) : cartSum;
+        let totalCost = quoteCart.reduce((s, i) => s + Math.round(i.qty * (i.cost||0)), 0);
+        let finalTotalAmount = cartSum + taxAmt;
+        
+        const cleanedItems = quoteCart.map(i => {
+            let cleanSpec = i.spec;
+            if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
+            
+            let displayName = i.name;
+            if (i.no && i.no !== "客戶自備品" && i.no !== "手動新增") {
+                if (!displayName.includes(i.no)) {
+                    displayName = i.no + " - " + i.name;
+                }
+            }
+
+            return { 
+                name: displayName, 
+                spec: cleanSpec,  
+                qty: i.qty, 
+                unit: i.unit, 
+                price: i.price, 
+                cost: i.cost || 0, 
+                subtotal: Math.round(i.qty*i.price), 
+                remark: (i.remark === "undefined" || i.remark === "null" || !i.remark) ? "" : i.remark 
+            };
+        });
+
+        const p = { 
+            action: "saveQuotation", 
+            clientName: client, 
+            taxId: document.getElementById('qTaxId').value.trim(),
+            contact: document.getElementById('qContact').value.trim(),
+            phone: document.getElementById('qPhone').value.trim(),
+            address: document.getElementById('qAddress').value.trim(),
+            salesName: salesName, 
+            salesMobile: salesMobiles[salesName] || "02-26802486", 
+            taxType: document.getElementById('qTaxType').value, 
+            cartSum: cartSum, 
+            taxAmt: taxAmt, 
+            totalSales: finalTotalAmount, 
+            totalCost: totalCost, 
+            grossProfit: pureRev - totalCost, 
+            margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
+            items: cleanedItems 
+        };
+        
+        try { 
+            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); 
+            const text = await res.text(); 
+            
+            if(text.startsWith("Success")) { 
+                let pdfUrl = text.split("|")[1];
+                
+                let newWin = window.open(pdfUrl, '_blank'); 
+                
+                if(!newWin || newWin.closed || typeof newWin.closed == 'undefined') {
+                    alert("✅ 報價單已產生！\n\n⚠️ 但您的蘋果設備(iPad/iPhone)阻擋了自動彈出。\n\n👉 請點擊畫面右下角出現的藍色【📄 點此手動開啟 PDF】按鈕！");
+                    document.getElementById('manualPdfBtn').href = pdfUrl;
+                    document.getElementById('manualPdfBtn').style.display = "flex";
+                    document.getElementById('submitBtn').style.display = "none";
+                } else {
+                    alert("✅ 報價單 PDF 已成功產生並存檔！");
+                }
+                
+                fetchData(); 
+            } else { alert("❌ 系統錯誤：" + text); }
+        } catch(e) { alert("連線異常"); } finally { hideLoading(); }
+    }
+
+    function exportCurrentExcel() {
+        if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
+        showLoading("打包 Excel 檔案...");
+        
+        setTimeout(() => {
+            try {
+                let taxType = document.getElementById('qTaxType').value;
+                let client = document.getElementById('qClient').value.trim() || "未具名客戶";
+                
+                let exportData = [["項次", "品名", "規格", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "單品備註", "稅別", "料號"]];
+                
+                quoteCart.forEach((item, index) => {
+                    let subtotal = Math.round(item.price * item.qty);
+                    let itemCost = item.cost || 0;
+                    let itemProfit = Math.round((item.price - itemCost) * item.qty); 
+                    let marginPercent = item.price > 0 ? ((item.price - itemCost) / item.price * 100).toFixed(1) + "%" : "0%";
+                    let safeRemark = (item.remark === "undefined" || item.remark === "null" || !item.remark) ? "" : item.remark;
+                    
+                    let cleanSpec = item.spec;
+                    if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
+
+                    let displayName = item.name;
+                    if (item.no && item.no !== "客戶自備品" && item.no !== "手動新增") {
+                        if (!displayName.includes(item.no)) {
+                            displayName = item.no + " - " + item.name;
+                        }
+                    }
+
+                    exportData.push([
+                        index + 1,
+                        displayName,
+                        cleanSpec,
+                        item.qty,
+                        item.unit || "",
+                        itemCost,
+                        item.price,
+                        subtotal,
+                        itemProfit,
+                        marginPercent,
+                        safeRemark,
+                        taxType,
+                        item.no 
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "報價明細");
+
+                let timeString = getFormattedTimeString();
+                XLSX.writeFile(wb, `禾禾園報價明細_${client}_${timeString}.xlsx`);
+                
+            } catch (e) { 
+                alert("❌ 匯出失敗，請確認瀏覽器是否阻擋下載！"); 
+                console.error(e);
+            } finally { 
+                hideLoading(); 
+            }
+        }, 500);
+    }
+
+    fetchData();
 </script>
 </body>
 </html>
