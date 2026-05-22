@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V4.0 (終極包容留白版)</title>
+    <title>禾禾園 - 業務神速報價系統 V4.50 (原貌保留比對版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -53,7 +53,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V4.0</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V4.50</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
@@ -65,8 +65,8 @@
     
     <div class="excel-import-box">
         <div>
-            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 客戶報價單智能對接中心 (AI 涵蓋率匹配版)</label>
-            <span style="font-size: 13px; color: #555;">專門對付又長又雜的品名！只要庫內商品名「包含於」客戶品名中，即自動回填成本。無匹配者直接留白不報價！</span>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 客戶報價單智能對接中心 (原貌保留比對版)</label>
+            <span style="font-size: 13px; color: #555;">一字不差保留客戶寫的品牌與品名！系統在背景默默交叉比對，庫內有的自動掛上成本與品號；沒有的則留白不報價。</span>
         </div>
         <div>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
@@ -205,12 +205,11 @@
     }
 
     // ==========================================
-    // 💡 全新 V4.0 AI 核心：涵蓋率模糊匹配
-    // 專治客戶將「品名+規格」寫在同一個欄位的陋習
+    // 💡 AI 核心：LCS 模糊匹配演算法
+    // 只做背景比對用，絕不竄改客戶原字串
     // ==========================================
     function calculateSimilarity(str1, str2) {
         if (!str1 || !str2) return 0;
-        // 極致清洗：拿掉所有括號、空格、破折號，只比對純文字
         let s1 = String(str1).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
         let s2 = String(str2).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
         if (s1 === s2) return 1;
@@ -218,7 +217,6 @@
         let m = s1.length, n = s2.length;
         if (m === 0 || n === 0) return 0;
         
-        // 算出最長共同子字串 (LCS)
         let dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
         for (let i = 1; i <= m; i++) {
             for (let j = 1; j <= n; j++) {
@@ -227,30 +225,20 @@
             }
         }
         let lcs = dp[m][n];
-        
-        // 【核心變更】：計算「涵蓋率」(Coverage)。
-        // 只要我們資料庫的品名，有超過 65% 被包含在客戶又長又雜的品名裡，就認定配對成功！
         let coverage = lcs / Math.min(m, n);
-        
-        // 為了避免「鹽」對到「味精」這種超短字串誤判，給予輕微的長度懲罰
         let lengthPenalty = Math.min(m, n) / Math.max(m, n);
-        
-        // 最終分數 = 80% 看涵蓋率 + 20% 看長度差距
         return (coverage * 0.8) + (lengthPenalty * 0.2);
     }
 
     function findBestProductMatch(itemNo, itemName) {
         if (!db.Products || db.Products.length === 0) return null;
-        let cleanInputName = String(itemName).replace(/[\s\(\)\（\）\-\_\/\*]/g, "").trim();
         let exactNoMatch = null;
         
-        // 1. 如果有品號，品號優先
         if (itemNo && itemNo !== "undefined" && itemNo !== "") {
             exactNoMatch = db.Products.find(p => String(p[0]).trim() === String(itemNo).trim());
             if (exactNoMatch) return { product: exactNoMatch, type: 'exact_no' };
         }
         
-        // 2. 啟動 AI 涵蓋率匹配
         let bestMatch = null;
         let highestScore = 0;
         for (let i = 1; i < db.Products.length; i++) {
@@ -264,7 +252,6 @@
             }
         }
         
-        // 及格線設為 0.65，能完美囊括：金蘭深色醬油、青龍口冬粉175g、生腰果...
         if (highestScore >= 0.65) { 
             return { product: bestMatch, type: 'fuzzy', score: highestScore };
         }
@@ -273,14 +260,14 @@
     }
 
     // ==========================================
-    // 📥 Excel 智能匯入引擎 (精確清洗版)
+    // 📥 Excel 智能匯入引擎 (保留客戶原貌版)
     // ==========================================
     function handleExcelImport(event) {
         const file = event.target.files[0];
         if(!file) return;
         
         const reader = new FileReader();
-        showLoading("🚀 啟動 AI 涵蓋率匹配...");
+        showLoading("🚀 讀取客戶原檔並背景比對成本...");
         
         reader.onload = function(e) {
             try {
@@ -292,7 +279,6 @@
                 let headerRowIndex = -1;
                 let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
 
-                // 智慧定位表頭 (掃描前 25 列)
                 for (let i = 0; i < Math.min(rows.length, 25); i++) {
                     const row = rows[i];
                     if (!row) continue;
@@ -324,47 +310,50 @@
                     const row = rows[i];
                     if (!row || row.length === 0) continue;
                     
-                    let itemName = nameCol !== -1 ? String(row[nameCol] || "").trim() : "";
-                    if (!itemName || itemName === "undefined" || itemName === "物料名稱" || itemName.includes("報價期間")) continue; 
+                    // 💡 抓取客戶「最原始」的字眼，絕對不剪裁！
+                    let originalItemName = nameCol !== -1 ? String(row[nameCol] || "").trim() : "";
+                    if (!originalItemName || originalItemName === "undefined" || originalItemName === "物料名稱" || originalItemName.includes("報價期間")) continue; 
 
-                    let itemNo = noCol !== -1 ? String(row[noCol] || "").trim() : "";
-                    let itemSpec = specCol !== -1 ? String(row[specCol] || "").trim() : "";
+                    let originalItemNo = noCol !== -1 ? String(row[noCol] || "").trim() : "";
+                    let originalItemSpec = specCol !== -1 ? String(row[specCol] || "").trim() : "";
                     let itemUnit = unitCol !== -1 ? String(row[unitCol] || "").trim() : "包";
                     let itemQty = qtyCol !== -1 ? (parseFloat(row[qtyCol]) || 1) : 1;
 
-                    let cleanItemName = itemName;
-
-                    // 呼叫極限涵蓋率大腦
-                    let matchResult = findBestProductMatch(itemNo, cleanItemName);
+                    // 在背景用去雜質的方法找商品
+                    let cleanSearchName = originalItemName;
+                    if (originalItemName.includes(" - ")) {
+                        cleanSearchName = originalItemName.split(" - ")[1];
+                    }
+                    let matchResult = findBestProductMatch(originalItemNo, cleanSearchName);
 
                     let cost = 0;
                     let price = 0;
                     let finalItemNo = "";
-                    let finalItemName = cleanItemName;
-                    let alertRemark = ""; 
                     
+                    // 🎯 核心更動：不管有沒有匹配，畫面上的品名永遠等於客戶的「originalItemName」
+                    let finalItemName = originalItemName; 
+                    let finalItemSpec = originalItemSpec;
+
                     if (matchResult) {
+                        // 有對到：偷偷把料號跟成本掛上去
                         let matchedProduct = matchResult.product;
-                        finalItemNo = matchedProduct[0]; 
-                        finalItemName = matchedProduct[1]; 
-                        itemSpec = matchedProduct[2] || itemSpec;
-                        itemUnit = matchedProduct[6] || itemUnit;
+                        finalItemNo = matchedProduct[0]; // 掛上鼎新料號供未來匯出
                         cost = Number(matchedProduct[3]) || 0; 
                         price = Math.round(cost * multiplier); 
                         matchCount++;
                     } else {
-                        // 🎯 沒對到的：品號強制留白，價格為0，備註留白，畫面乾淨不報價
+                        // 沒對到：不報價，價格 0，料號留空
                         finalItemNo = "";
-                        finalItemName = cleanItemName;
                         price = 0;
                         cost = 0;
+                        if (finalItemSpec === "undefined" || finalItemSpec === "null") finalItemSpec = "";
                     }
 
                     quoteCart.push({ 
                         id: Date.now() + Math.random() + i, 
                         no: finalItemNo, 
-                        name: finalItemName, 
-                        spec: itemSpec, 
+                        name: finalItemName, // 這是客戶最原始的字
+                        spec: finalItemSpec, // 這是客戶最原始的規格
                         baseCost: cost, 
                         divider: 1, 
                         cost: cost, 
@@ -372,7 +361,7 @@
                         unit: COMMON_UNITS.includes(itemUnit) ? itemUnit : "包", 
                         price: price,
                         basePrice: price, 
-                        remark: alertRemark 
+                        remark: "" // 不顯示警告字眼，乾淨留白
                     });
                     
                     importCount++;
@@ -380,7 +369,7 @@
                 
                 renderCart();
                 hideLoading();
-                alert(`✅ AI 對接完成！\n\n共匯入: ${importCount} 項\n🤖 成功匹配: ${matchCount} 項 (已精算售價)\n\n未匹配的商品已自動留白不報價。`);
+                alert(`✅ 對接完成！\n\n共匯入: ${importCount} 項\n🤖 成功找到對應成本: ${matchCount} 項\n\n(未對應的商品已自動留白不報價，並且完全保留客戶原始品名與品牌)`);
                 
             } catch (err) {
                 console.error(err);
@@ -715,6 +704,7 @@
         renderCart();
     }
 
+    // 🌟 核心修改：渲染表格時，絕對不剪裁客戶的名字，直接貼上！
     function renderCart(doSave = true) {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
@@ -735,11 +725,15 @@
             let alertMatch = globalAlerts.find(a => {
                 let alertName = String(a.name).trim().toUpperCase();
                 let cartName = String(item.name).trim().toUpperCase();
+                
                 if (!alertName || alertName.length < 2) return false; 
                 if (cartName.includes(alertName)) return true;
+
                 if (alertName.includes(' ')) {
                     let keywords = alertName.split(' ').filter(k => k.trim().length > 0);
-                    if (keywords.length > 0) { return keywords.every(kw => cartName.includes(kw)); }
+                    if (keywords.length > 0) {
+                        return keywords.every(kw => cartName.includes(kw));
+                    }
                 }
                 return false;
             });
@@ -748,9 +742,9 @@
                 alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
             }
 
-            // 🎯 確保畫面上：有品號的顯示「品號 - 品名」，沒品號的(沒對到的)直接顯示品名
-            let cleanDisplayName = item.name.includes(" - ") ? item.name.split(" - ")[1] : item.name;
-            let fullDisplayName = item.no ? (item.no + " - " + cleanDisplayName) : cleanDisplayName;
+            // 🎯 【關鍵】：畫面上顯示的品名，就是客戶最原始的字，不加料號，不刪文字
+            // (但如果我們需要料號，料號其實已經偷偷綁定在 item.no 裡面了)
+            let fullDisplayName = item.no ? `[${item.no}] ${item.name}` : item.name;
 
             return `<tr>
                 <td style="text-align:center; color:#777; font-weight:bold; font-size:16px;">${index + 1}</td>
@@ -795,7 +789,11 @@
         let item = quoteCart.find(i => i.id === id); 
         if(item) { 
             item[field] = value; 
-            if (field === 'price') { item.basePrice = value * (item.divider || 1); }
+            
+            if (field === 'price') {
+                item.basePrice = value * (item.divider || 1);
+            }
+            
             renderCart(); 
         } 
     }
@@ -818,8 +816,8 @@
             let cleanSpec = i.spec;
             if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
             
-            let cleanDisplayName = i.name.includes(" - ") ? i.name.split(" - ")[1] : i.name;
-            let finalNameForPdf = i.no ? (i.no + " - " + cleanDisplayName) : cleanDisplayName;
+            // 匯出 PDF 的時候，也是原原本本印出客戶打的名字！
+            let finalNameForPdf = i.no ? `[${i.no}] ${i.name}` : i.name;
 
             return { 
                 name: finalNameForPdf, 
@@ -894,12 +892,10 @@
                     let cleanSpec = item.spec;
                     if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
 
-                    let cleanDisplayName = item.name.includes(" - ") ? item.name.split(" - ")[1] : item.name;
-                    let fullDisplayName = item.no ? (item.no + " - " + cleanDisplayName) : cleanDisplayName;
-
+                    // Excel 一樣完整保留客戶原始文字
                     exportData.push([
                         index + 1,
-                        fullDisplayName,
+                        item.name, // 100% 客戶的字
                         cleanSpec,
                         item.qty,
                         item.unit || "",
@@ -910,7 +906,7 @@
                         marginPercent,
                         safeRemark,
                         taxType,
-                        item.no 
+                        item.no // 偷偷放在最後一欄給鼎新
                     ]);
                 });
 
