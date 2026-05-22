@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V3.0 (精準對照完整版)</title>
+    <title>禾禾園 - 業務神速報價系統 V3.50 (AI模糊匹配+極簡留白版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -38,7 +38,6 @@
         .cost-label { display: block; font-size: 12px; color: #7f8c8d; margin-top: 5px; }
         .cost-value { font-weight: bold; color: #2c3e50; }
         .details-panel { background: #fff; padding: 15px; border-radius: 12px; border: 1px dashed #ccc; margin-top: -10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; }
-        .details-panel .input-group { flex: 1; min-width: 180px; }
         .price-alert { color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; animation: blinker 1.5s linear infinite; font-weight: bold; box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4); }
         @keyframes blinker { 50% { opacity: 0.3; } }
         
@@ -53,10 +52,10 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V3.0</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V3.50</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
-        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
+        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
 </div>
@@ -65,12 +64,12 @@
     
     <div class="excel-import-box">
         <div>
-            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 智能 Excel 客戶表單匯入 (精準對照不報價版)</label>
-            <span style="font-size: 13px; color: #555;">嚴格對接庫內商品：匹配成功帶出成本並精算售價；未匹配之商品一律留白不報價（0元），乾淨俐落！</span>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 智能 Excel 客戶單據匯入 (模糊配對 + 未匹配留白版)</label>
+            <span style="font-size: 13px; color: #555;">自動排除括號與錯字進行智能配對！成功配對者帶出成本與精算售價；未匹配之商品直接留白不報價，保持報價單與 Excel 乾淨俐落。</span>
         </div>
         <div>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
-            <button type="button" class="btn btn-success" style="font-size:15px; padding:12px 25px;" onclick="document.getElementById('excelFile').click()">📂 選擇檔案並精準對接</button>
+            <button type="button" class="btn btn-success" style="font-size:15px; padding:12px 25px;" onclick="document.getElementById('excelFile').click()">📂 選擇檔案並啟動 AI 對接</button>
         </div>
     </div>
 
@@ -205,14 +204,73 @@
     }
 
     // ==========================================
-    // 📥 全新：Excel 精準對照匯入引擎
+    // 💡 AI 核心：LCS 模糊匹配演算法
+    // ==========================================
+    function calculateSimilarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+        let s1 = String(str1).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+        let s2 = String(str2).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+        if (s1 === s2) return 1;
+        let m = s1.length, n = s2.length;
+        if (m === 0 || n === 0) return 0;
+        let dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+        for (let i = 1; i <= m; i++) {
+            for (let j = 1; j <= n; j++) {
+                if (s1[i - 1] === s2[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+                else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+        let lcs = dp[m][n];
+        let maxCoverage = Math.max(lcs / m, lcs / n);
+        if (s1.includes(s2) || s2.includes(s1)) maxCoverage += 0.2; 
+        return maxCoverage;
+    }
+
+    function findBestProductMatch(itemNo, itemName) {
+        if (!db.Products || db.Products.length === 0) return null;
+        let cleanInputName = String(itemName).replace(/[\s\(\)\（\）\-\_\/\*]/g, "").trim();
+        let exactNoMatch = null;
+        
+        if (itemNo && itemNo !== "undefined" && itemNo !== "") {
+            exactNoMatch = db.Products.find(p => String(p[0]).trim() === String(itemNo).trim());
+            if (exactNoMatch) return { product: exactNoMatch, type: 'exact_no' };
+        }
+        
+        let exactNameMatch = db.Products.find(p => {
+            if(!p[1]) return false;
+            let dbName = String(p[1]).replace(/[\s\(\)\（\）\-\_\/\*]/g, "").trim();
+            return dbName === cleanInputName;
+        });
+        if (exactNameMatch) return { product: exactNameMatch, type: 'exact_name' };
+        
+        let bestMatch = null;
+        let highestScore = 0;
+        for (let i = 1; i < db.Products.length; i++) {
+            let p = db.Products[i];
+            if (!p[1]) continue;
+            let score = calculateSimilarity(itemName, String(p[1]));
+            if (score > highestScore) {
+                highestScore = score;
+                bestMatch = p;
+            }
+        }
+        
+        if (highestScore >= 0.65) { 
+            return { product: bestMatch, type: 'fuzzy', score: highestScore };
+        }
+        
+        return null;
+    }
+
+    // ==========================================
+    // 📥 Excel 智能匯入引擎 (保留模糊比對，沒對到留白)
     // ==========================================
     function handleExcelImport(event) {
         const file = event.target.files[0];
         if(!file) return;
         
         const reader = new FileReader();
-        showLoading("正在精準對接雲端商品庫...");
+        showLoading("🚀 正在啟動 AI 模糊匹配...");
         
         reader.onload = function(e) {
             try {
@@ -222,17 +280,15 @@
                 const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
                 let headerRowIndex = -1;
-                let nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
+                let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
 
-                // 智慧定位表頭
                 for (let i = 0; i < Math.min(rows.length, 25); i++) {
                     const row = rows[i];
                     if (!row) continue;
                     for (let j = 0; j < row.length; j++) {
                         const cellVal = String(row[j] || "").trim();
-                        if (cellVal === "物料名稱" || cellVal === "品名" || cellVal.includes("名稱")) { 
-                            headerRowIndex = i; nameCol = j; 
-                        } 
+                        if (cellVal.includes("編號") || cellVal.includes("品號")) noCol = j;
+                        else if (cellVal.includes("名稱") || cellVal.includes("品名")) { headerRowIndex = i; nameCol = j; } 
                         else if (cellVal.includes("規格") || cellVal.includes("說明")) specCol = j;
                         else if (cellVal.includes("單位")) unitCol = j;
                         else if (cellVal.includes("數量")) qtyCol = j;
@@ -260,40 +316,39 @@
                     let itemName = nameCol !== -1 ? String(row[nameCol] || "").trim() : "";
                     if (!itemName || itemName === "undefined" || itemName === "物料名稱" || itemName.includes("報價期間")) continue; 
 
+                    let itemNo = noCol !== -1 ? String(row[noCol] || "").trim() : "";
                     let itemSpec = specCol !== -1 ? String(row[specCol] || "").trim() : "";
                     let itemUnit = unitCol !== -1 ? String(row[unitCol] || "").trim() : "包";
                     let itemQty = qtyCol !== -1 ? (parseFloat(row[qtyCol]) || 1) : 1;
 
+                    let cleanItemName = itemName.includes(" - ") ? itemName.split(" - ")[1] : itemName;
+
+                    // 使用 AI 大腦比對
+                    let matchResult = findBestProductMatch(itemNo, cleanItemName);
+
                     let cost = 0;
                     let price = 0;
-                    let finalItemNo = "客戶自備品"; 
-                    let finalItemName = itemName;
-                    let alertRemark = "";
+                    let finalItemNo = "自訂品項";
+                    let finalItemName = cleanItemName;
+                    let alertRemark = ""; // 預設留白
                     
-                    // 🎯 【絕對精準對照】：拿客人的純品名去我們的庫內找
-                    let matchedProduct = null;
-                    if (db.Products && db.Products.length > 0) {
-                        matchedProduct = db.Products.find(p => String(p[1]).trim() === itemName.trim());
-                    }
-
-                    if (matchedProduct) {
-                        // 有對到：抓正確的品號、成本、精算售價
-                        finalItemNo = matchedProduct[0];
+                    if (matchResult) {
+                        let matchedProduct = matchResult.product;
+                        finalItemNo = matchedProduct[0]; 
                         finalItemName = matchedProduct[1]; 
                         itemSpec = matchedProduct[2] || itemSpec;
                         itemUnit = matchedProduct[6] || itemUnit;
-                        cost = Number(matchedProduct[3]) || 0;
-                        price = Math.round(cost * multiplier);
-                        alertRemark = "";
+                        cost = Number(matchedProduct[3]) || 0; 
+                        price = Math.round(cost * multiplier); 
                         matchCount++;
                     } else {
-                        // 沒對到：不報價，價格成本都是 0，留空，讓畫面極度乾淨
-                        cost = 0;
+                        // 沒對到的，給予安全格式，價格 0，且備註留白(不顯示警告)
+                        finalItemNo = (itemNo && itemNo !== "undefined" && itemNo !== "") ? itemNo : "";
+                        finalItemName = cleanItemName;
                         price = 0;
-                        alertRemark = "";
+                        cost = 0;
                     }
 
-                    // 將資料安全推入原本系統的陣列中
                     quoteCart.push({ 
                         id: Date.now() + Math.random() + i, 
                         no: finalItemNo, 
@@ -314,7 +369,7 @@
                 
                 renderCart();
                 hideLoading();
-                alert(`✅ 精準對接完成！\n\n共匯入: ${importCount} 項\n✅ 庫內成功匹配: ${matchCount} 項\n\n(未匹配到的商品已自動保留空白不報價)`);
+                alert(`✅ AI 對接完成！\n\n共匯入: ${importCount} 項商品\n🤖 成功匹配: ${matchCount} 項 (已自動帶入成本與售價)\n\n(未匹配的商品已為您直接留白不報價)`);
                 
             } catch (err) {
                 console.error(err);
@@ -686,9 +741,9 @@
                 alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
             }
 
-            // 安全顯示品名：如果他有品號，才幫他加上品號前綴，避免 undefined 當機
+            // 安全顯示品名：如果他有品號，才幫他加上品號前綴，避免出現 undefined
             let displayName = item.name;
-            if (item.no && item.no !== "客戶自備品" && item.no !== "手動新增") {
+            if (item.no && item.no !== "手動新增" && item.no !== "客戶自備" && item.no !== "客戶自備品") {
                 if (!displayName.includes(item.no)) {
                     displayName = item.no + " - " + item.name;
                 }
@@ -737,11 +792,7 @@
         let item = quoteCart.find(i => i.id === id); 
         if(item) { 
             item[field] = value; 
-            
-            if (field === 'price') {
-                item.basePrice = value * (item.divider || 1);
-            }
-            
+            if (field === 'price') { item.basePrice = value * (item.divider || 1); }
             renderCart(); 
         } 
     }
@@ -765,7 +816,7 @@
             if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
             
             let displayName = i.name;
-            if (i.no && i.no !== "客戶自備品" && i.no !== "手動新增") {
+            if (i.no && i.no !== "客戶自備品" && i.no !== "手動新增" && i.no !== "") {
                 if (!displayName.includes(i.no)) {
                     displayName = i.no + " - " + i.name;
                 }
@@ -808,7 +859,6 @@
             
             if(text.startsWith("Success")) { 
                 let pdfUrl = text.split("|")[1];
-                
                 let newWin = window.open(pdfUrl, '_blank'); 
                 
                 if(!newWin || newWin.closed || typeof newWin.closed == 'undefined') {
@@ -819,7 +869,6 @@
                 } else {
                     alert("✅ 報價單 PDF 已成功產生並存檔！");
                 }
-                
                 fetchData(); 
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
@@ -847,7 +896,7 @@
                     if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
 
                     let displayName = item.name;
-                    if (item.no && item.no !== "客戶自備品" && item.no !== "手動新增") {
+                    if (item.no && item.no !== "客戶自備品" && item.no !== "手動新增" && item.no !== "") {
                         if (!displayName.includes(item.no)) {
                             displayName = item.no + " - " + item.name;
                         }
