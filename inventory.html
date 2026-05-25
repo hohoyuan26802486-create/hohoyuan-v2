@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>禾禾園 - 智慧庫存管理系統控制台</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root { --primary: #1F497D; --green: #27593B; --orange: #974806; --bg: #f4f6f9; }
+        body { font-family: 'Microsoft JhengHei', system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: 15px; display: flex; justify-content: center; }
+        .app-container { background: white; width: 100%; max-width: 480px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); overflow: hidden; position: relative;}
+        .system-header { background: var(--primary); color: white; padding: 20px; text-align: center; font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+        .tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
+        .tab { flex: 1; text-align: center; padding: 15px 10px; color: #5f6368; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px;}
+        .tab.active { color: white; background: var(--primary); }
+        .tab.tab-in.active { background: var(--green); }
+        .tab.tab-out.active { background: var(--orange); }
+        .form-content { padding: 25px; display: none; }
+        .form-content.active { display: block; }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 14px; font-weight: bold; color: #3c4043; margin-bottom: 8px; }
+        .input-group select, .input-group input { 
+            width: 100%; padding: 12px; border: 2px solid #dadce0; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none;
+        }
+        .input-group input:disabled { background-color: #e9ecef; color: #495057; font-weight: bold; }
+        .btn-submit { width: 100%; padding: 16px; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s;}
+        .btn-in { background: var(--green); box-shadow: 0 4px 12px rgba(39,89,59,0.3); }
+        .btn-out { background: var(--orange); box-shadow: 0 4px 12px rgba(151,72,6,0.3); }
+        #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; border-radius: 20px; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div id="loadingOverlay"><div class="spinner"></div><div style="font-weight:bold; color:var(--primary);">雲端庫存連動中...</div></div>
+    <div class="system-header">禾禾園雲端庫存自動化大腦</div>
+    
+    <div class="tabs">
+        <div class="tab tab-in active" onclick="switchTab('purchaseForm', 'tab-in')">📥 進貨入庫</div>
+        <div class="tab tab-out" onclick="switchTab('stockoutForm', 'tab-out')">📤 領料提領</div>
+    </div>
+
+    <div id="purchaseForm" class="form-content active">
+        <div class="input-group">
+            <label>🔍 商品料號 (選擇後自動帶出品名與時間)</label>
+            <select id="inSku" onchange="autoFillItem(this.value, 'inName')"></select>
+        </div>
+        <div class="input-group">
+            <label>📋 自動帶出品名</label>
+            <input type="text" id="inName" disabled placeholder="選擇料號後自動帶出...">
+        </div>
+        <div class="input-group">
+            <label>⏱️ 進貨時間</label>
+            <input type="text" id="inTime" disabled placeholder="送出時自動帶入當下系統時間">
+        </div>
+        <div class="input-group">
+            <label>🔢 進貨數量</label>
+            <input type="number" id="inQty" placeholder="請輸入數量" min="1">
+        </div>
+        <button class="btn-submit btn-in" onclick="submitData('purchase')">確認進貨入庫</button>
+    </div>
+
+    <div id="stockoutForm" class="form-content">
+        <div class="input-group">
+            <label>🔍 商品料號 (選擇後自動帶出品名與時間)</label>
+            <select id="outSku" onchange="autoFillItem(this.value, 'outName')"></select>
+        </div>
+        <div class="input-group">
+            <label>📋 自動帶出品名</label>
+            <input type="text" id="outName" disabled placeholder="選擇料號後自動帶出...">
+        </div>
+        <div class="input-group">
+            <label>⏱️ 領料時間</label>
+            <input type="text" id="outTime" disabled placeholder="送出時自動帶入當下系統時間">
+        </div>
+        <div class="input-group">
+            <label>🔢 提領數量</label>
+            <input type="number" id="outQty" placeholder="請輸入數量" min="1">
+        </div>
+        <button class="btn-submit btn-out" onclick="submitData('stockout')">確認領料提領</button>
+    </div>
+</div>
+
+<script>
+    // 🔗 已經成功對接老闆最新發布的後端大腦網址
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyq4pK2KFpEAojvJ6i5qHF56rDs87XcYi06huu9WCczjmT_Y9B8pWDpwH05ieiS0Pc/exec";
+    let masterInventory = [];
+
+    function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    // 網頁初始化：自動去雲端大腦抓目前現有的商品料號與品名清單
+    async function loadInventoryData() {
+        showLoading();
+        try {
+            const res = await fetch(GAS_URL);
+            const db = await res.json();
+            masterInventory = db.inventory.filter(row => row[0] !== "商品料號" && row[0] !== "" && row[0] !== "禾禾園國際貿易 - 雲端自動化庫存大腦控制台");
+            
+            const opts = masterInventory.map(row => `<option value="${row[0]}">${row[0]} (${row[1]})</option>`).join('');
+            document.getElementById('inSku').innerHTML = '<option value="">請選擇商品料號...</option>' + opts;
+            document.getElementById('outSku').innerHTML = '<option value="">請選擇商品料號...</option>' + opts;
+        } catch (e) {
+            Swal.fire('連線異常', '無法取得雲端庫存資料，請重新整理網頁！', 'error');
+        } finally { hideLoading(); }
+    }
+
+    // 關鍵連動邏輯：輸入料號時，自動一秒帶出品名
+    function autoFillItem(sku, targetInputId) {
+        const item = masterInventory.find(row => String(row[0]).trim() === String(sku).trim());
+        if (item) {
+            document.getElementById(targetInputId).value = item[1];
+        } else {
+            document.getElementById(targetInputId).value = "";
+        }
+    }
+
+    // 線上作業送出，自動帶入當下時間並回傳存入雲端
+    async function submitData(actionType) {
+        const prefix = actionType === 'purchase' ? 'in' : 'out';
+        const sku = document.getElementById(`${prefix}Sku`).value;
+        const qty = document.getElementById(`${prefix}Qty`).value;
+        
+        if (!sku) return Swal.fire('提示', '請選擇商品料號！', 'warning');
+        if (!qty || Number(qty) <= 0) return Swal.fire('提示', '請輸入正確的數量！', 'warning');
+
+        showLoading();
+        try {
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: actionType, sku: sku, qty: qty })
+            });
+            const result = await response.text();
+            if (result === "Success") {
+                Swal.fire('作業成功', '雲端庫存數據已即時同步更新完成！', 'success').then(() => location.reload());
+            } else {
+                Swal.fire('同步失敗', result, 'error');
+            }
+        } catch (e) {
+            Swal.fire('連線錯誤', '寫入雲端失敗，請確認網路環境後再試！', 'error');
+        } finally { hideLoading(); }
+    }
+
+    function switchTab(formId, tabClass) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form-content').forEach(c => c.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.getElementById(formId).classList.add('active');
+    }
+
+    window.onload = loadInventoryData;
+</script>
+</body>
+</html>
