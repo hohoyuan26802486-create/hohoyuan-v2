@@ -84,7 +84,7 @@
 </div>
 
 <script>
-    // 🔗 已經成功對接老闆最新發布的後端大腦網址
+    // 🎯 核心連動連結：已精準對接老闆最新發布的後端大腦正式 URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyq4pK2KFpEAojvJ6i5qHF56rDs87XcYi06huu9WCczjmT_Y9B8pWDpwH05ieiS0Pc/exec";
     let masterInventory = [];
 
@@ -97,9 +97,27 @@
         try {
             const res = await fetch(GAS_URL);
             const db = await res.json();
-            masterInventory = db.inventory.filter(row => row[0] !== "商品料號" && row[0] !== "" && row[0] !== "禾禾園國際貿易 - 雲端自動化庫存大腦控制台");
             
-            const opts = masterInventory.map(row => `<option value="${row[0]}">${row[0]} (${row[1]})</option>`).join('');
+            // 智慧過濾標頭與無效空列
+            masterInventory = db.inventory.filter(row => {
+                var sku = String(row[0]).trim();
+                return sku !== "商品料號" && sku !== "" && sku !== "undefined" && !sku.includes("禾禾園");
+            });
+            
+            // 雙重防呆防護：如果雲端硬碟尚未完全建檔，前端直接預載禾禾園 7 大正確香菇品項
+            if (masterInventory.length === 0) {
+                masterInventory = [
+                    ["790511", "H2-北菇 4-5"],
+                    ["790512", "H3-北菇 3-4"],
+                    ["743372", "A2-花菇 4-5@"],
+                    ["743374", "A3-花菇3-4@"],
+                    ["780583", "A5、H5-鈕釦菇 5號(進口)"],
+                    ["790541", "H-6鈕釦菇(進口)/斤 6號"],
+                    ["790521", "H7-鈕釦菇7號"]
+                ];
+            }
+            
+            const opts = masterInventory.map(row => `<option value="${row[0]}">${row[0]} ➔ ${row[1]}</option>`).join('');
             document.getElementById('inSku').innerHTML = '<option value="">請選擇商品料號...</option>' + opts;
             document.getElementById('outSku').innerHTML = '<option value="">請選擇商品料號...</option>' + opts;
         } catch (e) {
@@ -107,7 +125,7 @@
         } finally { hideLoading(); }
     }
 
-    // 關鍵連動邏輯：輸入料號時，自動一秒帶出品名
+    // 關鍵連動邏輯：輸入或選取料號時，自動一秒帶出品名
     function autoFillItem(sku, targetInputId) {
         const item = masterInventory.find(row => String(row[0]).trim() === String(sku).trim());
         if (item) {
