@@ -52,10 +52,6 @@
             <input type="text" id="inName" disabled placeholder="選擇料號後自動帶出...">
         </div>
         <div class="input-group">
-            <label>⏱️ 進貨時間</label>
-            <input type="text" id="inTime" disabled placeholder="送出時自動帶入當下系統時間">
-        </div>
-        <div class="input-group">
             <label>🔢 進貨數量</label>
             <input type="number" id="inQty" placeholder="請輸入數量" min="1">
         </div>
@@ -72,10 +68,6 @@
             <input type="text" id="outName" disabled placeholder="選擇料號後自動帶出...">
         </div>
         <div class="input-group">
-            <label>⏱️ 領料時間</label>
-            <input type="text" id="outTime" disabled placeholder="送出時自動帶入當下系統時間">
-        </div>
-        <div class="input-group">
             <label>🔢 提領數量</label>
             <input type="number" id="outQty" placeholder="請輸入數量" min="1">
         </div>
@@ -84,8 +76,8 @@
 </div>
 
 <script>
-    // 🎯 核心連動連結：已精準對接老闆最新發布的後端大腦正式 URL
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyq4pK2KFpEAojvJ6i5qHF56rDs87XcYi06huu9WCczjmT_Y9B8pWDpwH05ieiS0Pc/exec";
+    // 🔗 核心連動網址：已精準替換成老闆最新發布的正式 GAS 大腦 URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzxUUcSjPokx-2OTWApnSy9umbyZNIXNu5r4IrnTxqYq1g8MHibkZbLREcL6xxKHcEj/exec";
     let masterInventory = [];
 
     function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
@@ -98,13 +90,13 @@
             const res = await fetch(GAS_URL);
             const db = await res.json();
             
-            // 智慧過濾標頭與無效空列
+            // 智慧過濾標頭與無效空列，動態與老闆的 Google 試算表連動
             masterInventory = db.inventory.filter(row => {
                 var sku = String(row[0]).trim();
                 return sku !== "商品料號" && sku !== "" && sku !== "undefined" && !sku.includes("禾禾園");
             });
             
-            // 雙重防呆防護：如果雲端硬碟尚未完全建檔，前端直接預載禾禾園 7 大正確香菇品項
+            // 雙重硬核防呆：如果雲端硬碟尚未完全建檔，前端直接強制預載禾禾園 7 大正確香菇品項，防止畫面打架！
             if (masterInventory.length === 0) {
                 masterInventory = [
                     ["790511", "H2-北菇 4-5"],
@@ -125,7 +117,7 @@
         } finally { hideLoading(); }
     }
 
-    // 關鍵連動邏輯：輸入或選取料號時，自動一秒帶出品名
+    // 關鍵連動邏輯：選取料號時，自動一秒帶出品名
     function autoFillItem(sku, targetInputId) {
         const item = masterInventory.find(row => String(row[0]).trim() === String(sku).trim());
         if (item) {
@@ -135,7 +127,7 @@
         }
     }
 
-    // 線上作業送出，自動帶入當下時間並回傳存入雲端
+    // 線上作業送出，大腦會自動帶入當下精準時間，並回傳存入雲端
     async function submitData(actionType) {
         const prefix = actionType === 'purchase' ? 'in' : 'out';
         const sku = document.getElementById(`${prefix}Sku`).value;
