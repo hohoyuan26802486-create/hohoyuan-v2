@@ -153,9 +153,17 @@
 </div>
 
 <script>
-    // ⚠️ 記得把這個網址換成您剛剛重新部署的新網址！
+    // ⚠️ 請確保這是您最新的 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     let db = {}; let currentTab = 'pending';
+
+    // 🚀 新增：自動配發通關金鑰 (解決財務部與人事部的權限問題)
+    function getCurrentKey() {
+        const role = document.getElementById('adminRole').value;
+        if (role === '財務部' || role === '副總') return "cfo888"; // 賦予最高財務長權限
+        if (role === '人事部') return "hr123"; // 賦予人事部權限
+        return "";
+    }
 
     function formatShortTime(timeStr) {
         if (!timeStr) return ""; const d = new Date(timeStr); if (isNaN(d.getTime())) return String(timeStr);
@@ -301,12 +309,44 @@
 
     async function saveEmployee() {
         const p = { 
-            action: "saveEmployee", name: document.getElementById('empName').value, dept: document.getElementById('empDept').value, payType: document.getElementById('payType').value, salary: document.getElementById('empSalary').value, onboardingDate: document.getElementById('obDate').value, bonus: document.getElementById('bonus').value, laborIns: document.getElementById('laborIns').value, healthIns: document.getElementById('healthIns').value, dependents: document.getElementById('dependents').value,
+            action: "saveEmployee", 
+            key: getCurrentKey(), // 🚀 夾帶金鑰
+            name: document.getElementById('empName').value, 
+            dept: document.getElementById('empDept').value, 
+            payType: document.getElementById('payType').value, 
+            salary: document.getElementById('empSalary').value, 
+            onboardingDate: document.getElementById('obDate').value, 
+            bonus: document.getElementById('bonus').value, 
+            laborIns: document.getElementById('laborIns').value, 
+            healthIns: document.getElementById('healthIns').value, 
+            dependents: document.getElementById('dependents').value,
             // 🚀 傳送擴充欄位資料
-            phone: document.getElementById('phone').value, address: document.getElementById('address').value, homePhone: document.getElementById('homePhone').value, emerContact: document.getElementById('emerContact').value, emerRelation: document.getElementById('emerRelation').value, emerPhone: document.getElementById('emerPhone').value, birthday: document.getElementById('birthday').value, idNumber: document.getElementById('idNumber').value
+            phone: document.getElementById('phone').value, 
+            address: document.getElementById('address').value, 
+            homePhone: document.getElementById('homePhone').value, 
+            emerContact: document.getElementById('emerContact').value, 
+            emerRelation: document.getElementById('emerRelation').value, 
+            emerPhone: document.getElementById('emerPhone').value, 
+            birthday: document.getElementById('birthday').value, 
+            idNumber: document.getElementById('idNumber').value
         };
         if(!p.name) return alert("姓名必填！");
-        showLoading("儲存中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); alert("✅ 儲存成功"); fetchData(); clearForm();
+        showLoading("儲存中..."); 
+        try {
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            const text = await res.text();
+            if (text.includes("Error") || text.includes("權限不足") || text.includes("系統駁回")) {
+                alert("❌ " + text);
+            } else {
+                alert("✅ 儲存成功");
+                fetchData();
+                clearForm();
+            }
+        } catch(e) {
+            alert("連線失敗");
+        } finally {
+            hideLoading();
+        }
     }
 
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
@@ -328,10 +368,19 @@
         if(!confirm(`⚠️ 警告：確定要刪除員工「${name}」的資料嗎？刪除後無法復原！`)) return;
         showLoading("刪除中...");
         try {
-            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name })});
-            alert("✅ 員工資料已成功刪除！");
-            fetchData();
-        } catch (e) { alert("刪除失敗，請檢查網路連線。"); hideLoading(); }
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })}); // 🚀 夾帶金鑰
+            const text = await res.text();
+            if (text.includes("Error") || text.includes("只有")) {
+                alert("❌ " + text);
+            } else {
+                alert("✅ 員工資料已成功刪除！");
+                fetchData();
+            }
+        } catch (e) { 
+            alert("刪除失敗，請檢查網路連線。"); 
+        } finally { 
+            hideLoading(); 
+        }
     }
 
     function renderSalary() {
@@ -352,7 +401,7 @@
         if (!confirm(`確定執行 ${m} 月薪資結算？`)) return;
         showLoading(`正在結算 ${m} 月薪資...`);
         try { 
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m }) }); 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() }) }); // 🚀 夾帶金鑰
             const text = await res.text();
             if (text !== "Success") throw new Error(text);
             alert("✅ 結算完成！"); await fetchData(); 
@@ -363,7 +412,7 @@
         const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
         showLoading(`正在生成 PDF...\n(將自動存入雲端硬碟的「禾禾園薪資單匯出」資料夾)`);
         try { 
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m }) }); 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m, key: getCurrentKey() }) }); // 🚀 夾帶金鑰
             const text = await res.text();
             if (text !== "Success") throw new Error(text);
             alert("✅ PDF 產生完畢！請至雲端硬碟查看。"); 
