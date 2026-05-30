@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.30 (全功能版)</title>
+    <title>禾禾園 - 專業管理後台 V19.90 (權限升級版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -34,6 +34,7 @@
         .hr-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--text-sub); }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; }
+        .form-group input:disabled { background-color: #e9ecef; cursor: not-allowed; } /* 鎖定欄位的樣式 */
 
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
@@ -153,15 +154,13 @@
 </div>
 
 <script>
-    // ⚠️ 請確保這是您最新的 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     let db = {}; let currentTab = 'pending';
 
-    // 🚀 新增：自動配發通關金鑰 (解決財務部與人事部的權限問題)
     function getCurrentKey() {
         const role = document.getElementById('adminRole').value;
-        if (role === '財務部' || role === '副總') return "cfo888"; // 賦予最高財務長權限
-        if (role === '人事部') return "hr123"; // 賦予人事部權限
+        if (role === '財務部' || role === '副總') return "cfo888"; 
+        if (role === '人事部') return "hr123"; 
         return "";
     }
 
@@ -182,12 +181,20 @@
         if((r==='人事部' || r==='副總' || r==='財務部') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
             alert("❌ 密碼錯誤！"); document.getElementById('adminRole').value="業務部主管"; 
         }
-        render();
+        // 🚀 關鍵修復：切換部門時，主動拿著新的金鑰去雲端把對應權限的資料抓回來
+        fetchData();
     }
 
     async function fetchData() { 
         showLoading("獲取最新資料...");
-        try { const res = await fetch(CONFIG_URL); db = await res.json(); render(); renderSalary(); } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+        try { 
+            const key = getCurrentKey();
+            const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
+            const res = await fetch(urlWithKey); 
+            db = await res.json(); 
+            render(); 
+            renderSalary(); 
+        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     function render() {
@@ -195,9 +202,7 @@
         const hrBox = document.getElementById('hrBox');
         const salaryBox = document.getElementById('salaryBox');
         
-        // 財務部跟人事部、副總才看得到 HR Box
         if (role === '人事部' || role === '財務部' || role === '副總') { hrBox.style.display = 'block'; renderStaff(document.getElementById('filterDept').value); } else { hrBox.style.display = 'none'; }
-        // 只有財務部跟副總才看得到薪資結算 Box
         if (role === '財務部' || role === '副總') { salaryBox.style.display = 'block'; } else { salaryBox.style.display = 'none'; }
 
         if(db.leave) {
@@ -218,17 +223,13 @@
                 let status = String(r[8] || "");
                 let canApprove = false;
 
-                // 🚀 三階簽核流：主管 -> 副總 -> 人事核銷
                 if (status === '待主管審核') {
-                    if (role === empDept + '主管' || 
-                       (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) ||
-                       (role === '運輸部主管' && empDept === '運輸部')) {
-                        canApprove = true;
-                        next = '待副總審核'; // 交給副總
+                    if (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部')) {
+                        canApprove = true; next = '待副總審核';
                     }
                 } else if (status === '待副總審核') {
                     if (role === '副總') { canApprove = true; next = '待人事核銷'; }
-                } else if (status === '待人事主管審核') { // 主管的假
+                } else if (status === '待人事主管審核') {
                     if (role === '人事部') { canApprove = true; next = '已生效'; }
                 } else if (status === '待人事核銷') {
                     if (role === '人事部') { canApprove = true; next = '已生效'; }
@@ -241,12 +242,7 @@
                 
                 let actionBtn = "-";
                 if (canApprove && currentTab === 'pending') {
-                    actionBtn = `
-                        <div class="action-group">
-                            <button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">✔️ 核准</button>
-                            <button class="btn btn-danger" onclick="rejectLeave('${r[0]}')">❌ 退回</button>
-                        </div>
-                    `;
+                    actionBtn = `<div class="action-group"><button class="btn btn-success" onclick="updLv('${r[0]}','${next}')">✔️ 核准</button><button class="btn btn-danger" onclick="rejectLeave('${r[0]}')">❌ 退回</button></div>`;
                 }
 
                 return `<tr><td><div class="main-info">${r[2] || "未知"} <small>(${r[3] || "未知"})</small></div>${agentText}${reasonText}</td><td><div style="font-size:13px;">${formatShortTime(r[5])}<br>~<br>${formatShortTime(r[6])}</div></td><td><b>${r[4] || ""}</b></td><td>${proof}</td><td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td><td>${actionBtn}</td></tr>`;
@@ -262,10 +258,13 @@
             let total = Number(r[5]) || 0; let used = 0;
             if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             
+            // 如果薪資被鎖定，列表也不顯示具體數字
+            let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`;
+
             return `<tr>
                 <td><b>${r[0] || ""}</b></td>
                 <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td>
-                <td>$${r[3] || 0}</td>
+                <td>${displaySalary}</td>
                 <td>${r[4] ? new Date(r[4]).toLocaleDateString() : '-'}</td>
                 <td><b>${total} / ${Math.max(0, total-used)}</b></td>
                 <td>
@@ -287,10 +286,23 @@
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
             document.getElementById('empName').value = emp[0] || ""; document.getElementById('empDept').value = emp[1] || ""; document.getElementById('payType').value = emp[2] || "月薪";
-            document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
-            document.getElementById('bonus').value = emp[6] || 0; document.getElementById('laborIns').value = emp[7] || 0; document.getElementById('healthIns').value = emp[8] || 0; document.getElementById('dependents').value = emp[9] || 0;
+            document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             
-            // 🚀 載入擴充欄位
+            // 🚀 關鍵修復：處理人事部被鎖定的欄位 (使之變灰且無法輸入)
+            const salaryInput = document.getElementById('empSalary');
+            const bonusInput = document.getElementById('bonus');
+            if (emp[3] === "*** LOCKED ***") {
+                salaryInput.value = ""; salaryInput.disabled = true; salaryInput.placeholder = "權限鎖定";
+                bonusInput.value = ""; bonusInput.disabled = true; bonusInput.placeholder = "權限鎖定";
+            } else {
+                salaryInput.value = emp[3] || 0; salaryInput.disabled = false; salaryInput.placeholder = "";
+                bonusInput.value = emp[6] || 0; bonusInput.disabled = false; bonusInput.placeholder = "";
+            }
+
+            document.getElementById('laborIns').value = emp[7] || 0; 
+            document.getElementById('healthIns').value = emp[8] || 0; 
+            document.getElementById('dependents').value = emp[9] || 0;
+            
             document.getElementById('phone').value = emp[10] || ""; document.getElementById('address').value = emp[11] || "";
             document.getElementById('homePhone').value = emp[12] || ""; document.getElementById('emerContact').value = emp[13] || "";
             document.getElementById('emerRelation').value = emp[14] || ""; document.getElementById('emerPhone').value = emp[15] || "";
@@ -304,13 +316,17 @@
     function clearForm() { 
         ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); 
         ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
+        
+        // 清空表單時恢復輸入框狀態
+        document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = "";
+        document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = "";
         document.getElementById('filterEmp').value = ""; 
     }
 
     async function saveEmployee() {
         const p = { 
             action: "saveEmployee", 
-            key: getCurrentKey(), // 🚀 夾帶金鑰
+            key: getCurrentKey(), 
             name: document.getElementById('empName').value, 
             dept: document.getElementById('empDept').value, 
             payType: document.getElementById('payType').value, 
@@ -320,7 +336,6 @@
             laborIns: document.getElementById('laborIns').value, 
             healthIns: document.getElementById('healthIns').value, 
             dependents: document.getElementById('dependents').value,
-            // 🚀 傳送擴充欄位資料
             phone: document.getElementById('phone').value, 
             address: document.getElementById('address').value, 
             homePhone: document.getElementById('homePhone').value, 
@@ -368,7 +383,7 @@
         if(!confirm(`⚠️ 警告：確定要刪除員工「${name}」的資料嗎？刪除後無法復原！`)) return;
         showLoading("刪除中...");
         try {
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })}); // 🚀 夾帶金鑰
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })});
             const text = await res.text();
             if (text.includes("Error") || text.includes("只有")) {
                 alert("❌ " + text);
@@ -401,7 +416,7 @@
         if (!confirm(`確定執行 ${m} 月薪資結算？`)) return;
         showLoading(`正在結算 ${m} 月薪資...`);
         try { 
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() }) }); // 🚀 夾帶金鑰
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() }) }); 
             const text = await res.text();
             if (text !== "Success") throw new Error(text);
             alert("✅ 結算完成！"); await fetchData(); 
@@ -412,7 +427,7 @@
         const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份");
         showLoading(`正在生成 PDF...\n(將自動存入雲端硬碟的「禾禾園薪資單匯出」資料夾)`);
         try { 
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m, key: getCurrentKey() }) }); // 🚀 夾帶金鑰
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m, key: getCurrentKey() }) }); 
             const text = await res.text();
             if (text !== "Success") throw new Error(text);
             alert("✅ PDF 產生完畢！請至雲端硬碟查看。"); 
@@ -427,6 +442,7 @@
         XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
     }
 
+    // 啟動頁面時若已有設定好的角色，預設不帶密碼(讓其觸發Guest邏輯，需手動選單才解鎖)
     fetchData();
 </script>
 </body>
