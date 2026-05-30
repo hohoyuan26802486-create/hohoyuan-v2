@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.12</title>
+    <title>禾禾園 - 智能考勤系統 V37.20 (支援特准放行)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -19,7 +19,7 @@
         
         .input-group { margin-bottom: 20px; }
         .input-group label { display: block; font-size: 14px; font-weight: 600; color: #3c4043; margin-bottom: 8px; }
-        .input-group select, .input-group input { 
+        .input-group select, .input-group input[type="text"], .input-group input[type="datetime-local"], .input-group input[type="file"] { 
             width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 10px; font-size: 16px; 
             background-color: white; box-sizing: border-box; outline: none; -webkit-appearance: none; appearance: none;
         }
@@ -121,6 +121,14 @@
         <div class="input-group"><label>📅 結束時間</label><input type="datetime-local" id="lvEnd"></div>
         <div class="input-group"><label>📝 請假事由</label><input type="text" id="lvReason" placeholder="原因"></div>
         <div class="input-group"><label>📸 證明照片 (後補件可免附)</label><input type="file" id="lvFile" accept="image/*"></div>
+        
+        <div class="input-group" style="background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
+            <label for="managerOverride" style="color: #856404; display: flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; font-size: 14px;">
+                <input type="checkbox" id="managerOverride" style="width: 24px; height: 24px; margin: 0; cursor: pointer; background: white;">
+                ⚠️ 若遭系統阻擋，請於主管協調同意後勾選此處，方可送出假單
+            </label>
+        </div>
+
         <button id="btnLv" class="btn-submit" onclick="submitLeave()">送出假單</button>
     </div>
 
@@ -133,6 +141,7 @@
 </div>
 
 <script>
+    // ⚠️ 確認這裡是您的最新 API 網址！
     const API_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
@@ -223,7 +232,6 @@
                         addStatusBtn("經主管核准加班", false);
                     } else { addStatusBtn("正常下班", true); }
                     
-                    // 🌟 V37.12 更新：字眼優化為「值班(換補休)」
                     addStatusBtn("值班(換補休)", false); 
                     addStatusBtn("外出暫時下班", false);
                 }
@@ -238,7 +246,6 @@
         if(isSelected) {
             selectedStatus = txt;
             const ob = document.getElementById('overtimeBox');
-            // 🌟 確保選到「加班」或「值班」時，填寫事由的框框都會跳出來
             if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
         }
         div.onclick = function() {
@@ -337,6 +344,7 @@
         });
     }
 
+    // 🚀 新增：把特准放行的勾選狀態送給後台
     async function submitLeave() {
         const name = document.getElementById('lvName').value;
         const type = document.getElementById('lvType').value;
@@ -345,9 +353,14 @@
         const reason = document.getElementById('lvReason').value;
         const agent = document.getElementById('lvAgent').value;
         const fileInput = document.getElementById('lvFile');
+        const isOverride = document.getElementById('managerOverride').checked; // 抓取打勾狀態
+
         if (!start || !end) return Swal.fire('提示', '請選擇開始與結束時間！', 'warning');
         showLoading("假單上傳中...");
-        const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "" };
+        
+        // 將 managerOverride 加進送出的資料包中
+        const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "", managerOverride: isOverride };
+        
         try {
             if (fileInput.files.length > 0) {
                 p.imageFile = await getBase64(fileInput.files[0]);
@@ -355,8 +368,15 @@
             }
             const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
-            if (text === "Success") { Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload()); } 
-            else { Swal.fire('失敗', text, 'error'); }
+            
+            // 如果遇到系統阻擋，跳出警告
+            if (text.includes("系統阻擋")) {
+                Swal.fire('休假人數達上限', text, 'error');
+            } else if (text === "Success") { 
+                Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload()); 
+            } else { 
+                Swal.fire('失敗', text, 'error'); 
+            }
         } catch(e) { Swal.fire('錯誤', '網路異常，請稍後再試。', 'error'); } 
         finally { hideLoading(); }
     }
