@@ -693,7 +693,7 @@
         renderCart();
     }
 
-    // 🌟 核心修改：渲染畫面時，絕對保留原本客戶打的每一個字
+    // 🌟 核心修改：渲染畫面時，絕對保留原本客戶打的每一個字與歷史成本
     function renderCart(doSave = true) {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
@@ -705,8 +705,9 @@
         
         tbody.innerHTML = quoteCart.map((item, index) => {
             
-            // 🎯 【影子更新】：如果這項有對到料號，在畫面重新渲染時保證它的成本是準的
-            if (db.Products && db.Products.length > 0 && item.no && item.no !== "") {
+            // 🎯 【影子更新修復】：加上 !item.isLoadedHistory 的判斷
+            // 意思是：如果這是從「歷史舊單」載入的，就不要用現在資料庫的成本去蓋掉它！
+            if (!item.isLoadedHistory && db.Products && db.Products.length > 0 && item.no && item.no !== "") {
                 let finalMatch = db.Products.find(p => String(p[0]).trim() === String(item.no).trim());
                 if (finalMatch) {
                     item.baseCost = Number(finalMatch[3]) || 0;
@@ -747,7 +748,6 @@
                 alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
             }
 
-            // 🎯 【關鍵】：畫面上顯示的品名，完全就是客戶的原始字眼
             let fullDisplayName = item.name;
 
             return `<tr>
