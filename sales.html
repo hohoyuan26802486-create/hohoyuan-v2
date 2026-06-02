@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V5.0 (客戶原貌+影子對接版)</title>
+    <title>禾禾園 - 業務神速報價系統 V5.5 (雲端審核修改版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -42,10 +42,9 @@
         .price-alert { color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; animation: blinker 1.5s linear infinite; font-weight: bold; box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4); }
         @keyframes blinker { 50% { opacity: 0.3; } }
         
-        .excel-import-box {
-            background: #e3f2fd; padding: 20px; border-radius: 12px; border: 2px dashed #1a73e8;
-            margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap;
-        }
+        .excel-import-box { background: #e3f2fd; padding: 20px; border-radius: 12px; border: 2px dashed #1a73e8; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
+        .global-history-box { background: #fffde7; padding: 15px 20px; border-radius: 12px; border: 2px dashed #fbc02d; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .cloud-draft-box { background: #e8f5e9; padding: 15px 20px; border-radius: 12px; border: 2px dashed #4caf50; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -53,24 +52,43 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.0</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.5</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
-        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel 明細</button>
+        <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
 </div>
 
 <div class="container">
     
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+        <div class="cloud-draft-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+            <div style="font-weight: bold; color: #2e7d32; font-size: 16px; width: 100%;">☁️ 雲端草稿審核：</div>
+            <select id="cloudDraftSelect" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 15px;">
+                <option value="">-- 讀取中... --</option>
+            </select>
+            <button class="btn btn-success" style="font-size: 15px;" onclick="loadSelectedCloudDraft()">📥 載入草稿</button>
+        </div>
+
+        <div class="global-history-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+            <div style="font-weight: bold; color: #856404; font-size: 16px; width: 100%;">🔍 歷史報價單修改：</div>
+            <select id="globalHistorySelect" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 15px;">
+                <option value="">-- 讀取中... --</option>
+            </select>
+            <button class="btn btn-warning" style="font-size: 15px;" onclick="loadGlobalHistory()">🔄 載入舊單</button>
+        </div>
+    </div>
+
+    <input type="hidden" id="quoteId" value="">
+
     <div class="excel-import-box">
         <div>
-            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 客戶報價單智能對接中心 (一字不差原貌保留版)</label>
-            <span style="font-size: 13px; color: #555;">完美重現客戶原品名！系統在背景默默交叉比對，庫內有的自動掛載成本與品號；沒有的則留白不報價。100% 維持客戶清單原貌。</span>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 客戶 Excel 智能對接</label>
         </div>
         <div>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
-            <button type="button" class="btn btn-success" style="font-size:15px; padding:12px 25px;" onclick="document.getElementById('excelFile').click()">📂 選擇檔案並啟動對接</button>
+            <button type="button" class="btn btn-primary" style="font-size:15px; padding:12px 25px;" onclick="document.getElementById('excelFile').click()">📂 選擇檔案</button>
         </div>
     </div>
 
@@ -170,10 +188,11 @@
     </div>
 
     <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px; gap: 15px;">
-        <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 200px;" onclick="clearDraft()">🧹 清空畫面 (準備打新單)</button>
+        <button class="btn btn-outline" style="font-size: 16px; flex: 1; min-width: 150px; background: #e8f5e9; border-color: #4caf50; color: #2e7d32; font-weight: bold;" onclick="saveToCloudDraft()">☁️ 存入雲端草稿匣</button>
+        <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 150px;" onclick="clearDraft()">🧹 清空畫面 (打新單)</button>
         <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 10px;" id="actionButtons">
-            <button id="submitBtn" class="btn btn-success" style="font-size: 18px; padding: 15px 40px; width: 100%;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
-            <a id="manualPdfBtn" href="#" target="_blank" class="btn btn-primary" style="display: none; justify-content: center; font-size: 18px; padding: 15px 40px; text-decoration: none;">📄 點此手動開啟 PDF 報價單</a>
+            <button id="submitBtn" class="btn btn-primary" style="font-size: 18px; padding: 15px 40px; width: 100%;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
+            <a id="manualPdfBtn" href="#" target="_blank" class="btn btn-outline" style="display: none; justify-content: center; font-size: 18px; padding: 15px 40px; text-decoration: none;">📄 點此手動開啟 PDF</a>
         </div>
     </div>
 </div>
@@ -186,6 +205,8 @@
     let salesMobiles = {}; 
     let salesEmails = {};
     let globalAlerts = []; 
+    let globalCloudDraftsData = {}; // 存放解譯後的雲端草稿內容
+    let currentCloudDraftId = "";   // 追蹤當前編輯的草稿ID
 
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
     const COMMON_UNITS = ['盒', '包', '箱', '袋', '罐', '斤', 'kg', '桶', '磅', '兩', 'g'];
@@ -205,17 +226,15 @@
     }
 
     // ==========================================
-    // 💡 AI 影子比對演算法：完全不破壞原始資料
+    // 💡 AI 影子比對演算法
     // ==========================================
     function calculateSimilarity(str1, str2) {
         if (!str1 || !str2) return 0;
         let s1 = String(str1).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
         let s2 = String(str2).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
         if (s1 === s2) return 1;
-        
         let m = s1.length, n = s2.length;
         if (m === 0 || n === 0) return 0;
-        
         let dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
         for (let i = 1; i <= m; i++) {
             for (let j = 1; j <= n; j++) {
@@ -231,12 +250,10 @@
 
     function findBestProductMatch(itemNo, itemName) {
         if (!db.Products || db.Products.length === 0) return null;
-        
         if (itemNo && itemNo !== "undefined" && itemNo !== "") {
             let exactNoMatch = db.Products.find(p => String(p[0]).trim() === String(itemNo).trim());
             if (exactNoMatch) return { product: exactNoMatch, type: 'exact_no' };
         }
-        
         let highestScore = 0;
         let bestMatch = null;
         for (let i = 1; i < db.Products.length; i++) {
@@ -248,17 +265,10 @@
                 bestMatch = p;
             }
         }
-        
-        if (highestScore >= 0.65) { 
-            return { product: bestMatch, type: 'fuzzy', score: highestScore };
-        }
-        
+        if (highestScore >= 0.65) { return { product: bestMatch, type: 'fuzzy', score: highestScore }; }
         return null;
     }
 
-    // ==========================================
-    // 📥 Excel 智能匯入引擎 (100% 複製貼上原貌版)
-    // ==========================================
     function handleExcelImport(event) {
         const file = event.target.files[0];
         if(!file) return;
@@ -276,7 +286,6 @@
                 let headerRowIndex = -1;
                 let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
 
-                // 智慧定位表頭
                 for (let i = 0; i < Math.min(rows.length, 25); i++) {
                     const row = rows[i];
                     if (!row) continue;
@@ -301,14 +310,12 @@
                 let rule = PRICING_RULES[currentLevel] || PRICING_RULES['E'];
                 let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
 
-                let importCount = 0;
-                let matchCount = 0;
+                let importCount = 0, matchCount = 0;
                 
                 for (let i = headerRowIndex + 1; i < rows.length; i++) {
                     const row = rows[i];
                     if (!row || row.length === 0) continue;
                     
-                    // 🎯 取出客戶原汁原味的名稱與規格，絕不擅自修改
                     let originalItemName = nameCol !== -1 ? String(row[nameCol] || "").trim() : "";
                     if (!originalItemName || originalItemName === "undefined" || originalItemName === "物料名稱" || originalItemName.includes("報價期間")) continue; 
 
@@ -317,31 +324,25 @@
                     let itemUnit = unitCol !== -1 ? String(row[unitCol] || "").trim() : "包";
                     let itemQty = qtyCol !== -1 ? (parseFloat(row[qtyCol]) || 1) : 1;
 
-                    // 影子比對用 (偷偷把客戶可能帶的料號拔掉去比對，但不會改變原始名稱)
                     let searchName = originalItemName;
                     if (originalItemName.includes(" - ")) searchName = originalItemName.split(" - ")[1];
 
-                    // 呼叫影子 AI 比對
                     let matchResult = findBestProductMatch(originalItemNo, searchName);
-
-                    let cost = 0;
-                    let price = 0;
-                    let finalItemNo = ""; // 用來隱形存放鼎新料號
+                    let cost = 0, price = 0, finalItemNo = ""; 
                     
                     if (matchResult) {
                         let matchedProduct = matchResult.product;
-                        finalItemNo = matchedProduct[0]; // 偷偷把料號記下來，匯出 Excel 供鼎新使用
+                        finalItemNo = matchedProduct[0]; 
                         cost = Number(matchedProduct[3]) || 0; 
                         price = Math.round(cost * multiplier); 
                         matchCount++;
                     }
 
-                    // 推入購物車：name 和 spec 永遠保持客戶的原樣！
                     quoteCart.push({ 
                         id: Date.now() + Math.random() + i, 
-                        no: finalItemNo, // 隱藏料號
-                        name: originalItemName, // ★ 100% 客戶原始品名
-                        spec: originalItemSpec, // ★ 100% 客戶原始規格
+                        no: finalItemNo, 
+                        name: originalItemName, 
+                        spec: originalItemSpec, 
                         baseCost: cost, 
                         divider: 1, 
                         cost: cost, 
@@ -349,15 +350,13 @@
                         unit: COMMON_UNITS.includes(itemUnit) ? itemUnit : "包", 
                         price: price,
                         basePrice: price, 
-                        remark: "" // 全數乾淨留白
+                        remark: "" 
                     });
-                    
                     importCount++;
                 }
-                
                 renderCart();
                 hideLoading();
-                alert(`✅ 對接完成！\n\n共匯入: ${importCount} 項商品\n🤖 成功在背景對應成本: ${matchCount} 項\n\n(畫面上已為您原封不動保留客戶原始的品牌與名稱)`);
+                alert(`✅ 對接完成！\n\n共匯入: ${importCount} 項商品\n🤖 背景對應成功: ${matchCount} 項`);
                 
             } catch (err) {
                 console.error(err);
@@ -367,6 +366,72 @@
             document.getElementById('excelFile').value = ''; 
         };
         reader.readAsArrayBuffer(file);
+    }
+
+    // 🌟 雲端草稿：存入後端 CloudDrafts 表單
+    async function saveToCloudDraft() {
+        let client = document.getElementById('qClient').value.trim() || "未具名客戶";
+        let salesName = document.getElementById('qSalesName').value;
+        if(quoteCart.length === 0) return alert("⚠️ 請至少加入一項商品才能存入草稿喔！");
+
+        showLoading("正在同步至雲端草稿匣...");
+        
+        const payload = {
+            client: client,
+            taxId: document.getElementById('qTaxId').value,
+            contact: document.getElementById('qContact').value,
+            phone: document.getElementById('qPhone').value,
+            address: document.getElementById('qAddress').value,
+            salesName: salesName,
+            level: document.getElementById('qLevel').value,
+            taxType: document.getElementById('qTaxType').value,
+            cart: quoteCart,
+            quoteId: document.getElementById('quoteId').value // 如果是修改舊單打到一半，把原本號碼也存起來
+        };
+
+        const p = { 
+            action: "saveCloudDraft", 
+            draftId: currentCloudDraftId,
+            clientName: client,
+            salesName: salesName,
+            payload: payload
+        };
+        
+        try { 
+            const res = await fetch(CONFIG_URL, {method:'POST', body:JSON.stringify(p)}); 
+            const text = await res.text(); 
+            if(text.startsWith("DraftSaved")) { 
+                currentCloudDraftId = text.split("|")[1];
+                alert("☁️ 已成功存入雲端！主管隨時可從上方【雲端草稿審核】選單拉取這份進度。");
+                fetchData(); // 重新整理下拉選單
+            } else { alert("❌ 系統錯誤：" + text); }
+        } catch(e) { alert("連線異常"); } finally { hideLoading(); }
+    }
+
+    // 🌟 雲端草稿：載入前端畫面
+    function loadSelectedCloudDraft() {
+        let draftId = document.getElementById('cloudDraftSelect').value;
+        if(!draftId) return alert("請先選擇一份雲端草稿！");
+        
+        let payload = globalCloudDraftsData[draftId];
+        if(payload) {
+            currentCloudDraftId = draftId; // 記錄目前是哪份草稿，存檔時會一起帶去後端刪除
+            
+            document.getElementById('qClient').value = payload.client || "";
+            document.getElementById('qTaxId').value = payload.taxId || "";
+            document.getElementById('qContact').value = payload.contact || "";
+            document.getElementById('qPhone').value = payload.phone || "";
+            document.getElementById('qAddress').value = payload.address || "";
+            document.getElementById('qSalesName').value = payload.salesName || "";
+            document.getElementById('qLevel').value = payload.level || "E";
+            document.getElementById('qTaxType').value = payload.taxType || "未稅";
+            document.getElementById('quoteId').value = payload.quoteId || ""; // 恢復原始單號狀態
+            
+            quoteCart = payload.cart || [];
+            updateSubmitButtonUI();
+            renderCart(false);
+            alert("✅ 雲端草稿載入成功！您可以接續檢查或修改。");
+        }
     }
 
     function saveDraft() {
@@ -379,11 +444,12 @@
             salesName: document.getElementById('qSalesName').value,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
-            cart: quoteCart
+            cart: quoteCart,
+            quoteId: document.getElementById('quoteId').value
         };
         localStorage.setItem('hohoyuan_quote_draft', JSON.stringify(draft));
         let now = new Date();
-        document.getElementById('saveStatus').innerText = `已自動存檔 (${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()})`;
+        document.getElementById('saveStatus').innerText = `本地已暫存 (${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()})`;
     }
 
     function loadDraft() {
@@ -402,9 +468,11 @@
                 setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
+                if(draft.quoteId) document.getElementById('quoteId').value = draft.quoteId;
                 if(draft.cart) quoteCart = draft.cart;
+                updateSubmitButtonUI();
                 renderCart(false);
-                document.getElementById('saveStatus').innerText = "已恢復上次未完成的報價單";
+                document.getElementById('saveStatus').innerText = "已恢復上次離開時的畫面";
             } catch(e) {}
         }
     }
@@ -419,12 +487,29 @@
             document.getElementById('qAddress').value = "";
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
+            document.getElementById('quoteId').value = ""; // 清空單號，變回新單模式
             document.getElementById('historyBlock').style.display = "none";
             document.getElementById('manualPdfBtn').style.display = "none"; 
             document.getElementById('submitBtn').style.display = "block"; 
+            document.getElementById('globalHistorySelect').value = "";
+            document.getElementById('cloudDraftSelect').value = "";
+            currentCloudDraftId = "";
             localStorage.removeItem('hohoyuan_quote_draft');
             document.getElementById('saveStatus').innerText = "";
+            updateSubmitButtonUI();
             renderCart();
+        }
+    }
+
+    function updateSubmitButtonUI() {
+        let qId = document.getElementById('quoteId').value;
+        if(qId && qId.startsWith("Q20")) {
+            // 代表目前處於「修改舊單」模式
+            document.getElementById('submitBtn').innerText = "🚀 儲存變更，並重新產生 PDF";
+            document.getElementById('submitBtn').style.background = "#d35400"; // 換個顏色提醒主管
+        } else {
+            document.getElementById('submitBtn').innerText = "🚀 產生正式 PDF 報價單";
+            document.getElementById('submitBtn').style.background = "var(--primary)";
         }
     }
 
@@ -481,8 +566,50 @@
         if(db.PriceAlerts) {
             for(let i=1; i<db.PriceAlerts.length; i++) {
                 let r = db.PriceAlerts[i];
+                if(r[0]) { globalAlerts.push({ name: r[0], increase: r[1], note: r[2] }); }
+            }
+        }
+
+        // 🌟 初始化全域歷史訂單選單 (列出最近 50 筆供修改)
+        if(db.Quotations) {
+            const gSelect = document.getElementById('globalHistorySelect');
+            gSelect.innerHTML = '<option value="">-- 選擇已完成的報價單 (顯示最近 50 筆) --</option>';
+            let count = 0;
+            for(let i = db.Quotations.length - 1; i >= 1; i--) {
+                if(count >= 50) break;
+                let r = db.Quotations[i];
                 if(r[0]) {
-                    globalAlerts.push({ name: r[0], increase: r[1], note: r[2] });
+                    let opt = document.createElement('option');
+                    opt.value = r[0];
+                    let rawDate = new Date(r[1]);
+                    let dateStr = isNaN(rawDate) ? "" : `(${rawDate.getMonth()+1}/${rawDate.getDate()})`;
+                    opt.innerText = `📄 ${r[0]} - ${r[2]} ${dateStr} (總計: $${r[3]})`;
+                    gSelect.appendChild(opt);
+                    count++;
+                }
+            }
+        }
+
+        // 🌟 初始化雲端草稿選單
+        if(db.CloudDrafts) {
+            const cdSelect = document.getElementById('cloudDraftSelect');
+            cdSelect.innerHTML = '<option value="">-- 請選擇待審核的雲端草稿 --</option>';
+            globalCloudDraftsData = {}; // 清空
+            for(let i = db.CloudDrafts.length - 1; i >= 1; i--) { // 由新到舊
+                let r = db.CloudDrafts[i];
+                if(r[0]) {
+                    let draftId = r[0];
+                    let client = r[2] || "未知客戶";
+                    let sales = r[3] || "未知業務";
+                    try {
+                        globalCloudDraftsData[draftId] = JSON.parse(r[4]); 
+                        let rawDate = new Date(r[1]);
+                        let dateStr = isNaN(rawDate) ? "" : `${rawDate.getMonth()+1}/${rawDate.getDate()} ${rawDate.getHours()}:${rawDate.getMinutes()}`;
+                        let opt = document.createElement('option');
+                        opt.value = draftId;
+                        opt.innerText = `☁️ [${client}] - 由 ${sales} 暫存 (${dateStr})`;
+                        cdSelect.appendChild(opt);
+                    } catch(e) { console.error("解析草稿失敗", e); }
                 }
             }
         }
@@ -497,7 +624,7 @@
     function updateHistoryDropdown(clientName) {
         const block = document.getElementById('historyBlock');
         const select = document.getElementById('qHistorySelect');
-        select.innerHTML = '<option value="">-- 請選擇想修改的歷史紀錄 --</option>';
+        select.innerHTML = '<option value="">-- 選擇此客戶過去的紀錄 --</option>';
 
         if(!clientName || !db.Quotations) {
             block.style.display = 'none';
@@ -569,19 +696,14 @@
     function addCustomItem() {
         let name = prompt("📌 [步驟 1/4] 請輸入【品名】：\n(例如：大油皮)");
         if (!name) return;
-        
         let spec = prompt(`📌 [步驟 2/4] 請輸入「${name}」的【規格大小】：\n(例如：3斤裝 / 若無可直接按確定留白)`) || "";
-        
         let costInput = prompt(`📌 [步驟 3/4] 請輸入「${name}」的【成本】：\n(請輸入純數字，若無請填 0)`);
         let cost = parseFloat(costInput);
         if (isNaN(cost)) cost = 0; 
 
         let priceInput = prompt(`📌 [步驟 4/4] 請輸入「${name}」的【報價 (單價)】：\n(請輸入純數字)`);
         let price = parseFloat(priceInput);
-        
-        if (isNaN(price)) {
-            return alert("❌ 報價單價錯誤，請務必填寫純數字！");
-        }
+        if (isNaN(price)) { return alert("❌ 報價單價錯誤，請務必填寫純數字！"); }
 
         quoteCart.push({ 
             id: Date.now() + Math.random(), 
@@ -600,9 +722,24 @@
         renderCart();
     }
 
-    async function loadSelectedHistory() {
-        let id = document.getElementById('qHistorySelect').value;
-        if(!id) return alert("請先在選單中點選一張報價單！");
+    // 🌟 從全域搜尋載入
+    async function loadGlobalHistory() {
+        let id = document.getElementById('globalHistorySelect').value;
+        if(!id) return alert("請先選擇一張已完成的報價單！");
+        
+        if (db.Quotations) {
+            let quoteRow = db.Quotations.find(r => r[0] === id);
+            if (quoteRow && quoteRow[2]) {
+                document.getElementById('qClient').value = quoteRow[2];
+                detectClientLevel(quoteRow[2]);
+            }
+        }
+        loadSelectedHistory(id);
+    }
+
+    async function loadSelectedHistory(overrideId) {
+        let id = overrideId || document.getElementById('qHistorySelect').value;
+        if(!id) return alert("請先選擇一張報價單！");
         
         showLoading("正在從雲端抓取明細...");
         try {
@@ -615,16 +752,12 @@
             if(data && data.items && data.items.length > 0) {
                 quoteCart = data.items.map(i => {
                     let cleanRemark = i.remark;
-                    if (cleanRemark === "undefined" || cleanRemark === "null" || cleanRemark === null || cleanRemark === undefined) {
-                        cleanRemark = "";
-                    }
+                    if (cleanRemark === "undefined" || cleanRemark === "null" || cleanRemark === null || cleanRemark === undefined) cleanRemark = "";
                     
                     let actualItemNo = ""; 
                     if (db.Products) {
                         let matchedProduct = db.Products.find(p => p[1] === i.name || (p[0] + " - " + p[1]) === i.name);
-                        if (matchedProduct && matchedProduct[0]) {
-                            actualItemNo = matchedProduct[0];
-                        }
+                        if (matchedProduct && matchedProduct[0]) actualItemNo = matchedProduct[0];
                     }
 
                     return {
@@ -643,10 +776,14 @@
                         remark: cleanRemark
                     };
                 });
+                
+                // 💡 【核心更新】：將系統隱藏單號設定為舊單號，這樣儲存時才會覆蓋舊單
+                document.getElementById('quoteId').value = id;
+                updateSubmitButtonUI();
                 renderCart();
-                alert("✅ 舊單明細載入成功！");
+                alert("✅ 舊單明細載入成功！現在所做的任何更改，存檔時會直接「覆蓋更新」這張報價單。");
             } else {
-                alert("❌ 找不到該單號的明細資料。(可能是舊系統尚未存入明細)");
+                alert("❌ 找不到該單號的明細資料。");
             }
         } catch(e) {
             alert("連線異常");
@@ -660,10 +797,8 @@
         let item = quoteCart.find(i => i.id === id);
         if (item) {
             item.divider = val;
-            
             if (item.baseCost === undefined || isNaN(item.baseCost)) item.baseCost = Number(item.cost) || 0;
             item.cost = item.baseCost / val; 
-            
             if (item.no === "" || item.isLoadedHistory) {
                 if (item.basePrice === undefined || isNaN(item.basePrice)) item.basePrice = Number(item.price) || 0;
                 item.price = Math.round(item.basePrice / val);
@@ -685,7 +820,6 @@
         let multiplier = (taxType === "含稅") ? (rule.markup * 1.05) : rule.markup;
         
         quoteCart.forEach(item => { 
-            // 如果它有在資料庫對到料號，就自動重算
             if (item.no && item.no !== "" && !item.isLoadedHistory) {
                 item.price = Math.round(item.cost * multiplier); 
             }
@@ -693,7 +827,6 @@
         renderCart();
     }
 
-    // 🌟 核心修改：渲染畫面時，絕對保留原本客戶打的每一個字與歷史成本
     function renderCart(doSave = true) {
         let tbody = document.getElementById('quoteBody');
         let taxType = document.getElementById('qTaxType').value;
@@ -704,9 +837,6 @@
         let cartSum = 0, totalCost = 0;
         
         tbody.innerHTML = quoteCart.map((item, index) => {
-            
-            // 🎯 【影子更新修復】：加上 !item.isLoadedHistory 的判斷
-            // 意思是：如果這是從「歷史舊單」載入的，就不要用現在資料庫的成本去蓋掉它！
             if (!item.isLoadedHistory && db.Products && db.Products.length > 0 && item.no && item.no !== "") {
                 let finalMatch = db.Products.find(p => String(p[0]).trim() === String(item.no).trim());
                 if (finalMatch) {
@@ -726,7 +856,6 @@
             
             let safeRemark = (item.remark === "undefined" || item.remark === "null" || !item.remark) ? "" : item.remark;
             let safeSpec = (item.spec === "undefined" || item.spec === "null" || !item.spec) ? "" : item.spec;
-
             let displayCost = itemCost % 1 !== 0 ? itemCost.toFixed(1) : itemCost;
             
             let alertHtml = "";
@@ -737,16 +866,12 @@
                 if (cartName.includes(alertName)) return true;
                 if (alertName.includes(' ')) {
                     let keywords = alertName.split(' ').filter(k => k.trim().length > 0);
-                    if (keywords.length > 0) {
-                        return keywords.every(kw => cartName.includes(kw));
-                    }
+                    if (keywords.length > 0) return keywords.every(kw => cartName.includes(kw));
                 }
                 return false;
             });
 
-            if(alertMatch) {
-                alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
-            }
+            if(alertMatch) alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
 
             let fullDisplayName = item.name;
 
@@ -793,11 +918,7 @@
         let item = quoteCart.find(i => i.id === id); 
         if(item) { 
             item[field] = value; 
-            
-            if (field === 'price') {
-                item.basePrice = value * (item.divider || 1);
-            }
-            
+            if (field === 'price') item.basePrice = value * (item.divider || 1);
             renderCart(); 
         } 
     }
@@ -818,11 +939,8 @@
         
         const cleanedItems = quoteCart.map(i => {
             let cleanSpec = i.spec;
-            if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
-            
-            // PDF 也是原原本本印出客戶打的名字！
+            if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) cleanSpec = "";
             let finalNameForPdf = i.name;
-
             return { 
                 name: finalNameForPdf, 
                 spec: cleanSpec,  
@@ -834,6 +952,9 @@
                 remark: (i.remark === "undefined" || i.remark === "null" || !i.remark) ? "" : i.remark 
             };
         });
+
+        // 💡 將 quoteId 一併送回後端
+        let existingQuoteId = document.getElementById('quoteId').value;
 
         const p = { 
             action: "saveQuotation", 
@@ -851,7 +972,9 @@
             totalCost: totalCost, 
             grossProfit: pureRev - totalCost, 
             margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
-            items: cleanedItems 
+            items: cleanedItems,
+            quoteId: existingQuoteId, // 修改單的精髓
+            cloudDraftId: currentCloudDraftId // 把草稿ID送去，告訴後端可以把這筆草稿刪了
         };
         
         try { 
@@ -863,13 +986,18 @@
                 let newWin = window.open(pdfUrl, '_blank'); 
                 
                 if(!newWin || newWin.closed || typeof newWin.closed == 'undefined') {
-                    alert("✅ 報價單已產生！\n\n⚠️ 但您的蘋果設備(iPad/iPhone)阻擋了自動彈出。\n\n👉 請點擊畫面右下角出現的藍色【📄 點此手動開啟 PDF】按鈕！");
+                    alert("✅ 報價單已產生 / 更新！\n\n⚠️ 但您的蘋果設備(iPad/iPhone)阻擋了自動彈出。\n\n👉 請點擊畫面右下角出現的按鈕手動開啟 PDF！");
                     document.getElementById('manualPdfBtn').href = pdfUrl;
                     document.getElementById('manualPdfBtn').style.display = "flex";
                     document.getElementById('submitBtn').style.display = "none";
                 } else {
                     alert("✅ 報價單 PDF 已成功產生並存檔！");
                 }
+                
+                // 成功後清空畫面的單號與草稿ID，避免連續發送覆蓋
+                document.getElementById('quoteId').value = "";
+                currentCloudDraftId = "";
+                updateSubmitButtonUI();
                 fetchData(); 
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
@@ -892,26 +1020,10 @@
                     let itemProfit = Math.round((item.price - itemCost) * item.qty); 
                     let marginPercent = item.price > 0 ? ((item.price - itemCost) / item.price * 100).toFixed(1) + "%" : "0%";
                     let safeRemark = (item.remark === "undefined" || item.remark === "null" || !item.remark) ? "" : item.remark;
-                    
                     let cleanSpec = item.spec;
-                    if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) { cleanSpec = ""; }
+                    if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) cleanSpec = "";
 
-                    // Excel 一樣完整保留客戶原始文字
-                    exportData.push([
-                        index + 1,
-                        item.name, // 100% 客戶原始品名
-                        cleanSpec,
-                        item.qty,
-                        item.unit || "",
-                        itemCost,
-                        item.price,
-                        subtotal,
-                        itemProfit,
-                        marginPercent,
-                        safeRemark,
-                        taxType,
-                        item.no // 偷偷放在最後一欄給鼎新
-                    ]);
+                    exportData.push([ index + 1, item.name, cleanSpec, item.qty, item.unit || "", itemCost, item.price, subtotal, itemProfit, marginPercent, safeRemark, taxType, item.no ]);
                 });
 
                 const ws = XLSX.utils.aoa_to_sheet(exportData);
@@ -924,9 +1036,7 @@
             } catch (e) { 
                 alert("❌ 匯出失敗，請確認瀏覽器是否阻擋下載！"); 
                 console.error(e);
-            } finally { 
-                hideLoading(); 
-            }
+            } finally { hideLoading(); }
         }, 500);
     }
 
