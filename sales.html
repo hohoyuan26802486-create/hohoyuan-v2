@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V5.5 (雲端審核修改版)</title>
+    <title>禾禾園 - 業務神速報價系統 V5.6 (暗碼分級版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -52,7 +52,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.5</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.6</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel</button>
@@ -80,6 +80,7 @@
         </div>
     </div>
 
+    <!-- 隱藏的系統單號 -->
     <input type="hidden" id="quoteId" value="">
 
     <div class="excel-import-box">
@@ -205,8 +206,8 @@
     let salesMobiles = {}; 
     let salesEmails = {};
     let globalAlerts = []; 
-    let globalCloudDraftsData = {}; // 存放解譯後的雲端草稿內容
-    let currentCloudDraftId = "";   // 追蹤當前編輯的草稿ID
+    let globalCloudDraftsData = {}; 
+    let currentCloudDraftId = "";   
 
     const PRICING_RULES = { 'A': { markup: 1.08 }, 'B': { markup: 1.10 }, 'C': { markup: 1.12 }, 'D': { markup: 1.15 }, 'E': { markup: 1.05 } };
     const COMMON_UNITS = ['盒', '包', '箱', '袋', '罐', '斤', 'kg', '桶', '磅', '兩', 'g'];
@@ -225,9 +226,6 @@
         return `${y}${m}${d}_${h}${min}${s}`; 
     }
 
-    // ==========================================
-    // 💡 AI 影子比對演算法
-    // ==========================================
     function calculateSimilarity(str1, str2) {
         if (!str1 || !str2) return 0;
         let s1 = String(str1).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
@@ -368,7 +366,6 @@
         reader.readAsArrayBuffer(file);
     }
 
-    // 🌟 雲端草稿：存入後端 CloudDrafts 表單
     async function saveToCloudDraft() {
         let client = document.getElementById('qClient').value.trim() || "未具名客戶";
         let salesName = document.getElementById('qSalesName').value;
@@ -386,7 +383,7 @@
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
             cart: quoteCart,
-            quoteId: document.getElementById('quoteId').value // 如果是修改舊單打到一半，把原本號碼也存起來
+            quoteId: document.getElementById('quoteId').value 
         };
 
         const p = { 
@@ -403,19 +400,18 @@
             if(text.startsWith("DraftSaved")) { 
                 currentCloudDraftId = text.split("|")[1];
                 alert("☁️ 已成功存入雲端！主管隨時可從上方【雲端草稿審核】選單拉取這份進度。");
-                fetchData(); // 重新整理下拉選單
+                fetchData(); 
             } else { alert("❌ 系統錯誤：" + text); }
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🌟 雲端草稿：載入前端畫面
     function loadSelectedCloudDraft() {
         let draftId = document.getElementById('cloudDraftSelect').value;
         if(!draftId) return alert("請先選擇一份雲端草稿！");
         
         let payload = globalCloudDraftsData[draftId];
         if(payload) {
-            currentCloudDraftId = draftId; // 記錄目前是哪份草稿，存檔時會一起帶去後端刪除
+            currentCloudDraftId = draftId; 
             
             document.getElementById('qClient').value = payload.client || "";
             document.getElementById('qTaxId').value = payload.taxId || "";
@@ -425,7 +421,7 @@
             document.getElementById('qSalesName').value = payload.salesName || "";
             document.getElementById('qLevel').value = payload.level || "E";
             document.getElementById('qTaxType').value = payload.taxType || "未稅";
-            document.getElementById('quoteId').value = payload.quoteId || ""; // 恢復原始單號狀態
+            document.getElementById('quoteId').value = payload.quoteId || ""; 
             
             quoteCart = payload.cart || [];
             updateSubmitButtonUI();
@@ -487,7 +483,7 @@
             document.getElementById('qAddress').value = "";
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
-            document.getElementById('quoteId').value = ""; // 清空單號，變回新單模式
+            document.getElementById('quoteId').value = ""; 
             document.getElementById('historyBlock').style.display = "none";
             document.getElementById('manualPdfBtn').style.display = "none"; 
             document.getElementById('submitBtn').style.display = "block"; 
@@ -504,9 +500,8 @@
     function updateSubmitButtonUI() {
         let qId = document.getElementById('quoteId').value;
         if(qId && qId.startsWith("Q20")) {
-            // 代表目前處於「修改舊單」模式
             document.getElementById('submitBtn').innerText = "🚀 儲存變更，並重新產生 PDF";
-            document.getElementById('submitBtn').style.background = "#d35400"; // 換個顏色提醒主管
+            document.getElementById('submitBtn').style.background = "#d35400"; 
         } else {
             document.getElementById('submitBtn').innerText = "🚀 產生正式 PDF 報價單";
             document.getElementById('submitBtn').style.background = "var(--primary)";
@@ -570,7 +565,6 @@
             }
         }
 
-        // 🌟 初始化全域歷史訂單選單 (列出最近 50 筆供修改)
         if(db.Quotations) {
             const gSelect = document.getElementById('globalHistorySelect');
             gSelect.innerHTML = '<option value="">-- 選擇已完成的報價單 (顯示最近 50 筆) --</option>';
@@ -590,12 +584,11 @@
             }
         }
 
-        // 🌟 初始化雲端草稿選單
         if(db.CloudDrafts) {
             const cdSelect = document.getElementById('cloudDraftSelect');
             cdSelect.innerHTML = '<option value="">-- 請選擇待審核的雲端草稿 --</option>';
-            globalCloudDraftsData = {}; // 清空
-            for(let i = db.CloudDrafts.length - 1; i >= 1; i--) { // 由新到舊
+            globalCloudDraftsData = {}; 
+            for(let i = db.CloudDrafts.length - 1; i >= 1; i--) { 
                 let r = db.CloudDrafts[i];
                 if(r[0]) {
                     let draftId = r[0];
@@ -722,7 +715,6 @@
         renderCart();
     }
 
-    // 🌟 從全域搜尋載入
     async function loadGlobalHistory() {
         let id = document.getElementById('globalHistorySelect').value;
         if(!id) return alert("請先選擇一張已完成的報價單！");
@@ -777,7 +769,6 @@
                     };
                 });
                 
-                // 💡 【核心更新】：將系統隱藏單號設定為舊單號，這樣儲存時才會覆蓋舊單
                 document.getElementById('quoteId').value = id;
                 updateSubmitButtonUI();
                 renderCart();
@@ -953,7 +944,6 @@
             };
         });
 
-        // 💡 將 quoteId 一併送回後端
         let existingQuoteId = document.getElementById('quoteId').value;
 
         const p = { 
@@ -965,7 +955,9 @@
             address: document.getElementById('qAddress').value.trim(),
             salesName: salesName, 
             salesMobile: salesMobiles[salesName] || "02-26802486", 
-            taxType: document.getElementById('qTaxType').value, 
+            taxType: document.getElementById('qTaxType').value,
+            // 💡 關鍵：將客戶等級屬性傳給後端
+            level: document.getElementById('qLevel').value,
             cartSum: cartSum, 
             taxAmt: taxAmt, 
             totalSales: finalTotalAmount, 
@@ -973,8 +965,8 @@
             grossProfit: pureRev - totalCost, 
             margin: ((pureRev-totalCost)/pureRev*100).toFixed(1), 
             items: cleanedItems,
-            quoteId: existingQuoteId, // 修改單的精髓
-            cloudDraftId: currentCloudDraftId // 把草稿ID送去，告訴後端可以把這筆草稿刪了
+            quoteId: existingQuoteId, 
+            cloudDraftId: currentCloudDraftId 
         };
         
         try { 
@@ -994,7 +986,6 @@
                     alert("✅ 報價單 PDF 已成功產生並存檔！");
                 }
                 
-                // 成功後清空畫面的單號與草稿ID，避免連續發送覆蓋
                 document.getElementById('quoteId').value = "";
                 currentCloudDraftId = "";
                 updateSubmitButtonUI();
