@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V42.30 (國定假日自動排班版)</title>
+    <title>禾禾園 - 專業管理後台 V43.00 (責任制計薪管理版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -35,9 +35,7 @@
         .form-group input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 
         .sched-table th, .sched-table td { padding: 4px; text-align: center; min-width: 32px; border: 1px solid #eee; }
-        .shift-sel { padding: 2px; width: 100%; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; cursor:pointer; }
-        .shift-sel option[value="上班"] { color: #1a73e8; font-weight: bold; }
-        .shift-sel option[value="排休"] { color: #d93025; font-weight: bold; }
+        .shift-sel { padding: 2px; width: 100%; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; cursor:pointer; font-weight: bold;}
 
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
@@ -99,6 +97,9 @@
             <button class="btn btn-success" onclick="saveSchedule()">💾 儲存排班表</button>
         </div>
     </div>
+    <div style="font-size:12px; margin-bottom:10px; color:#555;">
+        📍 <b style="color:#1a73e8">上班</b>：正常出勤 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#d93025">排休</b>：放假不用來 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休 (無加班費) &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
+    </div>
     <div class="table-responsive">
         <table class="sched-table">
             <thead id="schedHead"></thead>
@@ -123,6 +124,14 @@
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
         <div class="form-group"><label>所屬部門</label><select id="empDept"><option>業務部</option><option>倉儲部</option><option>運輸部</option><option>生產部</option><option>行政部</option><option>會計部</option><option>業務行政部</option><option>採購部</option><option>打單行政部</option></select></div>
         <div class="form-group"><label>計薪類別</label><select id="payType"><option>月薪</option><option>時薪</option></select></div>
+        
+        <div class="form-group"><label style="color:#d93025;">假日計薪身分</label>
+            <select id="dutyType" style="border-color:#d93025; background:#fff5f5;">
+                <option value="一般員工">🟢 一般員工 (有加班費)</option>
+                <option value="責任制幹部">🔴 責任制幹部 (算值班/補休)</option>
+            </select>
+        </div>
+
         <div class="form-group"><label>基本薪資 (底薪)</label><input type="number" id="empSalary"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
         <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
@@ -139,7 +148,7 @@
         <div class="form-group"><label>身分證字號</label><input type="text" id="idNumber"></div>
         <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存修改</button></div>
     </div>
-    <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>薪資/類別</th><th>到職日</th><th>特休 (總/剩)</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+    <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>計薪身分</th><th>薪資/類別</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </div>
 
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
@@ -163,7 +172,6 @@
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
-    // 🚀 政府 2026 國定假日清單 (與後端同步)
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     
     let db = {}; let currentLvTab = 'pending';
@@ -179,6 +187,13 @@
         if (!timeStr) return ""; const d = new Date(timeStr); if (isNaN(d.getTime())) return String(timeStr);
         const pad = (n) => n.toString().padStart(2, '0');
         return `${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function getShiftColor(val) {
+        if (val === '排休') return '#d93025';
+        if (val === '假日加班') return '#f4b400';
+        if (val === '假日值班') return '#0f9d58';
+        return '#1a73e8';
     }
 
     function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
@@ -293,10 +308,8 @@
                 let padD = String(i).padStart(2, '0');
                 let dateStr = `${yy}-${padM}-${padD}`;
                 
-                // 標示出六日與國定假日為紅色
                 let isHol = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr));
-                let styleStr = isHol ? "color:#d93025; font-weight:bold;" : "";
-                
+                let styleStr = isHol ? "color:#d93025; font-weight:bold; background:#fff0f0;" : "";
                 headHtml += `<th style="${styleStr}">${i}</th>`;
             } else { headHtml += `<th style="background:#eee;"></th>`; }
         }
@@ -312,11 +325,14 @@
             for(let i=1; i<=31; i++) {
                 if (i <= daysInMonth) {
                     let val = existSched ? existSched[2+i] : "";
-                    let color = val === '排休' ? 'color:#d93025;' : 'color:#1a73e8;';
-                    bodyHtml += `<td><select class="shift-sel" data-name="${name}" data-day="${i}" style="${color}" onchange="this.style.color = this.value==='排休'?'#d93025':'#1a73e8'">
+                    let color = getShiftColor(val);
+                    
+                    bodyHtml += `<td><select class="shift-sel" data-name="${name}" data-day="${i}" style="color:${color}" onchange="this.style.color = getShiftColor(this.value)">
                         <option value=""></option>
                         <option value="上班" ${val==='上班'?'selected':''}>上</option>
                         <option value="排休" ${val==='排休'?'selected':''}>休</option>
+                        <option value="假日值班" ${val==='假日值班'?'selected':''}>值</option>
+                        <option value="假日加班" ${val==='假日加班'?'selected':''}>加</option>
                     </select></td>`;
                 } else { bodyHtml += `<td style="background:#eee;"></td>`; }
             }
@@ -325,7 +341,6 @@
         document.getElementById('schedBody').innerHTML = bodyHtml || `<tr><td colspan="32" style="text-align:center; padding:20px;">此部門無員工</td></tr>`;
     }
 
-    // 🚀 核心升級：一鍵填滿時，自動比對週末與 2026 國定假日
     function autoFillSchedule() {
         const month = document.getElementById('schedMonth').value;
         const [yy, mm] = month.split('-');
@@ -338,11 +353,10 @@
             let padD = String(dateObj.getDate()).padStart(2, '0');
             let dateStr = `${dateObj.getFullYear()}-${padM}-${padD}`;
             
-            // 判斷是否為六日或國定假日
             let isHol = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr));
             
             sel.value = isHol ? '排休' : '上班';
-            sel.style.color = sel.value === '排休' ? '#d93025' : '#1a73e8';
+            sel.style.color = getShiftColor(sel.value);
         });
     }
 
@@ -362,10 +376,10 @@
         });
 
         if (scheduleData.length === 0) return;
-        showLoading("正在儲存排班表...");
+        showLoading("正在儲存排班表並同步至 Google 日曆...");
         try {
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }) });
-            if (await res.text() === "Success") { alert("✅ 排班表儲存成功！"); fetchData(); } else { throw new Error("儲存失敗"); }
+            if (await res.text() === "Success") { alert("✅ 排班表儲存與日曆同步成功！"); fetchData(); } else { throw new Error("儲存失敗"); }
         } catch(e) { alert("❌ 網路連線錯誤"); } finally { hideLoading(); }
     }
 
@@ -374,10 +388,15 @@
         let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名");
         if (filterDept) staffData = staffData.filter(r => r[1] === filterDept);
         document.getElementById('staffBody').innerHTML = staffData.map(r => {
-            let total = Number(r[5]) || 0; let used = 0;
-            if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`;
-            return `<tr><td><b>${r[0] || ""}</b></td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${displaySalary}</td><td>${r[4] ? new Date(r[4]).toLocaleDateString() : '-'}</td><td><b>${total} / ${Math.max(0, total-used)}</b></td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`;
+            let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`;
+            return `<tr>
+                <td><b>${r[0] || ""}</b></td>
+                <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td>
+                <td>${dutyType}</td>
+                <td>${displaySalary}</td>
+                <td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td>
+            </tr>`;
         }).join('');
     }
 
@@ -391,8 +410,12 @@
         const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
-            document.getElementById('empName').value = emp[0] || ""; document.getElementById('empDept').value = emp[1] || ""; document.getElementById('payType').value = emp[2] || "月薪";
+            document.getElementById('empName').value = emp[0] || ""; 
+            document.getElementById('empDept').value = emp[1] || ""; 
+            document.getElementById('payType').value = emp[2] || "月薪";
+            document.getElementById('dutyType').value = emp[18] || "一般員工"; // 🚀 載入身分
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
+            
             if (emp[3] === "*** LOCKED ***") {
                 document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定";
                 document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true; document.getElementById('bonus').placeholder = "權限鎖定";
@@ -410,13 +433,14 @@
     function clearForm() { 
         ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); 
         ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
+        document.getElementById('dutyType').value = "一般員工"; // 預設一般
         document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
     }
 
     async function saveEmployee() {
         const p = { action: "saveEmployee", key: getCurrentKey() };
-        ['empName','empDept','payType','empSalary','obDate','bonus','laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => {
-            p[id.replace('emp','').toLowerCase()] = document.getElementById(id).value;
+        ['empName','empDept','payType','empSalary','obDate','bonus','laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber','dutyType'].forEach(id => {
+            p[id] = document.getElementById(id).value;
         });
         p.name = document.getElementById('empName').value; p.dept = document.getElementById('empDept').value; p.salary = document.getElementById('empSalary').value; p.onboardingDate = document.getElementById('obDate').value;
         if(!p.name) return alert("姓名必填！");
