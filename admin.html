@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V42.00 (排班管理版)</title>
+    <title>禾禾園 - 專業管理後台 V42.10 (三部門獨立密碼版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -34,7 +34,6 @@
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; }
         .form-group input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 
-        /* 🚀 排班表專用樣式 */
         .sched-table th, .sched-table td { padding: 4px; text-align: center; min-width: 32px; border: 1px solid #eee; }
         .shift-sel { padding: 2px; width: 100%; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; cursor:pointer; }
         .shift-sel option[value="上班"] { color: #1a73e8; font-weight: bold; }
@@ -68,6 +67,7 @@
     </div>
 </div>
 
+<!-- 假單審核中心 -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -83,6 +83,7 @@
     <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
+<!-- 部門排班表 -->
 <div id="scheduleBox" class="container" style="display:none; background-color: #f4f8fb; border: 1px solid #bbdefb;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">📅 員工排班管理</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -106,10 +107,11 @@
     </div>
 </div>
 
+<!-- 人事維護 -->
 <div id="hrBox" class="container" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0;">👥 員工人事維護與薪資調整</h1>
-        <button class="btn btn-edit" style="color:var(--danger) !important; font-weight:bold;" onclick="changeAdminPassword()">🔑 更換管理密碼</button>
+        <button class="btn btn-edit" style="color:var(--danger) !important; font-weight:bold;" onclick="changeAdminPassword()">🔑 更換專屬管理密碼</button>
     </div>
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
         <div style="flex: 1; min-width: 200px;">
@@ -142,6 +144,7 @@
     <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>薪資/類別</th><th>到職日</th><th>特休 (總/剩)</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </div>
 
+<!-- 薪資結算 -->
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
     <h1 style="color: #d35400; border-left: 5px solid #d35400; margin-top:0;">💰 月底薪資結算與報表匯出</h1>
     <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -190,18 +193,32 @@
 
     function switchLvTab(tab) { currentLvTab = tab; document.querySelectorAll('#leaveBox .tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('lvTab-' + tab).classList.add('active'); renderLeave(); }
 
+    // 🚀 核心升級：針對三個不同部門，驗證三組獨立密碼
     function authRole() {
         const r = document.getElementById('adminRole').value;
-        const correctPwd = db.adminPassword || "123";
-        if((r==='人事部' || r==='副總' || r==='財務部') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
-            alert("❌ 密碼錯誤！"); document.getElementById('adminRole').value="業務部主管"; 
+        let expectedPwd = "";
+        let needAuth = false;
+
+        if (r === '人事部') { expectedPwd = db.pwdHR || "hr123"; needAuth = true; }
+        else if (r === '財務部') { expectedPwd = db.pwdCFO || "cfo123"; needAuth = true; }
+        else if (r === '副總') { expectedPwd = db.pwdVP || "vp123"; needAuth = true; }
+
+        if (needAuth) {
+            const inputPwd = prompt(`【${r}】安全驗證，請輸入密碼：`);
+            if (inputPwd !== expectedPwd) {
+                alert("❌ 密碼錯誤！");
+                document.getElementById('adminRole').value = "業務部主管";
+                document.getElementById('tab-hr').style.display = 'none';
+                document.getElementById('tab-salary').style.display = 'none';
+                switchNavTab('leaveBox');
+                fetchData();
+                return;
+            }
         }
         
-        // 控制頁籤顯示權限
         document.getElementById('tab-hr').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         document.getElementById('tab-salary').style.display = (r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         
-        // 限制排班表部門選項
         const schedDeptSelect = document.getElementById('schedDept');
         if (r.includes('主管') && !r.includes('人事') && !r.includes('財務')) {
             const myDept = r.replace('主管', '');
@@ -223,7 +240,6 @@
             const key = getCurrentKey(); const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
             const res = await fetch(urlWithKey); db = await res.json(); 
             
-            // 預設當前月份
             const now = new Date();
             const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
             if(!document.getElementById('schedMonth').value) document.getElementById('schedMonth').value = ym;
@@ -259,7 +275,6 @@
         }
     }
 
-    // 🚀 排班表渲染核心
     function renderSchedule() {
         const month = document.getElementById('schedMonth').value;
         const dept = document.getElementById('schedDept').value;
@@ -328,7 +343,6 @@
         });
 
         if (scheduleData.length === 0) return;
-
         showLoading("正在儲存排班表...");
         try {
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }) });
@@ -396,10 +410,24 @@
 
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
     async function rejectLeave(id) { if(!confirm("確定要退回這張假單嗎？")) return; showLoading("退件處理中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: "已退回" })}); fetchData(); alert("❌ 假單已退回！"); }
+    
+    // 🚀 核心更新：只修改當下登入角色的專屬密碼
     async function changeAdminPassword() {
-        const newPwd = prompt("請設定新的管理員密碼："); if (!newPwd) return;
-        if (confirm(`確定更新為 [ ${newPwd} ] ？`)) { showLoading("同步中..."); try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", newPassword: newPwd })}); alert("✅ 更新成功！"); location.reload(); } catch (e) { alert("更新失敗"); hideLoading(); } }
+        const currentRole = document.getElementById('adminRole').value;
+        if (!['人事部', '財務部', '副總'].includes(currentRole)) {
+            alert("⚠️ 只有人事部、財務部、副總可以修改專屬密碼！"); return;
+        }
+        const newPwd = prompt(`請設定【${currentRole}】的專屬新密碼：`); 
+        if (!newPwd) return;
+        if (confirm(`確定要將【${currentRole}】的密碼更新為 [ ${newPwd} ] 嗎？`)) { 
+            showLoading("同步至雲端中..."); 
+            try { 
+                await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", roleToUpdate: currentRole, newPassword: newPwd })}); 
+                alert(`✅ 【${currentRole}】密碼更新成功！`); location.reload(); 
+            } catch (e) { alert("更新失敗"); hideLoading(); } 
+        }
     }
+    
     async function deleteEmp(name) {
         if(!confirm(`⚠️ 確定要刪除「${name}」？`)) return; showLoading("刪除中...");
         try {
@@ -435,7 +463,6 @@
         const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
     }
 
-    // 啟動時預設顯示假單頁面
     document.getElementById('adminRole').value = "業務部主管";
     switchNavTab('leaveBox');
     fetchData();
