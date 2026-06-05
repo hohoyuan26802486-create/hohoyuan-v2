@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V42.20 (三部門獨立密碼版)</title>
+    <title>禾禾園 - 專業管理後台 V42.30 (國定假日自動排班版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -55,9 +55,7 @@
             <option value="業務部主管">業務部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="會計部主管">會計部主管</option><option value="打單行政部主管">打單行政部主管</option><option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>
         </select>
         
-        <!-- 🚀 移到最上方：專屬更換密碼按鈕，預設隱藏 -->
         <button id="btnChangePwd" class="btn btn-edit" style="display:none; color:var(--danger) !important; font-weight:bold; border: 1px solid var(--danger);" onclick="changeAdminPassword()">🔑 更換專屬密碼</button>
-        
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
     </div>
 </div>
@@ -71,7 +69,6 @@
     </div>
 </div>
 
-<!-- 假單審核中心 -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -87,7 +84,6 @@
     <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
-<!-- 部門排班表 -->
 <div id="scheduleBox" class="container" style="display:none; background-color: #f4f8fb; border: 1px solid #bbdefb;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">📅 員工排班管理</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -99,7 +95,7 @@
             </select>
         </div>
         <div style="margin-left: auto; display: flex; gap: 10px;">
-            <button class="btn btn-warning" onclick="autoFillSchedule()">🪄 一鍵填滿 (六日排休)</button>
+            <button class="btn btn-warning" onclick="autoFillSchedule()">🪄 一鍵填滿 (見紅排休)</button>
             <button class="btn btn-success" onclick="saveSchedule()">💾 儲存排班表</button>
         </div>
     </div>
@@ -111,7 +107,6 @@
     </div>
 </div>
 
-<!-- 人事維護 -->
 <div id="hrBox" class="container" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0;">👥 員工人事維護與薪資調整</h1>
@@ -147,7 +142,6 @@
     <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>薪資/類別</th><th>到職日</th><th>特休 (總/剩)</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </div>
 
-<!-- 薪資結算 -->
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
     <h1 style="color: #d35400; border-left: 5px solid #d35400; margin-top:0;">💰 月底薪資結算與報表匯出</h1>
     <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -168,6 +162,10 @@
 
 <script>
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
+    
+    // 🚀 政府 2026 國定假日清單 (與後端同步)
+    const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
+    
     let db = {}; let currentLvTab = 'pending';
 
     function getCurrentKey() {
@@ -196,7 +194,6 @@
 
     function switchLvTab(tab) { currentLvTab = tab; document.querySelectorAll('#leaveBox .tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('lvTab-' + tab).classList.add('active'); renderLeave(); }
 
-    // 🚀 核心更新：根據登入角色切換「更換密碼」按鈕顯示狀態
     function authRole() {
         const r = document.getElementById('adminRole').value;
         let expectedPwd = "";
@@ -213,14 +210,13 @@
                 document.getElementById('adminRole').value = "業務部主管";
                 document.getElementById('tab-hr').style.display = 'none';
                 document.getElementById('tab-salary').style.display = 'none';
-                document.getElementById('btnChangePwd').style.display = 'none'; // 隱藏按鈕
+                document.getElementById('btnChangePwd').style.display = 'none';
                 switchNavTab('leaveBox');
                 fetchData();
                 return;
             }
         }
         
-        // 控制頁籤與密碼按鈕顯示權限
         document.getElementById('btnChangePwd').style.display = needAuth ? 'inline-block' : 'none';
         document.getElementById('tab-hr').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         document.getElementById('tab-salary').style.display = (r === '財務部' || r === '副總') ? 'inline-block' : 'none';
@@ -293,8 +289,15 @@
         for(let i=1; i<=31; i++) {
             if (i <= daysInMonth) {
                 let d = new Date(yy, mm-1, i).getDay();
-                let isWeekend = (d === 0 || d === 6) ? "color:#d93025;" : "";
-                headHtml += `<th style="${isWeekend}">${i}</th>`;
+                let padM = String(mm).padStart(2, '0');
+                let padD = String(i).padStart(2, '0');
+                let dateStr = `${yy}-${padM}-${padD}`;
+                
+                // 標示出六日與國定假日為紅色
+                let isHol = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr));
+                let styleStr = isHol ? "color:#d93025; font-weight:bold;" : "";
+                
+                headHtml += `<th style="${styleStr}">${i}</th>`;
             } else { headHtml += `<th style="background:#eee;"></th>`; }
         }
         headHtml += '</tr>';
@@ -322,13 +325,23 @@
         document.getElementById('schedBody').innerHTML = bodyHtml || `<tr><td colspan="32" style="text-align:center; padding:20px;">此部門無員工</td></tr>`;
     }
 
+    // 🚀 核心升級：一鍵填滿時，自動比對週末與 2026 國定假日
     function autoFillSchedule() {
         const month = document.getElementById('schedMonth').value;
         const [yy, mm] = month.split('-');
+        
         document.querySelectorAll('.shift-sel').forEach(sel => {
             let day = parseInt(sel.getAttribute('data-day'));
-            let d = new Date(yy, mm-1, day).getDay();
-            sel.value = (d === 0 || d === 6) ? '排休' : '上班';
+            let dateObj = new Date(yy, mm-1, day);
+            let d = dateObj.getDay();
+            let padM = String(dateObj.getMonth()+1).padStart(2, '0');
+            let padD = String(dateObj.getDate()).padStart(2, '0');
+            let dateStr = `${dateObj.getFullYear()}-${padM}-${padD}`;
+            
+            // 判斷是否為六日或國定假日
+            let isHol = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr));
+            
+            sel.value = isHol ? '排休' : '上班';
             sel.style.color = sel.value === '排休' ? '#d93025' : '#1a73e8';
         });
     }
