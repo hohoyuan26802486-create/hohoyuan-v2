@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V19.90 (權限升級版)</title>
+    <title>禾禾園 - 專業管理後台 V41.00 (運輸業績版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -34,7 +34,7 @@
         .hr-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
         .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: var(--text-sub); }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; }
-        .form-group input:disabled { background-color: #e9ecef; cursor: not-allowed; } /* 鎖定欄位的樣式 */
+        .form-group input:disabled { background-color: #e9ecef; cursor: not-allowed; }
 
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
         .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
@@ -85,7 +85,7 @@
         <div class="form-group"><label>計薪類別</label><select id="payType"><option>月薪</option><option>時薪</option></select></div>
         <div class="form-group"><label>基本薪資 (底薪)</label><input type="number" id="empSalary"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
-        <div class="form-group"><label>變動獎金 (月)</label><input type="number" id="bonus" value="0"></div>
+        <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
         <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
         <div class="form-group"><label>健保自付額</label><input type="number" id="healthIns" value="0"></div>
         <div class="form-group"><label>健保眷屬人數</label><input type="number" id="dependents" value="0"></div>
@@ -181,7 +181,6 @@
         if((r==='人事部' || r==='副總' || r==='財務部') && prompt("安全管理驗證，請輸入密碼：") !== correctPwd) { 
             alert("❌ 密碼錯誤！"); document.getElementById('adminRole').value="業務部主管"; 
         }
-        // 🚀 關鍵修復：切換部門時，主動拿著新的金鑰去雲端把對應權限的資料抓回來
         fetchData();
     }
 
@@ -258,7 +257,6 @@
             let total = Number(r[5]) || 0; let used = 0;
             if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             
-            // 如果薪資被鎖定，列表也不顯示具體數字
             let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`;
 
             return `<tr>
@@ -288,7 +286,6 @@
             document.getElementById('empName').value = emp[0] || ""; document.getElementById('empDept').value = emp[1] || ""; document.getElementById('payType').value = emp[2] || "月薪";
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             
-            // 🚀 關鍵修復：處理人事部被鎖定的欄位 (使之變灰且無法輸入)
             const salaryInput = document.getElementById('empSalary');
             const bonusInput = document.getElementById('bonus');
             if (emp[3] === "*** LOCKED ***") {
@@ -317,7 +314,6 @@
         ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); 
         ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
         
-        // 清空表單時恢復輸入框狀態
         document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = "";
         document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = "";
         document.getElementById('filterEmp').value = ""; 
@@ -350,18 +346,8 @@
         try {
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text();
-            if (text.includes("Error") || text.includes("權限不足") || text.includes("系統駁回")) {
-                alert("❌ " + text);
-            } else {
-                alert("✅ 儲存成功");
-                fetchData();
-                clearForm();
-            }
-        } catch(e) {
-            alert("連線失敗");
-        } finally {
-            hideLoading();
-        }
+            if (text.includes("Error") || text.includes("權限不足") || text.includes("系統駁回")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); }
+        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
@@ -385,17 +371,8 @@
         try {
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })});
             const text = await res.text();
-            if (text.includes("Error") || text.includes("只有")) {
-                alert("❌ " + text);
-            } else {
-                alert("✅ 員工資料已成功刪除！");
-                fetchData();
-            }
-        } catch (e) { 
-            alert("刪除失敗，請檢查網路連線。"); 
-        } finally { 
-            hideLoading(); 
-        }
+            if (text.includes("Error") || text.includes("只有")) { alert("❌ " + text); } else { alert("✅ 員工資料已成功刪除！"); fetchData(); }
+        } catch (e) { alert("刪除失敗，請檢查網路連線。"); } finally { hideLoading(); }
     }
 
     function renderSalary() {
@@ -406,8 +383,9 @@
         if (rows.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#d93025;">此月份尚未結算，請點擊上方執行鈕</td></tr>'; return; }
         
         tbody.innerHTML = rows.map(r => {
-            const totalDeduct = Number(r[13] || 0) + Number(r[16] || 0) + Number(r[19] || 0);
-            return `<tr><td>${String(r[0] || "").replace(/'/g, "")}</td><td><b>${r[1] || ""}</b></td><td>${r[2] || ""}</td><td>${r[4] || 0} 小時</td><td>$${r[5] || 0}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[22] || 0}</h4></td></tr>`;
+            // 🚀 根據新的 24 欄結構抓取扣除總額 (14遲到 + 17事假 + 20病假)
+            const totalDeduct = Number(r[14] || 0) + Number(r[17] || 0) + Number(r[20] || 0);
+            return `<tr><td>${String(r[0] || "").replace(/'/g, "")}</td><td><b>${r[1] || ""}</b></td><td>${r[2] || ""}</td><td>${r[4] || 0} 小時</td><td>$${r[5] || 0}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[23] || 0}</h4></td></tr>`;
         }).join('');
     }
 
@@ -442,7 +420,6 @@
         XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`);
     }
 
-    // 啟動頁面時若已有設定好的角色，預設不帶密碼(讓其觸發Guest邏輯，需手動選單才解鎖)
     fetchData();
 </script>
 </body>
