@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V5.6 (暗碼分級版)</title>
+    <title>禾禾園 - 業務神速報價系統 V5.7 (Excel 等級記憶版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -52,7 +52,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.6</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.7</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel</button>
@@ -80,12 +80,12 @@
         </div>
     </div>
 
-    <!-- 隱藏的系統單號 -->
     <input type="hidden" id="quoteId" value="">
 
     <div class="excel-import-box">
         <div>
-            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 客戶 Excel 智能對接</label>
+            <label style="font-size: 16px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 4px;">📥 客戶 Excel 智能對接 (自動判定等級)</label>
+            <span style="font-size: 13px; color: #555;">匯入本系統產出的 Excel 時，會自動識別該單客戶等級，幫您秒速就定位。</span>
         </div>
         <div>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelImport(event)">
@@ -282,7 +282,8 @@
                 const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
                 let headerRowIndex = -1;
-                let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1;
+                // 🌟 新增 levelCol 來尋找「客戶等級」欄位
+                let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1, levelCol = -1;
 
                 for (let i = 0; i < Math.min(rows.length, 25); i++) {
                     const row = rows[i];
@@ -294,6 +295,7 @@
                         else if (cellVal.includes("規格") || cellVal.includes("說明")) specCol = j;
                         else if (cellVal.includes("單位")) unitCol = j;
                         else if (cellVal.includes("數量")) qtyCol = j;
+                        else if (cellVal.includes("客戶等級") || cellVal.includes("等級")) levelCol = j; // 掃描等級欄位
                     }
                     if (headerRowIndex !== -1) break;
                 }
@@ -301,6 +303,15 @@
                 if (headerRowIndex === -1) {
                     alert("❌ 導入失敗：Excel 內找不到「物料名稱」或「品名」標題。");
                     hideLoading(); return;
+                }
+
+                // 🌟 【智慧切換等級】在開始匯入商品前，先看看 Excel 有沒有帶入等級
+                if (levelCol !== -1 && rows.length > headerRowIndex + 1) {
+                    let importedLevel = String(rows[headerRowIndex + 1][levelCol] || "").trim().toUpperCase();
+                    // 驗證是否為 A~E，如果是，就自動切換畫面上的選單
+                    if (PRICING_RULES[importedLevel]) {
+                        document.getElementById('qLevel').value = importedLevel;
+                    }
                 }
 
                 let currentLevel = document.getElementById('qLevel').value;
@@ -354,7 +365,7 @@
                 }
                 renderCart();
                 hideLoading();
-                alert(`✅ 對接完成！\n\n共匯入: ${importCount} 項商品\n🤖 背景對應成功: ${matchCount} 項`);
+                alert(`✅ 對接完成！(已自動判斷並載入 ${currentLevel} 等級)\n\n共匯入: ${importCount} 項商品\n🤖 背景對應成功: ${matchCount} 項`);
                 
             } catch (err) {
                 console.error(err);
@@ -956,7 +967,6 @@
             salesName: salesName, 
             salesMobile: salesMobiles[salesName] || "02-26802486", 
             taxType: document.getElementById('qTaxType').value,
-            // 💡 關鍵：將客戶等級屬性傳給後端
             level: document.getElementById('qLevel').value,
             cartSum: cartSum, 
             taxAmt: taxAmt, 
@@ -994,6 +1004,7 @@
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
+    // 🌟 【匯出升級】自動將現在選擇的客戶等級塞進去
     function exportCurrentExcel() {
         if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
         showLoading("打包 Excel 檔案...");
@@ -1001,9 +1012,11 @@
         setTimeout(() => {
             try {
                 let taxType = document.getElementById('qTaxType').value;
+                let currentLevel = document.getElementById('qLevel').value; // 抓取現在的等級
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                let exportData = [["項次", "品名", "規格", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "單品備註", "稅別", "料號"]];
+                // 標題列新增「客戶等級」
+                let exportData = [["項次", "品名", "規格", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "單品備註", "稅別", "料號", "客戶等級"]];
                 
                 quoteCart.forEach((item, index) => {
                     let subtotal = Math.round(item.price * item.qty);
@@ -1014,7 +1027,8 @@
                     let cleanSpec = item.spec;
                     if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) cleanSpec = "";
 
-                    exportData.push([ index + 1, item.name, cleanSpec, item.qty, item.unit || "", itemCost, item.price, subtotal, itemProfit, marginPercent, safeRemark, taxType, item.no ]);
+                    // 將 currentLevel 塞進每一筆資料的最後面
+                    exportData.push([ index + 1, item.name, cleanSpec, item.qty, item.unit || "", itemCost, item.price, subtotal, itemProfit, marginPercent, safeRemark, taxType, item.no, currentLevel ]);
                 });
 
                 const ws = XLSX.utils.aoa_to_sheet(exportData);
