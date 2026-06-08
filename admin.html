@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V44.00 (出勤查詢與補登版)</title>
+    <title>禾禾園 - 專業管理後台 V45.00 (人事修復與特休補登版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -37,7 +37,6 @@
         .sched-table th, .sched-table td { padding: 4px; text-align: center; min-width: 32px; border: 1px solid #eee; }
         .shift-sel { padding: 2px; width: 100%; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; cursor:pointer; font-weight: bold;}
 
-        /* 補登面板專用 */
         .punch-panel { background: #e8f0fe; padding: 15px; border-radius: 8px; display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; border: 1px solid #cce0ff; margin-bottom: 15px; }
 
         #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
@@ -100,14 +99,9 @@
         </div>
     </div>
     <div style="font-size:12px; margin-bottom:10px; color:#555;">
-        📍 <b style="color:#1a73e8">上班</b>：正常出勤 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#d93025">排休</b>：放假不用來 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休 (無加班費) &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
+        📍 <b style="color:#1a73e8">上班</b>：正常出勤 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#d93025">排休</b>：放假不用來 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
     </div>
-    <div class="table-responsive">
-        <table class="sched-table">
-            <thead id="schedHead"></thead>
-            <tbody id="schedBody"></tbody>
-        </table>
-    </div>
+    <div class="table-responsive"><table class="sched-table"><thead id="schedHead"></thead><tbody id="schedBody"></tbody></table></div>
 </div>
 
 <div id="attendanceBox" class="container" style="display:none; background-color: #fcfdfe; border: 1px solid #d2e3fc;">
@@ -128,12 +122,26 @@
     </div>
 
     <div id="punchPanel" class="punch-panel" style="display:none;">
-        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 主管手動補登作業區</div>
-        <div><label style="font-weight:bold; font-size:12px;">補登員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
-        <div><label style="font-weight:bold; font-size:12px;">補登時間：</label><br><input type="datetime-local" id="punchTime" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
+        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 補登漏打卡紀錄</div>
+        <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
+        <div><label style="font-weight:bold; font-size:12px;">打卡時間：</label><br><input type="datetime-local" id="punchTime" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><label style="font-weight:bold; font-size:12px;">上下班：</label><br><select id="punchType" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="上班">上班</option><option value="下班">下班</option></select></div>
-        <div style="flex:1; min-width:200px;"><label style="font-weight:bold; font-size:12px;">補登原因：</label><br><input type="text" id="punchReason" placeholder="例如：忘記帶手機" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
+        <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="punchReason" placeholder="例如：忘記帶手機" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><button class="btn btn-success" onclick="submitManualPunch()" style="height:32px;">💾 確認補登</button></div>
+    </div>
+
+    <div id="retroLeavePanel" class="punch-panel" style="display:none; background: #fce8e6; border: 1px solid #fad2cf; margin-top:15px;">
+        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #d93025; font-weight: bold;">🏖️ 補登歷史特休/請假紀錄</div>
+        <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="retroEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
+        <div><label style="font-weight:bold; font-size:12px;">假別：</label><br>
+            <select id="retroLeaveType" style="padding:6px; border-radius:4px; border:1px solid #ccc;">
+                <option value="特休">特休</option><option value="事假">事假</option><option value="病假">病假</option><option value="公假">公假</option><option value="喪假">喪假</option><option value="婚假">婚假</option><option value="產假">產假</option>
+            </select>
+        </div>
+        <div><label style="font-weight:bold; font-size:12px;">起始時間：</label><br><input type="datetime-local" id="retroStart" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
+        <div><label style="font-weight:bold; font-size:12px;">結束時間：</label><br><input type="datetime-local" id="retroEnd" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
+        <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="retroReason" value="系統導入前已休" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
+        <div><button class="btn btn-danger" onclick="submitRetroLeave()" style="height:32px;">💾 扣除特休天數</button></div>
     </div>
 
     <div class="table-responsive">
@@ -167,6 +175,14 @@
         <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
         <div class="form-group"><label>健保自付額</label><input type="number" id="healthIns" value="0"></div>
         <div class="form-group"><label>健保眷屬人數</label><input type="number" id="dependents" value="0"></div>
+        <div class="form-group"><label>聯絡電話(手機)</label><input type="text" id="phone"></div>
+        <div class="form-group"><label>家裡住址</label><input type="text" id="address"></div>
+        <div class="form-group"><label>家用電話</label><input type="text" id="homePhone"></div>
+        <div class="form-group"><label>緊急聯絡人</label><input type="text" id="emerContact"></div>
+        <div class="form-group"><label>關係</label><input type="text" id="emerRelation"></div>
+        <div class="form-group"><label>緊急聯絡電話</label><input type="text" id="emerPhone"></div>
+        <div class="form-group"><label>出生年月日</label><input type="date" id="birthday"></div>
+        <div class="form-group"><label>身分證字號</label><input type="text" id="idNumber"></div>
         <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存修改</button></div>
     </div>
     <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>計薪身分</th><th>薪資/類別</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
@@ -270,7 +286,9 @@
         } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
+    // ==========================================
     // 🚀 出勤紀錄與補登模組
+    // ==========================================
     function updateAttEmpDropdown() {
         const dept = document.getElementById('attDept').value; const empSelect = document.getElementById('attEmp');
         empSelect.innerHTML = '<option value="">全部員工</option>';
@@ -283,21 +301,28 @@
     
     function updatePunchEmpDropdown() {
         const empSelect = document.getElementById('punchEmp');
-        empSelect.innerHTML = '';
+        const retroSelect = document.getElementById('retroEmp');
+        empSelect.innerHTML = ''; retroSelect.innerHTML = '';
         const role = document.getElementById('adminRole').value;
         const myDept = role.includes('主管') ? role.replace('主管', '') : '';
         
         if (db.employees) {
             let emps = db.employees.filter(r => r[0] && r[0] !== '姓名');
-            if (myDept && !role.includes('人事') && !role.includes('財務')) emps = emps.filter(r => r[1] === myDept);
-            emps.forEach(r => empSelect.innerHTML += `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})</option>`);
+            if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') emps = emps.filter(r => r[1] === myDept);
+            emps.forEach(r => {
+                let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})</option>`;
+                empSelect.innerHTML += opt; retroSelect.innerHTML += opt;
+            });
         }
     }
 
     function togglePunchPanel() {
-        const panel = document.getElementById('punchPanel');
-        panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-        if(panel.style.display === 'flex') updatePunchEmpDropdown();
+        const panel1 = document.getElementById('punchPanel');
+        const panel2 = document.getElementById('retroLeavePanel');
+        let isHidden = panel1.style.display === 'none';
+        panel1.style.display = isHidden ? 'flex' : 'none';
+        panel2.style.display = isHidden ? 'flex' : 'none';
+        if(isHidden) updatePunchEmpDropdown();
     }
 
     async function loadAttendanceRecords() {
@@ -318,11 +343,10 @@
         const filterDept = document.getElementById('attDept').value;
         const filterEmp = document.getElementById('attEmp').value;
         
-        let records = rawAttData.slice(1); // 扣除標題
+        let records = rawAttData.slice(1); 
         if (filterDept) records = records.filter(r => r[2] === filterDept);
         if (filterEmp) records = records.filter(r => r[1] === filterEmp);
         
-        // 時間新到舊排序
         records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 
         tbody.innerHTML = records.map(r => {
@@ -344,30 +368,51 @@
         const empSel = document.getElementById('punchEmp');
         const empName = empSel.value;
         const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept');
-        const punchTime = document.getElementById('punchTime').value; // format: YYYY-MM-DDThh:mm
+        const punchTime = document.getElementById('punchTime').value; 
         const type = document.getElementById('punchType').value;
         const reason = document.getElementById('punchReason').value;
 
         if (!empName || !punchTime) return alert("⚠️ 姓名與補登時間為必填欄位！");
-        
-        const formattedTime = punchTime.replace('T', ' ').replace('-', '/').replace('-', '/'); // YYYY/MM/DD hh:mm
-
+        const formattedTime = punchTime.replace('T', ' ').replace('-', '/').replace('-', '/'); 
         if (!confirm(`確定要為 [${empName}] 補登 [${formattedTime}] 的 [${type}] 紀錄嗎？`)) return;
 
         showLoading("寫入補登紀錄中...");
         try {
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ 
-                    action: "manualPunch", key: getCurrentKey(), 
-                    name: empName, dept: empDept, timestamp: formattedTime, type: type, reason: reason 
-                }) 
+                body: JSON.stringify({ action: "manualPunch", key: getCurrentKey(), name: empName, dept: empDept, timestamp: formattedTime, type: type, reason: reason }) 
             });
             if (await res.text() === "Success") { 
-                alert("✅ 補登成功！"); 
+                alert("✅ 打卡補登成功！"); 
                 document.getElementById('punchTime').value = ""; document.getElementById('punchReason').value = "";
-                // 若月份吻合，自動重整表格
                 if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords();
+            } else { throw new Error("寫入失敗"); }
+        } catch(e) { alert("❌ 網路連線錯誤"); } finally { hideLoading(); }
+    }
+
+    // 🚀 新增：歷史特休補登送出
+    async function submitRetroLeave() {
+        const empSel = document.getElementById('retroEmp');
+        const empName = empSel.value;
+        const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept');
+        const leaveType = document.getElementById('retroLeaveType').value;
+        const start = document.getElementById('retroStart').value;
+        const end = document.getElementById('retroEnd').value;
+        const reason = document.getElementById('retroReason').value;
+
+        if (!empName || !start || !end) return alert("⚠️ 姓名與起訖時間為必填！");
+        if (!confirm(`確定要為 [${empName}] 補登 [${leaveType}] 紀錄嗎？\n(這將會直接扣除該員工的剩餘特休天數)`)) return;
+
+        showLoading("寫入特休紀錄中...");
+        try {
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) 
+            });
+            if (await res.text() === "Success") { 
+                alert("✅ 補登成功！特休天數已自動扣除更新。"); 
+                document.getElementById('retroStart').value = ""; document.getElementById('retroEnd').value = "";
+                fetchData(); // 重整所有資料
             } else { throw new Error("寫入失敗"); }
         } catch(e) { alert("❌ 網路連線錯誤"); } finally { hideLoading(); }
     }
@@ -451,40 +496,87 @@
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }) }); if (await res.text() === "Success") { alert("✅ 排班表儲存與日曆同步成功！"); fetchData(); } else { throw new Error("儲存失敗"); } } catch(e) { alert("❌ 網路連線錯誤"); } finally { hideLoading(); }
     }
 
-    function renderStaff(filterDept = "") { /* 保持原樣 */
+    function renderStaff(filterDept = "") { 
         if(!db.employees) return; let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); if (filterDept) staffData = staffData.filter(r => r[1] === filterDept);
         document.getElementById('staffBody').innerHTML = staffData.map(r => {
+            let total = Number(r[5]) || 0; let used = 0;
+            if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`;
             return `<tr><td><b>${r[0] || ""}</b></td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`;
         }).join('');
     }
+
     function updateEmpDropdown() { /* 保持原樣 */
         const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp');
         empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept);
         if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); }
     }
-    function loadEmpDetails() { /* 保持原樣 */
+
+    // 🚀 核心修復：正確讀取人事資料的每一欄
+    function loadEmpDetails() { 
         const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
-            document.getElementById('empName').value = emp[0] || ""; document.getElementById('empDept').value = emp[1] || ""; document.getElementById('payType').value = emp[2] || "月薪"; document.getElementById('dutyType').value = emp[18] || "一般員工"; document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
-            if (emp[3] === "*** LOCKED ***") { document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定"; document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true; document.getElementById('bonus').placeholder = "權限鎖定";
-            } else { document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = ""; document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = ""; }
-            ['laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone','idNumber'].forEach((id, idx) => document.getElementById(id).value = emp[7+idx] || (idx>2?"":"0")); document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; 
+            document.getElementById('empName').value = emp[0] || ""; 
+            document.getElementById('empDept').value = emp[1] || ""; 
+            document.getElementById('payType').value = emp[2] || "月薪"; 
+            document.getElementById('dutyType').value = emp[18] || "一般員工"; 
+            document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
+            if (emp[3] === "*** LOCKED ***") { 
+                document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定"; 
+                document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true; document.getElementById('bonus').placeholder = "權限鎖定";
+            } else { 
+                document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = ""; 
+                document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = ""; 
+            }
+            document.getElementById('laborIns').value = emp[7] || "0";
+            document.getElementById('healthIns').value = emp[8] || "0";
+            document.getElementById('dependents').value = emp[9] || "0";
+            document.getElementById('phone').value = emp[10] || "";
+            document.getElementById('address').value = emp[11] || "";
+            document.getElementById('homePhone').value = emp[12] || "";
+            document.getElementById('emerContact').value = emp[13] || "";
+            document.getElementById('emerRelation').value = emp[14] || "";
+            document.getElementById('emerPhone').value = emp[15] || "";
+            document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; 
+            document.getElementById('idNumber').value = emp[17] || "";
         }
     }
+
     function quickEdit(n, d) { document.getElementById('filterDept').value = d; updateEmpDropdown(); document.getElementById('filterEmp').value = n; loadEmpDetails(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
     function clearForm() { 
         ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); 
         ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
         document.getElementById('dutyType').value = "一般員工"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
     }
+
+    // 🚀 核心修復：正確將人事資料打包送出
     async function saveEmployee() {
         const p = { action: "saveEmployee", key: getCurrentKey() };
-        ['empName','empDept','payType','empSalary','obDate','bonus','laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber','dutyType'].forEach(id => { p[id] = document.getElementById(id).value; });
+        p.name = document.getElementById('empName').value;
+        p.dept = document.getElementById('empDept').value;
+        p.payType = document.getElementById('payType').value;
+        p.salary = document.getElementById('empSalary').value;
+        p.onboardingDate = document.getElementById('obDate').value;
+        p.bonus = document.getElementById('bonus').value;
+        p.laborIns = document.getElementById('laborIns').value;
+        p.healthIns = document.getElementById('healthIns').value;
+        p.dependents = document.getElementById('dependents').value;
+        p.phone = document.getElementById('phone').value;
+        p.address = document.getElementById('address').value;
+        p.homePhone = document.getElementById('homePhone').value;
+        p.emerContact = document.getElementById('emerContact').value;
+        p.emerRelation = document.getElementById('emerRelation').value;
+        p.emerPhone = document.getElementById('emerPhone').value;
+        p.birthday = document.getElementById('birthday').value;
+        p.idNumber = document.getElementById('idNumber').value;
+        p.dutyType = document.getElementById('dutyType').value;
+
         if(!p.name) return alert("姓名必填！"); showLoading("儲存中..."); 
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); const text = await res.text(); if (text.includes("Error") || text.includes("權限不足") || text.includes("系統駁回")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
+
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
     async function rejectLeave(id) { if(!confirm("確定要退回這張假單嗎？")) return; showLoading("退件處理中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: "已退回" })}); fetchData(); alert("❌ 假單已退回！"); }
     async function changeAdminPassword() {
@@ -497,7 +589,7 @@
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })}); const text = await res.text(); if (text.includes("Error") || text.includes("只有")) { alert("❌ " + text); } else { alert("✅ 刪除成功！"); fetchData(); } } catch (e) { alert("刪除失敗"); } finally { hideLoading(); }
     }
 
-    function renderSalary() {
+    function renderSalary() { /* 保持原樣 */
         const month = document.getElementById('salaryMonth').value; const tbody = document.getElementById('salaryBody');
         if (!month || !db.Salary_Summary) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#aaa;">請先選擇結算月份</td></tr>'; return; }
         const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
