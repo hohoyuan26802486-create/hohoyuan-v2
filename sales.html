@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V5.7 (Excel 等級記憶版)</title>
+    <title>禾禾園 - 業務神速報價系統 V5.8 (資料庫連動版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -52,7 +52,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.7</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.8</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel</button>
@@ -191,6 +191,9 @@
     <div style="display:flex; flex-wrap: wrap; justify-content: space-between; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px; gap: 15px;">
         <button class="btn btn-outline" style="font-size: 16px; flex: 1; min-width: 150px; background: #e8f5e9; border-color: #4caf50; color: #2e7d32; font-weight: bold;" onclick="saveToCloudDraft()">☁️ 存入雲端草稿匣</button>
         <button class="btn btn-warning" style="font-size: 16px; flex: 1; min-width: 150px;" onclick="clearDraft()">🧹 清空畫面 (打新單)</button>
+        
+        <button id="deleteBtn" class="btn btn-danger" style="font-size: 16px; flex: 1; min-width: 150px; display: none;" onclick="deleteCurrentQuote()">🗑️ 刪除此單</button>
+
         <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 10px;" id="actionButtons">
             <button id="submitBtn" class="btn btn-primary" style="font-size: 18px; padding: 15px 40px; width: 100%;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
             <a id="manualPdfBtn" href="#" target="_blank" class="btn btn-outline" style="display: none; justify-content: center; font-size: 18px; padding: 15px 40px; text-decoration: none;">📄 點此手動開啟 PDF</a>
@@ -282,7 +285,6 @@
                 const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
                 let headerRowIndex = -1;
-                // 🌟 新增 levelCol 來尋找「客戶等級」欄位
                 let noCol = -1, nameCol = -1, specCol = -1, unitCol = -1, qtyCol = -1, levelCol = -1;
 
                 for (let i = 0; i < Math.min(rows.length, 25); i++) {
@@ -295,7 +297,7 @@
                         else if (cellVal.includes("規格") || cellVal.includes("說明")) specCol = j;
                         else if (cellVal.includes("單位")) unitCol = j;
                         else if (cellVal.includes("數量")) qtyCol = j;
-                        else if (cellVal.includes("客戶等級") || cellVal.includes("等級")) levelCol = j; // 掃描等級欄位
+                        else if (cellVal.includes("客戶等級") || cellVal.includes("等級")) levelCol = j; 
                     }
                     if (headerRowIndex !== -1) break;
                 }
@@ -305,10 +307,8 @@
                     hideLoading(); return;
                 }
 
-                // 🌟 【智慧切換等級】在開始匯入商品前，先看看 Excel 有沒有帶入等級
                 if (levelCol !== -1 && rows.length > headerRowIndex + 1) {
                     let importedLevel = String(rows[headerRowIndex + 1][levelCol] || "").trim().toUpperCase();
-                    // 驗證是否為 A~E，如果是，就自動切換畫面上的選單
                     if (PRICING_RULES[importedLevel]) {
                         document.getElementById('qLevel').value = importedLevel;
                     }
@@ -441,6 +441,60 @@
         }
     }
 
+    // 🌟 新增功能 3：提示使用者輸入新成本並更新資料庫
+    async function promptAndUpdateCost(itemNo, itemName, currentCost) {
+        let newCost = prompt(`請輸入【${itemName}】最新的進貨成本：\n(目前為：$${currentCost})\n\n⚠️ 注意：此操作會直接修改雲端資料庫的成本！`, currentCost);
+        if(newCost === null) return; 
+        newCost = parseFloat(newCost);
+        if(isNaN(newCost)) return alert("❌ 成本必須為純數字！");
+
+        showLoading("同步新成本至資料庫中...");
+        try {
+            const res = await fetch(CONFIG_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "updateProductCost", itemNo: itemNo, newCost: newCost })
+            });
+            const text = await res.text();
+            if(text.startsWith("CostUpdated")) {
+                alert("✅ 資料庫成本更新成功！\n系統將自動重新載入最新庫存數據。");
+                fetchData(); 
+            } else {
+                alert("❌ 更新失敗：" + text);
+            }
+        } catch(e) {
+            alert("連線異常");
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // 🌟 新增功能 4：刪除目前載入的這份舊報價單
+    async function deleteCurrentQuote() {
+        let qId = document.getElementById('quoteId').value;
+        if(!qId) return alert("錯誤：找不到單號");
+        if(!confirm(`⚠️ 警告！您確定要徹底刪除報價單【${qId}】嗎？\n\n刪除後將無法復原，並會同步從 Google 表單中移除！`)) return;
+
+        showLoading("正在刪除報價單...");
+        try {
+            const res = await fetch(CONFIG_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "deleteQuotation", quoteId: qId })
+            });
+            const text = await res.text();
+            if(text.startsWith("DeleteSuccess")) {
+                alert("✅ 報價單已成功刪除！");
+                clearDraft(); 
+                fetchData();  
+            } else {
+                alert("❌ 刪除失敗：" + text);
+            }
+        } catch(e) {
+            alert("連線異常");
+        } finally {
+            hideLoading();
+        }
+    }
+
     function saveDraft() {
         const draft = {
             client: document.getElementById('qClient').value,
@@ -513,9 +567,11 @@
         if(qId && qId.startsWith("Q20")) {
             document.getElementById('submitBtn').innerText = "🚀 儲存變更，並重新產生 PDF";
             document.getElementById('submitBtn').style.background = "#d35400"; 
+            document.getElementById('deleteBtn').style.display = "block"; // 顯示刪除按鈕
         } else {
             document.getElementById('submitBtn').innerText = "🚀 產生正式 PDF 報價單";
             document.getElementById('submitBtn').style.background = "var(--primary)";
+            document.getElementById('deleteBtn').style.display = "none"; // 隱藏刪除按鈕
         }
     }
 
@@ -875,6 +931,11 @@
 
             if(alertMatch) alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
 
+            // 🌟 配合功能 3：顯示同步成本至資料庫按鈕
+            let syncCostBtn = (item.no && item.no !== "")
+                ? `<br><button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; margin-top: 5px; color: #1a73e8; border-color: #1a73e8;" onclick="promptAndUpdateCost('${item.no}', '${item.name}', ${itemCost})">⬆️ 更新資料庫成本</button>` 
+                : '';
+
             let fullDisplayName = item.name;
 
             return `<tr>
@@ -895,6 +956,7 @@
                 <td>
                     <input type="number" class="quote-input editable-price" value="${item.price}" onchange="updateCart(${item.id}, 'price', Number(this.value))">
                     <span class="cost-label">成本: $<span class="cost-value">${displayCost}</span></span>
+                    ${syncCostBtn}
                     ${alertHtml}
                 </td>
                 <td><b>${subtotal}</b></td>
@@ -1004,7 +1066,6 @@
         } catch(e) { alert("連線異常"); } finally { hideLoading(); }
     }
 
-    // 🌟 【匯出升級】自動將現在選擇的客戶等級塞進去
     function exportCurrentExcel() {
         if (quoteCart.length === 0) return alert("⚠️ 畫面上還沒有商品喔！請先加入商品再匯出。");
         showLoading("打包 Excel 檔案...");
@@ -1012,10 +1073,9 @@
         setTimeout(() => {
             try {
                 let taxType = document.getElementById('qTaxType').value;
-                let currentLevel = document.getElementById('qLevel').value; // 抓取現在的等級
+                let currentLevel = document.getElementById('qLevel').value; 
                 let client = document.getElementById('qClient').value.trim() || "未具名客戶";
                 
-                // 標題列新增「客戶等級」
                 let exportData = [["項次", "品名", "規格", "數量", "單位", "成本單價", "售價單價", "銷售小計", "單項價差(元)", "毛利率(%)", "單品備註", "稅別", "料號", "客戶等級"]];
                 
                 quoteCart.forEach((item, index) => {
@@ -1027,7 +1087,6 @@
                     let cleanSpec = item.spec;
                     if (cleanSpec === "客製/臨時" || cleanSpec === "undefined" || !cleanSpec) cleanSpec = "";
 
-                    // 將 currentLevel 塞進每一筆資料的最後面
                     exportData.push([ index + 1, item.name, cleanSpec, item.qty, item.unit || "", itemCost, item.price, subtotal, itemProfit, marginPercent, safeRemark, taxType, item.no, currentLevel ]);
                 });
 
