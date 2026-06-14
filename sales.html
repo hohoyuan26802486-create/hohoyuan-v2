@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V5.8 (資料庫連動版)</title>
+    <title>禾禾園 - 業務神速報價系統 V5.9 (預警清除連動版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -39,7 +39,7 @@
         .cost-value { font-weight: bold; color: #2c3e50; }
         .details-panel { background: #fff; padding: 15px; border-radius: 12px; border: 1px dashed #ccc; margin-top: -10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 15px; }
         .details-panel .input-group { flex: 1; min-width: 180px; }
-        .price-alert { color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; animation: blinker 1.5s linear infinite; font-weight: bold; box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4); }
+        .price-alert { color: #fff; background: #d93025; font-size: 12px; padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: block; animation: blinker 1.5s linear infinite; font-weight: bold; box-shadow: 0 2px 4px rgba(217, 48, 37, 0.4); text-align: center; }
         @keyframes blinker { 50% { opacity: 0.3; } }
         
         .excel-import-box { background: #e3f2fd; padding: 20px; border-radius: 12px; border: 2px dashed #1a73e8; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; }
@@ -52,7 +52,7 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.8</div>
+    <div style="font-size:20px; font-weight:bold;">💼 禾禾園 · 專業彈性報價系統 V5.9</div>
     <div style="display:flex; flex-wrap: wrap; gap:10px;">
         <span id="saveStatus" style="font-size:14px; color:#aaa; margin-right:15px; align-self:center;"></span>
         <button class="btn btn-outline" onclick="exportCurrentExcel()">📥 匯出 Excel</button>
@@ -441,7 +441,6 @@
         }
     }
 
-    // 🌟 新增功能 3：提示使用者輸入新成本並更新資料庫
     async function promptAndUpdateCost(itemNo, itemName, currentCost) {
         let newCost = prompt(`請輸入【${itemName}】最新的進貨成本：\n(目前為：$${currentCost})\n\n⚠️ 注意：此操作會直接修改雲端資料庫的成本！`, currentCost);
         if(newCost === null) return; 
@@ -468,7 +467,32 @@
         }
     }
 
-    // 🌟 新增功能 4：刪除目前載入的這份舊報價單
+    // 🌟 新增功能 5：解除並刪除後端漲價預警
+    async function dismissPriceAlert(alertName) {
+        if(!confirm(`確定要解除【${alertName}】的漲價預警嗎？\n這會將此預警從雲端 PriceAlerts 表單中永久刪除！`)) return;
+
+        showLoading("正在刪除雲端預警...");
+        try {
+            const res = await fetch(CONFIG_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: "deletePriceAlert", alertName: alertName })
+            });
+            const text = await res.text();
+            if(text.startsWith("AlertDeleted")) {
+                // 從前端全域變數移除，這樣畫面就會馬上消失
+                globalAlerts = globalAlerts.filter(a => String(a.name).trim() !== String(alertName).trim());
+                renderCart();
+                alert("✅ 預警已成功從系統中解除！");
+            } else {
+                alert("❌ 解除失敗：" + text);
+            }
+        } catch(e) {
+            alert("連線異常");
+        } finally {
+            hideLoading();
+        }
+    }
+
     async function deleteCurrentQuote() {
         let qId = document.getElementById('quoteId').value;
         if(!qId) return alert("錯誤：找不到單號");
@@ -567,11 +591,11 @@
         if(qId && qId.startsWith("Q20")) {
             document.getElementById('submitBtn').innerText = "🚀 儲存變更，並重新產生 PDF";
             document.getElementById('submitBtn').style.background = "#d35400"; 
-            document.getElementById('deleteBtn').style.display = "block"; // 顯示刪除按鈕
+            document.getElementById('deleteBtn').style.display = "block"; 
         } else {
             document.getElementById('submitBtn').innerText = "🚀 產生正式 PDF 報價單";
             document.getElementById('submitBtn').style.background = "var(--primary)";
-            document.getElementById('deleteBtn').style.display = "none"; // 隱藏刪除按鈕
+            document.getElementById('deleteBtn').style.display = "none"; 
         }
     }
 
@@ -929,11 +953,16 @@
                 return false;
             });
 
-            if(alertMatch) alertHtml = `<br><div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>`;
+            // 🌟 配合功能 5：在紅框下方多出一顆「解除此警報」按鈕
+            if(alertMatch) {
+                alertHtml = `
+                <div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>
+                <button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; margin-top: 5px; color: #d93025; border-color: #d93025; width: 100%;" onclick="dismissPriceAlert('${alertMatch.name}')">🔕 刪除此警報 (同步後端)</button>
+                `;
+            }
 
-            // 🌟 配合功能 3：顯示同步成本至資料庫按鈕
             let syncCostBtn = (item.no && item.no !== "")
-                ? `<br><button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; margin-top: 5px; color: #1a73e8; border-color: #1a73e8;" onclick="promptAndUpdateCost('${item.no}', '${item.name}', ${itemCost})">⬆️ 更新資料庫成本</button>` 
+                ? `<br><button class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; margin-top: 5px; color: #1a73e8; border-color: #1a73e8; width: 100%;" onclick="promptAndUpdateCost('${item.no}', '${item.name}', ${itemCost})">⬆️ 更新資料庫成本</button>` 
                 : '';
 
             let fullDisplayName = item.name;
