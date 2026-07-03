@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V46.00 (智慧稽核版)</title>
+    <title>禾禾園 - 專業管理後台 V46.10 (離職狀態過濾版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -69,6 +69,7 @@
     </div>
 </div>
 
+<!-- 假單審核中心 -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -83,6 +84,7 @@
     <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
+<!-- 部門排班表 -->
 <div id="scheduleBox" class="container" style="display:none; background-color: #f4f8fb; border: 1px solid #bbdefb;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">📅 員工排班管理</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -99,11 +101,12 @@
         </div>
     </div>
     <div style="font-size:12px; margin-bottom:10px; color:#555;">
-        📍 <b style="color:#1a73e8">上班</b>：正常出勤   |   📍 <b style="color:#d93025">排休</b>：放假不用來   |   📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休   |   📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
+        📍 <b style="color:#1a73e8">上班</b>：正常出勤 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#d93025">排休</b>：放假不用來 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
     </div>
     <div class="table-responsive"><table class="sched-table"><thead id="schedHead"></thead><tbody id="schedBody"></tbody></table></div>
 </div>
 
+<!-- 出勤紀錄與補登 -->
 <div id="attendanceBox" class="container" style="display:none; background-color: #fcfdfe; border: 1px solid #d2e3fc;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">🕒 員工出勤紀錄與手動補登</h1>
     
@@ -121,6 +124,7 @@
         </div>
     </div>
 
+    <!-- 打卡補登面板 -->
     <div id="punchPanel" class="punch-panel" style="display:none;">
         <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 補登漏打卡紀錄</div>
         <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
@@ -130,6 +134,7 @@
         <div><button class="btn btn-success" onclick="submitManualPunch()" style="height:32px;">💾 確認補登</button></div>
     </div>
 
+    <!-- 歷史特休補登面板 -->
     <div id="retroLeavePanel" class="punch-panel" style="display:none; background: #fce8e6; border: 1px solid #fad2cf; margin-top:15px;">
         <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #d93025; font-weight: bold;">🏖️ 補登歷史特休/請假紀錄</div>
         <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="retroEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
@@ -152,6 +157,7 @@
     </div>
 </div>
 
+<!-- 人事維護 -->
 <div id="hrBox" class="container" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0;">👥 員工人事維護與薪資調整</h1>
@@ -169,6 +175,10 @@
         <div class="form-group"><label>所屬部門</label><select id="empDept"><option>業務部</option><option>倉儲部</option><option>運輸部</option><option>生產部</option><option>行政部</option><option>會計部</option><option>業務行政部</option><option>採購部</option><option>打單行政部</option></select></div>
         <div class="form-group"><label>計薪類別</label><select id="payType"><option>月薪</option><option>時薪</option></select></div>
         <div class="form-group"><label style="color:#d93025;">假日計薪身分</label><select id="dutyType" style="border-color:#d93025; background:#fff5f5;"><option value="一般員工">🟢 一般員工 (有加班費)</option><option value="責任制幹部">🔴 責任制幹部 (算值班/補休)</option></select></div>
+        
+        <!-- 🚀 新增：在職狀態選項 -->
+        <div class="form-group"><label style="color:#d93025;">在職狀態</label><select id="empStatus" style="border-color:#d93025; background:#fff5f5;"><option value="在職">🟢 在職中</option><option value="已離職">🔴 已離職</option></select></div>
+        
         <div class="form-group"><label>基本薪資 (底薪)</label><input type="number" id="empSalary"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
         <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
@@ -188,6 +198,7 @@
     <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>計薪身分</th><th>薪資/類別</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </div>
 
+<!-- 薪資結算 -->
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
     <h1 style="color: #d35400; border-left: 5px solid #d35400; margin-top:0;">💰 月底薪資結算與報表匯出</h1>
     <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -292,7 +303,10 @@
         if (db.employees) {
             let emps = db.employees.filter(r => r[0] && r[0] !== '姓名');
             if (dept) emps = emps.filter(r => r[1] === dept);
-            emps.forEach(r => empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`);
+            emps.forEach(r => {
+                let statusMark = r[19] === "已離職" ? " [已離職]" : "";
+                empSelect.innerHTML += `<option value="${r[0]}">${r[0]}${statusMark}</option>`;
+            });
         }
     }
     
@@ -307,7 +321,8 @@
             let emps = db.employees.filter(r => r[0] && r[0] !== '姓名');
             if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') emps = emps.filter(r => r[1] === myDept);
             emps.forEach(r => {
-                let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})</option>`;
+                let statusMark = r[19] === "已離職" ? " [已離職]" : "";
+                let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})${statusMark}</option>`;
                 empSelect.innerHTML += opt; retroSelect.innerHTML += opt;
             });
         }
@@ -333,7 +348,6 @@
         } catch(e) { alert("讀取失敗"); } finally { hideLoading(); }
     }
 
-    // 🚀 核心更新：智慧渲染出勤紀錄 (自動偵測缺漏卡)
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody');
         if (!rawAttData || rawAttData.length <= 1) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; return; }
@@ -347,7 +361,6 @@
         
         records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 
-        // 計算每位員工每天的上下班次數，以便給出缺漏卡警告
         let dayCounts = {};
         records.forEach(r => {
             let dObj = new Date(r[0]);
@@ -364,14 +377,12 @@
             let typeColor = r[3] === '上班' ? '#1a73e8' : '#e67c73';
             let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
             
-            // 判斷是否顯示漏打卡警告
             let dKey = r[1] + "_" + dObj.getFullYear() + "-" + dObj.getMonth() + "-" + dObj.getDate();
             let warningHtml = "";
             if (dayCounts[dKey] && dayCounts[dKey].in !== dayCounts[dKey].out) {
                 warningHtml = `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>`;
             }
 
-            // 🚀 刪除按鈕
             let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
 
             return `<tr>
@@ -386,7 +397,6 @@
         }).join('');
     }
 
-    // 🚀 新增：後台一鍵刪除打卡功能
     async function delAtt(timeStr, name) {
         if(!confirm(`確定要刪除 [${name}] 在 [${timeStr}] 的打卡紀錄嗎？\n(刪除後不可恢復)`)) return;
         
@@ -399,7 +409,7 @@
             });
             if (await res.text() === "Success") { 
                 alert("✅ 刪除成功！"); 
-                loadAttendanceRecords(); // 自動重新整理表格
+                loadAttendanceRecords(); 
             } else { throw new Error("刪除失敗"); }
         } catch(e) { alert("❌ 刪除發生錯誤"); } finally { hideLoading(); }
     }
@@ -538,7 +548,8 @@
         if(!db.employees) return; let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); if (filterDept) staffData = staffData.filter(r => r[1] === filterDept);
         document.getElementById('staffBody').innerHTML = staffData.map(r => {
             let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`;
-            return `<tr><td><b>${r[0] || ""}</b></td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`;
+            let empStatusMark = r[19] === "已離職" ? `<br><span style="color:#d93025; font-size:12px; font-weight:bold;">(已離職)</span>` : '';
+            return `<tr><td><b>${r[0] || ""}</b>${empStatusMark}</td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`;
         }).join('');
     }
 
@@ -556,6 +567,7 @@
             document.getElementById('empDept').value = emp[1] || ""; 
             document.getElementById('payType').value = emp[2] || "月薪"; 
             document.getElementById('dutyType').value = emp[18] || "一般員工"; 
+            document.getElementById('empStatus').value = emp[19] || "在職";
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             if (emp[3] === "*** LOCKED ***") { 
                 document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定"; 
@@ -583,7 +595,7 @@
     function clearForm() { 
         ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); 
         ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
-        document.getElementById('dutyType').value = "一般員工"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
+        document.getElementById('dutyType').value = "一般員工"; document.getElementById('empStatus').value = "在職"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
     }
 
     async function saveEmployee() {
@@ -606,6 +618,7 @@
         p.birthday = document.getElementById('birthday').value;
         p.idNumber = document.getElementById('idNumber').value;
         p.dutyType = document.getElementById('dutyType').value;
+        p.empStatus = document.getElementById('empStatus').value;
 
         if(!p.name) return alert("姓名必填！"); showLoading("儲存中..."); 
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); const text = await res.text(); if (text.includes("Error") || text.includes("權限不足") || text.includes("系統駁回")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
