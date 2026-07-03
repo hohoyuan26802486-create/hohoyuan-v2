@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V45.00 (人事修復與特休補登版)</title>
+    <title>禾禾園 - 專業管理後台 V46.00 (智慧稽核版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -99,7 +99,7 @@
         </div>
     </div>
     <div style="font-size:12px; margin-bottom:10px; color:#555;">
-        📍 <b style="color:#1a73e8">上班</b>：正常出勤 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#d93025">排休</b>：放假不用來 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休 &nbsp;&nbsp;|&nbsp;&nbsp; 📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
+        📍 <b style="color:#1a73e8">上班</b>：正常出勤   |   📍 <b style="color:#d93025">排休</b>：放假不用來   |   📍 <b style="color:#0f9d58">假日值班</b>：來上班算補休   |   📍 <b style="color:#f4b400">假日加班</b>：財務核准給發加班費
     </div>
     <div class="table-responsive"><table class="sched-table"><thead id="schedHead"></thead><tbody id="schedBody"></tbody></table></div>
 </div>
@@ -146,8 +146,8 @@
 
     <div class="table-responsive">
         <table style="background:white;">
-            <thead style="background:#f8f9fa;"><tr><th>打卡時間</th><th>姓名</th><th>部門</th><th>卡別</th><th>系統狀態</th><th>定位紀錄</th></tr></thead>
-            <tbody id="attendanceBody"><tr><td colspan="6" style="text-align:center; padding:30px; color:#aaa;">請選擇月份並點擊查詢</td></tr></tbody>
+            <thead style="background:#f8f9fa;"><tr><th>打卡時間</th><th>姓名</th><th>部門</th><th>卡別</th><th>系統狀態</th><th>定位紀錄</th><th>管理操作</th></tr></thead>
+            <tbody id="attendanceBody"><tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">請選擇月份並點擊查詢</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -286,9 +286,6 @@
         } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
-    // ==========================================
-    // 🚀 出勤紀錄與補登模組
-    // ==========================================
     function updateAttEmpDropdown() {
         const dept = document.getElementById('attDept').value; const empSelect = document.getElementById('attEmp');
         empSelect.innerHTML = '<option value="">全部員工</option>';
@@ -336,9 +333,10 @@
         } catch(e) { alert("讀取失敗"); } finally { hideLoading(); }
     }
 
+    // 🚀 核心更新：智慧渲染出勤紀錄 (自動偵測缺漏卡)
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody');
-        if (!rawAttData || rawAttData.length <= 1) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; return; }
+        if (!rawAttData || rawAttData.length <= 1) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; return; }
         
         const filterDept = document.getElementById('attDept').value;
         const filterEmp = document.getElementById('attEmp').value;
@@ -349,19 +347,61 @@
         
         records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 
+        // 計算每位員工每天的上下班次數，以便給出缺漏卡警告
+        let dayCounts = {};
+        records.forEach(r => {
+            let dObj = new Date(r[0]);
+            if(isNaN(dObj.getTime())) return;
+            let dKey = r[1] + "_" + dObj.getFullYear() + "-" + dObj.getMonth() + "-" + dObj.getDate();
+            if(!dayCounts[dKey]) dayCounts[dKey] = { in: 0, out: 0 };
+            if(r[3] === '上班') dayCounts[dKey].in++;
+            if(r[3] === '下班') dayCounts[dKey].out++;
+        });
+
         tbody.innerHTML = records.map(r => {
-            let timeStr = new Date(r[0]).toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+            let dObj = new Date(r[0]);
+            let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
             let typeColor = r[3] === '上班' ? '#1a73e8' : '#e67c73';
             let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
+            
+            // 判斷是否顯示漏打卡警告
+            let dKey = r[1] + "_" + dObj.getFullYear() + "-" + dObj.getMonth() + "-" + dObj.getDate();
+            let warningHtml = "";
+            if (dayCounts[dKey] && dayCounts[dKey].in !== dayCounts[dKey].out) {
+                warningHtml = `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>`;
+            }
+
+            // 🚀 刪除按鈕
+            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
+
             return `<tr>
                 <td style="font-weight:bold; color:#555;">${timeStr}</td>
                 <td style="font-weight:bold;">${r[1]}</td>
                 <td style="font-size:12px; color:#777;">${r[2]}</td>
-                <td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span></td>
+                <td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td>
                 <td style="font-size:13px;">${r[4]}</td>
                 <td style="font-size:12px;">${loc}</td>
+                <td>${delBtn}</td>
             </tr>`;
         }).join('');
+    }
+
+    // 🚀 新增：後台一鍵刪除打卡功能
+    async function delAtt(timeStr, name) {
+        if(!confirm(`確定要刪除 [${name}] 在 [${timeStr}] 的打卡紀錄嗎？\n(刪除後不可恢復)`)) return;
+        
+        const month = document.getElementById('attMonth').value;
+        showLoading("刪除中...");
+        try {
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
+            });
+            if (await res.text() === "Success") { 
+                alert("✅ 刪除成功！"); 
+                loadAttendanceRecords(); // 自動重新整理表格
+            } else { throw new Error("刪除失敗"); }
+        } catch(e) { alert("❌ 刪除發生錯誤"); } finally { hideLoading(); }
     }
 
     async function submitManualPunch() {
@@ -390,7 +430,6 @@
         } catch(e) { alert("❌ 網路連線錯誤"); } finally { hideLoading(); }
     }
 
-    // 🚀 新增：歷史特休補登送出
     async function submitRetroLeave() {
         const empSel = document.getElementById('retroEmp');
         const empName = empSel.value;
@@ -412,11 +451,10 @@
             if (await res.text() === "Success") { 
                 alert("✅ 補登成功！特休天數已自動扣除更新。"); 
                 document.getElementById('retroStart').value = ""; document.getElementById('retroEnd').value = "";
-                fetchData(); // 重整所有資料
+                fetchData(); 
             } else { throw new Error("寫入失敗"); }
         } catch(e) { alert("❌ 網路連線錯誤"); } finally { hideLoading(); }
     }
-    // ==========================================
 
     function renderLeave() { /* 保持原樣 */
         const role = document.getElementById('adminRole').value;
@@ -499,8 +537,6 @@
     function renderStaff(filterDept = "") { 
         if(!db.employees) return; let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); if (filterDept) staffData = staffData.filter(r => r[1] === filterDept);
         document.getElementById('staffBody').innerHTML = staffData.map(r => {
-            let total = Number(r[5]) || 0; let used = 0;
-            if (db.leave) { db.leave.forEach(lv => { if (lv[2] === r[0] && lv[4] === "特休" && lv[8] === "已生效") { let days = (new Date(lv[6]) - new Date(lv[5])) / 86400000; used += Math.max(0.5, Math.ceil(days * 2) / 2); } }); }
             let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`;
             return `<tr><td><b>${r[0] || ""}</b></td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`;
         }).join('');
@@ -512,7 +548,6 @@
         if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); }
     }
 
-    // 🚀 核心修復：正確讀取人事資料的每一欄
     function loadEmpDetails() { 
         const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
@@ -551,7 +586,6 @@
         document.getElementById('dutyType').value = "一般員工"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
     }
 
-    // 🚀 核心修復：正確將人事資料打包送出
     async function saveEmployee() {
         const p = { action: "saveEmployee", key: getCurrentKey() };
         p.name = document.getElementById('empName').value;
