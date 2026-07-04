@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V48.00 (日/時/月薪 智能結算版)</title>
+    <title>禾禾園 - 專業管理後台 V48.10 (日/時/月薪 智能結算版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -155,15 +155,18 @@
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
         <div class="form-group"><label>所屬部門</label><select id="empDept"></select></div>
         
-        <!-- 🚀 核心新增：計薪類別增加「日薪」 -->
-        <div class="form-group"><label>計薪類別</label><select id="payType"><option value="月薪">月薪</option><option value="時薪">時薪</option><option value="日薪">日薪</option></select></div>
+        <!-- 🚀 核心修復：這一次確實加入了日薪選項！ -->
+        <div class="form-group"><label>計薪類別</label>
+            <select id="payType">
+                <option value="月薪">月薪</option>
+                <option value="時薪">時薪</option>
+                <option value="日薪">日薪</option>
+            </select>
+        </div>
         
         <div class="form-group"><label style="color:#d93025;">假日計薪身分</label><select id="dutyType" style="border-color:#d93025; background:#fff5f5;"><option value="一般員工">🟢 一般員工 (有加班費)</option><option value="責任制幹部">🔴 責任制幹部 (算值班/補休)</option></select></div>
         <div class="form-group"><label style="color:#d93025;">在職狀態</label><select id="empStatus" style="border-color:#d93025; background:#fff5f5;"><option value="在職">🟢 在職中</option><option value="已離職">🔴 已離職</option></select></div>
-        
-        <!-- 🚀 核心更新：更改標籤提示文字 -->
         <div class="form-group"><label>基本薪資 (月/日/時薪額度)</label><input type="number" id="empSalary" placeholder="請輸入對應額度"></div>
-        
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
         <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
         <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
