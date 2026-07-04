@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V48.10 (日/時/月薪 智能結算版)</title>
+    <title>禾禾園 - 專業管理後台 V48.11 (人事存檔修復版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -155,7 +155,7 @@
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
         <div class="form-group"><label>所屬部門</label><select id="empDept"></select></div>
         
-        <!-- 🚀 核心修復：這一次確實加入了日薪選項！ -->
+        <!-- 計薪類別 -->
         <div class="form-group"><label>計薪類別</label>
             <select id="payType">
                 <option value="月薪">月薪</option>
@@ -468,7 +468,39 @@
     function quickEdit(n, d) { document.getElementById('filterDept').value = d; updateEmpDropdown(); document.getElementById('filterEmp').value = n; loadEmpDetails(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function clearForm() { ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); document.getElementById('payType').value = "月薪"; document.getElementById('dutyType').value = "一般員工"; document.getElementById('empStatus').value = "在職"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; }
     
-    async function saveEmployee() { const p = { action: "saveEmployee", key: getCurrentKey() }; ['empName','empDept','payType','empSalary','obDate','bonus','laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber','dutyType','empStatus'].forEach(id => { p[id] = document.getElementById(id).value; }); if(!p.empName) return alert("姓名必填！"); showLoading("儲存中..."); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); const text = await res.text(); if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } } catch(e) { alert("連線失敗"); } finally { hideLoading(); } }
+    // 🚀 核心修復：使用正確的物件鍵名來存檔
+    async function saveEmployee() { 
+        const p = { action: "saveEmployee", key: getCurrentKey() }; 
+        p.name = document.getElementById('empName').value;
+        p.dept = document.getElementById('empDept').value;
+        p.payType = document.getElementById('payType').value;
+        p.salary = document.getElementById('empSalary').value;
+        p.onboardingDate = document.getElementById('obDate').value;
+        p.bonus = document.getElementById('bonus').value;
+        p.laborIns = document.getElementById('laborIns').value;
+        p.healthIns = document.getElementById('healthIns').value;
+        p.dependents = document.getElementById('dependents').value;
+        p.phone = document.getElementById('phone').value;
+        p.address = document.getElementById('address').value;
+        p.homePhone = document.getElementById('homePhone').value;
+        p.emerContact = document.getElementById('emerContact').value;
+        p.emerRelation = document.getElementById('emerRelation').value;
+        p.emerPhone = document.getElementById('emerPhone').value;
+        p.birthday = document.getElementById('birthday').value;
+        p.idNumber = document.getElementById('idNumber').value;
+        p.dutyType = document.getElementById('dutyType').value;
+        p.empStatus = document.getElementById('empStatus').value;
+
+        if(!p.name) return alert("姓名必填！"); 
+        showLoading("儲存中..."); 
+        try { 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            const text = await res.text(); 
+            if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } 
+            else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
+        } catch(e) { alert("連線失敗"); } finally { hideLoading(); } 
+    }
+
     async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
     async function rejectLeave(id) { if(!confirm("確定要退回這張假單嗎？")) return; showLoading("退件處理中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: "已退回" })}); fetchData(); alert("❌ 假單已退回！"); }
     async function changeAdminPassword() { const r = document.getElementById('adminRole').value; if (!['人事部', '財務部', '副總'].includes(r)) return alert("⚠️ 無權限！"); const newPwd = prompt(`設定專屬新密碼：`); if (!newPwd) return; showLoading("同步中..."); try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd })}); alert("✅ 更新成功！"); location.reload(); } catch (e) { alert("更新失敗"); hideLoading(); } }
