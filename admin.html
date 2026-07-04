@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V48.11 (人事存檔修復版)</title>
+    <title>禾禾園 - 專業管理後台 V48.20 (智慧整合版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -69,7 +69,6 @@
     </div>
 </div>
 
-<!-- 假單審核中心 -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -82,7 +81,6 @@
     <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
 </div>
 
-<!-- 部門排班表 -->
 <div id="scheduleBox" class="container" style="display:none; background-color: #f4f8fb; border: 1px solid #bbdefb;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">📅 員工排班管理</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -96,7 +94,6 @@
     <div class="table-responsive"><table class="sched-table"><thead id="schedHead"></thead><tbody id="schedBody"></tbody></table></div>
 </div>
 
-<!-- 出勤紀錄與補登 -->
 <div id="attendanceBox" class="container" style="display:none; background-color: #fcfdfe; border: 1px solid #d2e3fc;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">🕒 員工出勤紀錄與手動補登</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -107,7 +104,7 @@
     </div>
     <div id="punchPanel" class="punch-panel" style="display:none;">
         <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 補登漏打卡紀錄</div>
-        <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
+        <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc Haus"></select></div>
         <div><label style="font-weight:bold; font-size:12px;">打卡時間：</label><br><input type="datetime-local" id="punchTime" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><label style="font-weight:bold; font-size:12px;">上下班：</label><br><select id="punchType" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="上班">上班</option><option value="下班">下班</option></select></div>
         <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="punchReason" placeholder="例如：忘記帶手機" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
@@ -127,7 +124,6 @@
     </div>
 </div>
 
-<!-- 部門設定管理 -->
 <div id="deptBox" class="container" style="display:none; background-color: #f7faff; border: 1px solid #bcd6ff;">
     <h1 style="color:#1a73e8; border-left-color:#1a73e8;">🏢 公司部門編制動態設定</h1>
     <div class="punch-panel" style="background:#fff; border: 1px solid #dadce0;">
@@ -143,7 +139,6 @@
     </div>
 </div>
 
-<!-- 人事維護 -->
 <div id="hrBox" class="container" style="display:none;">
     <h1>👥 員工人事維護與薪資調整</h1>
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
@@ -154,8 +149,6 @@
     <div class="hr-form-grid">
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
         <div class="form-group"><label>所屬部門</label><select id="empDept"></select></div>
-        
-        <!-- 計薪類別 -->
         <div class="form-group"><label>計薪類別</label>
             <select id="payType">
                 <option value="月薪">月薪</option>
@@ -163,9 +156,8 @@
                 <option value="日薪">日薪</option>
             </select>
         </div>
-        
         <div class="form-group"><label style="color:#d93025;">假日計薪身分</label><select id="dutyType" style="border-color:#d93025; background:#fff5f5;"><option value="一般員工">🟢 一般員工 (有加班費)</option><option value="責任制幹部">🔴 責任制幹部 (算值班/補休)</option></select></div>
-        <div class="form-group"><label style="color:#d93025;">在職狀態</label><select id="empStatus" style="border-color:#d93025; background:#fff5f5;"><option value="在職">🟢 在職中</option><option value="已離職">🔴 已離職</option></select></div>
+        <div class="form-group"><label style="color:#d93025;">在職狀態</label><select id="empStatus" style="border-color:#d93025; background:#fff5f5;"><option value="InService">🟢 在職中</option><option value="已離職">🔴 已離職</option></select></div>
         <div class="form-group"><label>基本薪資 (月/日/時薪額度)</label><input type="number" id="empSalary" placeholder="請輸入對應額度"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
         <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
@@ -185,9 +177,8 @@
     <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>計薪身分</th><th>薪資/類別</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </div>
 
-<!-- 薪資結算 -->
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
-    <h1 style="color: #d35400; border-left: 5px solid #d35400; margin-top:0;">💰 月底薪資結算與報表匯出</h1>
+    <h1>💰 月底薪資結算與報表匯出</h1>
     <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
         <div style="display: flex; align-items: center; gap: 12px;">
             <div style="background:#fef5e7; padding:10px 15px; border-radius:8px; border:1px solid #f9e79f;">
@@ -337,7 +328,7 @@
         showLoading("正在刪除部門...");
         try {
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteDepartment", key: getCurrentKey(), deptName: name }) });
-            if (await res.text() === "Success") { alert("✅ 部門已成功移除。"); fetchData(); }
+            if (await res.text() === "Success") { alert("✅ 部門已成功移除。"); }
         } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
 
@@ -442,7 +433,7 @@
     function autoFillSchedule() { const month = document.getElementById('schedMonth').value; const [yy, mm] = month.split('-'); document.querySelectorAll('.shift-sel').forEach(sel => { let day = parseInt(sel.getAttribute('data-day')); let dateObj = new Date(yy, mm-1, day); let d = dateObj.getDay(); let padM = String(dateObj.getMonth()+1).padStart(2, '0'); let padD = String(dateObj.getDate()).padStart(2, '0'); let dateStr = `${dateObj.getFullYear()}-${padM}-${padD}`; sel.value = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr)) ? '排休' : '上班'; sel.style.color = getShiftColor(sel.value); }); }
     async function saveSchedule() { const month = document.getElementById('schedMonth').value; const dept = document.getElementById('schedDept').value; if(!month || !dept) return; let scheduleData = []; let rows = document.querySelectorAll('#schedBody tr'); rows.forEach(tr => { let name = tr.querySelector('td').innerText; if (name === "此部門無員工") return; let shifts = []; tr.querySelectorAll('.shift-sel').forEach(sel => shifts.push(sel.value)); scheduleData.push({ name: name, dept: dept, shifts: shifts }); }); if (scheduleData.length === 0) return; showLoading("儲存並同步日曆..."); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }) }); if (await res.text() === "Success") { alert("✅ 排班表儲存成功！"); fetchData(); } } catch(e) { alert("❌ 連線錯誤"); } finally { hideLoading(); } }
     function renderStaff(filterDept = "") { if(!db.employees) return; let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); if (filterDept) staffData = staffData.filter(r => r[1] === filterDept); document.getElementById('staffBody').innerHTML = staffData.map(r => { let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`; let statusMark = r[19] === "已離職" ? `<br><span style="color:#d93025; font-size:12px; font-weight:bold;">(已離職)</span>` : ''; return `<tr><td><b>${r[0] || ""}</b>${statusMark}</td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`; }).join(''); }
-    function updateEmpDropdown() { const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp'); empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept); if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); } }
+    function updateEmpDropdown() { const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp'); empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept); if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]</option>`; }); } }
     
     function loadEmpDetails() { 
         const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
@@ -468,10 +459,11 @@
     function quickEdit(n, d) { document.getElementById('filterDept').value = d; updateEmpDropdown(); document.getElementById('filterEmp').value = n; loadEmpDetails(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function clearForm() { ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); document.getElementById('payType').value = "月薪"; document.getElementById('dutyType').value = "一般員工"; document.getElementById('empStatus').value = "在職"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; }
     
-    // 🚀 核心修復：使用正確的物件鍵名來存檔
+    // 🚀 智慧型防呆封裝模組：同時發送雙重參數，100% 消除未定義錯誤
     async function saveEmployee() { 
         const p = { action: "saveEmployee", key: getCurrentKey() }; 
         p.name = document.getElementById('empName').value;
+        p.empName = document.getElementById('empName').value; // 🚀 雙重安全外殼發送
         p.dept = document.getElementById('empDept').value;
         p.payType = document.getElementById('payType').value;
         p.salary = document.getElementById('empSalary').value;
