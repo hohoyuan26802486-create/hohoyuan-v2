@@ -32,7 +32,7 @@
 </head>
 <body>
 <div class="container">
-  <h2>禾禾園 · 專業彈性報價系統 V1.25</h2>
+  <h2>禾禾園 · 專業彈性報價系統 V1.26</h2>
   
   <div class="card">
     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -55,6 +55,35 @@
     </div>
   </div>
 
+  <!-- 🌟 新增：正式報價單 PDF 專用資訊 -->
+  <div class="card" style="background: #fff8e1; border: 1px solid #ffe082;">
+    <h4 style="margin: 0 0 10px 0; color: #d32f2f; font-size: 14px;">📄 正式報價單 PDF 專用資訊 (非必填)</h4>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 150px;">
+        <label style="color: #555;">結帳方式</label>
+        <select id="checkoutMethod">
+          <option value="">(未指定)</option>
+          <option value="下貨收現">下貨收現</option>
+          <option value="月結匯款">月結匯款</option>
+          <option value="月結支票">月結支票</option>
+          <option value="月結現金">月結現金</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label style="color: #555;">結帳周期</label>
+        <input type="text" id="billingCycle" placeholder="例如: 每月 25 日">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label style="color: #555;">對帳窗口</label>
+        <input type="text" id="reconciliationContact" placeholder="窗口姓名">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label style="color: #555;">對帳電話</label>
+        <input type="text" id="reconciliationPhone" placeholder="窗口電話">
+      </div>
+    </div>
+  </div>
+
   <div id="itemsContainer"></div>
 
   <button class="btn-add" onclick="addItem()">＋ 追加新商品品項</button>
@@ -62,35 +91,6 @@
   <div class="summary">
     <div>總計金額：$<span id="displayTotal">0</span></div>
     <div class="profit-info">預估總毛利：$<span id="displayProfit">0</span></div>
-  </div>
-
-  <!-- 📋 新增：會計對帳欄位區塊 -->
-  <div class="card" style="margin-top: 15px; border-left: 4px solid #28a745;">
-    <h4 style="margin-top:0; color:#28a745; border-bottom:1px solid #ddd; padding-bottom:5px;">📋 會計對帳與建檔資訊 (新客戶成交填寫)</h4>
-    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 150px;">
-        <label>交易條件：</label>
-        <select id="paymentTerms">
-          <option value="">選擇交易條件...</option>
-          <option value="下貨收現">下貨收現</option>
-          <option value="月結現金">月結現金</option>
-          <option value="月結匯款">月結匯款</option>
-          <option value="月結支票">月結支票</option>
-        </select>
-      </div>
-      <div style="flex: 1; min-width: 150px;">
-        <label>月結周期：</label>
-        <input type="text" id="billingCycle" placeholder="如：每月25號結帳">
-      </div>
-      <div style="flex: 1; min-width: 150px;">
-        <label>對帳窗口：</label>
-        <input type="text" id="accountingContact" placeholder="對帳人姓名">
-      </div>
-      <div style="flex: 1; min-width: 150px;">
-        <label>聯繫電話：</label>
-        <input type="text" id="accountingPhone" placeholder="對帳人電話">
-      </div>
-    </div>
   </div>
 
   <div style="margin-top: 15px;">
@@ -109,11 +109,11 @@
     generateNewQuoteId();
     // 預先同步商品清單和歷史報價單紀錄
     google.script.run.withSuccessHandler(function(res) {
-      if (res.products || res.Products) {
-        globalProducts = res.products || res.Products;
+      if (res.products) {
+        globalProducts = res.products;
       }
-      if (res.quotations || res.Quotations) {
-        globalQuotations = res.quotations || res.Quotations;
+      if (res.quotations) {
+        globalQuotations = res.quotations;
       }
     }).getInitialData();
   };
@@ -125,6 +125,13 @@
       now.getDate().toString().padStart(2, '0') + '-' + 
       Math.floor(1000 + Math.random() * 9000);
     document.getElementById('itemsContainer').innerHTML = "";
+    
+    // 清空新增的 PDF 專用資訊
+    document.getElementById('checkoutMethod').value = "";
+    document.getElementById('billingCycle').value = "";
+    document.getElementById('reconciliationContact').value = "";
+    document.getElementById('reconciliationPhone').value = "";
+
     addItem();
   }
 
@@ -162,8 +169,7 @@
     
     document.getElementById('itemsContainer').innerHTML = "<div style='padding:20px; color:#1a73e8; font-weight:bold;'>正在從明細庫中提取商品，請稍候...</div>";
     
-    google.script.run.withSuccessHandler(function(res) {
-      var items = res.items || res;
+    google.script.run.withSuccessHandler(function(items) {
       var container = document.getElementById('itemsContainer');
       container.innerHTML = "";
       if (items && items.length > 0) {
@@ -176,19 +182,10 @@
         alert("❌ 找不到該筆單號的明細數據。");
         addItem();
       }
-    }).loadOldQuoteItems ? google.script.run.loadOldQuoteItems(quoteId) : 
-    google.script.run.withSuccessHandler(function(res){
-       var items = res.items || [];
-       var container = document.getElementById('itemsContainer');
-       container.innerHTML = "";
-       if (items.length > 0) {
-         items.forEach(function(item) { addItem(item); });
-         calculate();
-       } else { addItem(); }
-    }).doPost({ postData: { contents: JSON.stringify({ action: "loadOldQuote", quoteId: quoteId }) } });
+    }).loadOldQuoteItems(quoteId);
   }
 
-  // 🌟 處理手機鍵盤遮擋問題
+  // 處理手機鍵盤遮擋問題
   function onInputFocus(inputEl) {
     setTimeout(function() {
       inputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -248,7 +245,7 @@
     container.appendChild(div);
   }
 
-  // 🌟 過濾商品清單與生成手機友善的下拉選項
+  // 過濾商品清單與生成手機友善的下拉選項
   function filterProducts(inputEl, rowId) {
     var val = inputEl.value.toUpperCase();
     var listEl = document.getElementById('list_' + rowId);
@@ -264,7 +261,7 @@
         optDiv.innerText = itemText;
         
         var selectItem = function(e) {
-          e.preventDefault(); 
+          e.preventDefault();
           inputEl.value = this.innerText;
           listEl.style.display = "none";
           onItemNameChange(rowId);
@@ -276,11 +273,14 @@
         listEl.appendChild(optDiv);
         matchCount++;
       }
+      
       if (matchCount >= 30) break;
     }
+    
     listEl.style.display = matchCount > 0 ? "block" : "none";
   }
 
+  // 點擊畫面其他地方時，自動隱藏所有下拉選單
   document.addEventListener("click", function(e) {
     var lists = document.getElementsByClassName("autocomplete-list");
     for (var i = 0; i < lists.length; i++) {
@@ -300,7 +300,6 @@
     }
   }
 
-  // 選擇資料庫商品時，自動帶出規格、單位與大包裝成本
   function onItemNameChange(rowId) {
     var row = document.getElementById(rowId);
     var val = row.querySelector('.i-name').value;
@@ -356,14 +355,17 @@
   function submitQuote() {
     const items = [];
     const rows = document.getElementsByClassName('item-row');
+    
+    // 計算 cartSum 等資訊供後端使用
     let cartSum = 0;
+    
     for(let row of rows) {
       var name = row.querySelector('.i-name').value.trim();
       if(!name) continue;
       
-      var qty = parseFloat(row.querySelector('.i-qty').value) || 0;
-      var price = parseFloat(row.querySelector('.i-price').value) || 0;
-      var subtotal = qty * price;
+      let qty = parseFloat(row.querySelector('.i-qty').value) || 0;
+      let price = parseFloat(row.querySelector('.i-price').value) || 0;
+      let subtotal = qty * price;
       cartSum += subtotal;
       
       items.push({
@@ -372,24 +374,25 @@
         qty: qty,
         unit: row.querySelector('.i-unit').value,
         price: price,
+        cost: parseFloat(row.querySelector('.i-cost').value) || 0,
         subtotal: subtotal,
-        cost: parseFloat(row.querySelector('.i-cost').value) || 0
+        remark: ""
       });
     }
 
-    // 🌟 將會計對帳資訊一起打包傳送到後端與 PDF 中
+    // 🌟 將新增的四個欄位加入 data 準備傳送
     const data = {
-      action: "saveQuotation",
       clientName: document.getElementById('clientName').value.trim(),
       quoteId: document.getElementById('quoteId').value,
       items: items,
       note: document.getElementById('note').value,
-      cartSum: Math.round(cartSum),
-      totalSales: Math.round(cartSum),
-      paymentTerms: document.getElementById('paymentTerms').value,
+      cartSum: cartSum,
+      taxAmt: 0, // 若有稅金邏輯可在此修改
+      totalSales: cartSum,
+      checkoutMethod: document.getElementById('checkoutMethod').value,
       billingCycle: document.getElementById('billingCycle').value,
-      accountingContact: document.getElementById('accountingContact').value,
-      accountingPhone: document.getElementById('accountingPhone').value
+      reconciliationContact: document.getElementById('reconciliationContact').value,
+      reconciliationPhone: document.getElementById('reconciliationPhone').value
     };
 
     if(!data.clientName) { alert('請填寫客戶名稱'); return; }
@@ -399,25 +402,25 @@
     document.getElementById('submitBtn').disabled = true;
 
     google.script.run.withSuccessHandler(function(res) {
-      var responseStr = typeof res === 'object' ? (res.status === 'success' ? 'Success|' + res.url : 'Error: ' + res.message) : res;
-      if(responseStr.indexOf("Success") > -1) {
-        var url = responseStr.split("|")[1];
+      if(res.indexOf("Success|") > -1) {
         alert("✅ 報價單 PDF 已生成，總表與商品明細庫已完全同步儲存！");
-        window.open(url, '_blank');
+        window.open(res.split("|")[1], '_blank');
         generateNewQuoteId();
         document.getElementById('clientName').value = "";
         document.getElementById('note').value = "";
-        document.getElementById('paymentTerms').value = "";
-        document.getElementById('billingCycle').value = "";
-        document.getElementById('accountingContact').value = "";
-        document.getElementById('accountingPhone').value = "";
       } else {
-        alert("❌ 發生非預期錯誤：" + responseStr);
+        alert("❌ 發生非預期錯誤：" + res);
       }
       document.getElementById('submitBtn').innerText = "產生報價單 (不顯示成本) ➔";
       document.getElementById('submitBtn').disabled = false;
-    }).generateQuotePdf ? google.script.run.generateQuotePdf(data) : 
-    google.script.run.doPost({ postData: { contents: JSON.stringify(data) } });
+    }).doPost({ postData: { contents: JSON.stringify(Object.assign({action: "saveQuotation"}, data)) } });
+    
+    // 註：依據你原本後端的結構，前端呼叫的方式若原本有專屬的 generateQuotePdf(data)，
+    // 請將上述的 google.script.run 區塊換回你習慣的寫法。
+    // 上方程式碼模擬了通用的呼叫方式。如果你原本是這樣寫的：
+    /*
+    google.script.run.withSuccessHandler(function(res) { ... }).generateQuotePdf(data);
+    */
   }
 </script>
 </body>
