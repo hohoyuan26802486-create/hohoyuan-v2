@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: '微軟正黑體', sans-serif; background-color: #f8f9fa; padding: 10px; }
+    .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    h2 { color: #1a73e8; text-align: center; }
+    .card { background: #f1f3f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .item-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 10px; position: relative; background: #fff; align-items: flex-end; }
+    .item-row div { flex: 1; min-width: 110px; }
+    .item-row .div-name { flex: 2; min-width: 180px; }
+    label { font-size: 12px; color: #1a73e8; font-weight: bold; display: block; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+    .cost-input { background-color: #fff9db; border-color: #fab005; font-weight: bold; } 
+    .btn-add { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
+    .btn-danger { background: #d93025; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+    .btn-submit { background: #28a745; color: white; border: none; width: 100%; padding: 15px; font-size: 18px; border-radius: 8px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+    .summary { text-align: right; font-size: 20px; font-weight: bold; padding: 15px; border-top: 2px solid #1a73e8; background: #e8f0fe; border-radius: 6px; margin-top: 10px; }
+    .profit-info { color: #d9480f; font-size: 15px; margin-top: 5px; }
+    .history-block { background: #fffde7; border: 2px dashed #fbc02d; padding: 12px; border-radius: 8px; margin-top: 10px; display: none; }
+    .divider-box { font-size: 11px; color: #d35400; margin-top: 4px; display: block; }
+    .divider-input { width: 45px; padding: 2px; text-align: center; display: inline-block; }
+    
+    /* 🌟 行動裝置友善的下拉選單 CSS */
+    .autocomplete-wrapper { position: relative; width: 100%; }
+    .autocomplete-list { position: absolute; z-index: 999; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 220px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none; margin-top: 2px; }
+    .autocomplete-list div { padding: 12px 10px; cursor: pointer; border-bottom: 1px solid #f1f3f4; font-size: 14px; color: #333; }
+    .autocomplete-list div:last-child { border-bottom: none; }
+    .autocomplete-list div:hover, .autocomplete-list div:active { background-color: #e8f0fe; color: #1a73e8; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>禾禾園 · 專業彈性報價系統 V1.25</h2>
+  
+  <div class="card">
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 200px;">
+        <label>客戶名稱：</label>
+        <input type="text" id="clientName" placeholder="請輸入客戶名稱..." oninput="onClientInput()">
+      </div>
+      <div style="flex: 1; min-width: 200px;">
+        <label>報價單號：</label>
+        <input type="text" id="quoteId" readonly style="background: #e9ecef;">
+      </div>
+    </div>
+
+    <div id="historyBlock" class="history-block">
+      <label style="color: #d35400;">🔙 載入此客戶舊報價單明細項目：</label>
+      <div style="display:flex; gap:10px; margin-top: 5px;">
+        <select id="historySelect" style="flex:1;"></select>
+        <button type="button" style="background: #fab005; border:none; padding: 8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="loadHistoryDetails()">載入修改</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="itemsContainer"></div>
+
+  <button class="btn-add" onclick="addItem()">＋ 追加新商品品項</button>
+
+  <div class="summary">
+    <div>總計金額：$<span id="displayTotal">0</span></div>
+    <div class="profit-info">預估總毛利：$<span id="displayProfit">0</span></div>
+  </div>
+
+  <!-- 🌟 新增：會計對帳與建檔資訊區塊 -->
+  <div class="card" style="margin-top: 15px; border-left: 4px solid #28a745;">
+    <h4 style="margin-top:0; color:#28a745; border-bottom:1px solid #ddd; padding-bottom:5px;">📋 會計對帳與建檔資訊 (新客戶成交填寫)</h4>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 150px;">
+        <label>交易條件：</label>
+        <select id="paymentTerms">
+          <option value="">選擇交易條件...</option>
+          <option value="下貨收現">下貨收現</option>
+          <option value="月結現金">月結現金</option>
+          <option value="月結匯款">月結匯款</option>
+          <option value="月結支票">月結支票</option>
+        </select>
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label>月結周期：</label>
+        <input type="text" id="billingCycle" placeholder="如：每月25號結帳">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label>對帳人員：</label>
+        <input type="text" id="accountingContact" placeholder="對帳人姓名">
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label>聯繫電話：</label>
+        <input type="text" id="accountingPhone" placeholder="對帳人電話">
+      </div>
+    </div>
+    
+    <div style="margin-top: 15px; padding: 12px; background: #e8f0fe; border-radius: 6px; border: 1px dashed #1a73e8;">
+      <label style="display:flex; align-items:center; cursor:pointer; color:#0d47a1; font-size: 15px; font-weight: bold; margin: 0;">
+        <input type="checkbox" id="confirmDeal" style="width:20px; height:20px; margin-right:10px; cursor:pointer;">
+        ✅ 確定成交 (勾選後，產生報價單時將同步發送建檔通知至 Telegram)
+      </label>
+    </div>
+  </div>
+
+  <div style="margin-top: 15px;">
+    <label>備註事項：</label>
+    <textarea id="note" style="width:100%; height:60px; padding:8px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;"></textarea>
+  </div>
+
+  <button id="submitBtn" class="btn-submit" onclick="submitQuote()">產生報價單 (不顯示成本) ➔</button>
+</div>
+
+<script>
+  let globalProducts = [];
+  let globalQuotations = [];
+
+  window.onload = function() {
+    generateNewQuoteId();
+    // 預先同步商品清單和歷史報價單紀錄
+    if(google && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) {
+          if (res.products) globalProducts = res.products;
+          if (res.quotations) globalQuotations = res.quotations;
+        }).getInitialData();
+    }
+  };
+
+  function generateNewQuoteId() {
+    const now = new Date();
+    document.getElementById('quoteId').value = 'QT-' + now.getFullYear() + 
+      (now.getMonth()+1).toString().padStart(2, '0') + 
+      now.getDate().toString().padStart(2, '0') + '-' + 
+      Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('itemsContainer').innerHTML = "";
+    addItem();
+  }
+
+  function onClientInput() {
+    var name = document.getElementById('clientName').value.trim();
+    var block = document.getElementById('historyBlock');
+    var select = document.getElementById('historySelect');
+    select.innerHTML = '<option value="">-- 請選擇該客戶歷史報價單 --</option>';
+    
+    if (!name || globalQuotations.length === 0) {
+      block.style.display = 'none';
+      return;
+    }
+    
+    var hasHistory = false;
+    for (var i = globalQuotations.length - 1; i >= 1; i--) {
+      var row = globalQuotations[i];
+      if (row[2] === name) {
+        var opt = document.createElement('option');
+        opt.value = row[0];
+        opt.innerText = `📄 ${row[0]} (金額: $${row[3]})`;
+        select.appendChild(opt);
+        hasHistory = true;
+      }
+    }
+    block.style.display = hasHistory ? 'block' : 'none';
+  }
+
+  function loadHistoryDetails() {
+    var quoteId = document.getElementById('historySelect').value;
+    if (!quoteId) { alert("請先選擇一張歷史報價單"); return; }
+    
+    document.getElementById('itemsContainer').innerHTML = "<div style='padding:20px; color:#1a73e8; font-weight:bold;'>正在從明細庫中提取商品，請稍候...</div>";
+    
+    google.script.run.withSuccessHandler(function(items) {
+      var container = document.getElementById('itemsContainer');
+      container.innerHTML = "";
+      if (items && items.length > 0) {
+        items.forEach(function(item) { addItem(item); });
+        calculate();
+        alert("✅ 歷史商品明細已成功恢復至畫面！");
+      } else {
+        alert("❌ 找不到該筆單號的明細數據。");
+        addItem();
+      }
+    }).loadOldQuoteItems(quoteId);
+  }
+
+  function onInputFocus(inputEl) {
+    setTimeout(function() {
+      inputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }
+
+  function addItem(itemData) {
+    const container = document.getElementById('itemsContainer');
+    const div = document.createElement('div');
+    div.className = 'item-row';
+    
+    const uniqueId = 'item_' + Date.now() + Math.floor(Math.random()*1000);
+    div.id = uniqueId;
+    
+    var name = itemData ? itemData.name : "";
+    var spec = itemData ? itemData.spec : "";
+    var qty = itemData ? itemData.qty : 1;
+    var unit = itemData ? itemData.unit : "包";
+    var price = itemData ? itemData.price : 0;
+    var cost = itemData ? itemData.cost : 0;
+
+    div.innerHTML = `
+      <div class="div-name">
+        <label>品項名稱</label>
+        <div class="autocomplete-wrapper">
+          <input type="text" class="i-name" value="${name}" placeholder="輸入關鍵字或料號..." 
+                 oninput="filterProducts(this, '${uniqueId}')" 
+                 onfocus="onInputFocus(this); filterProducts(this, '${uniqueId}')" 
+                 onchange="onItemNameChange('${uniqueId}')" autocomplete="off">
+          <div class="autocomplete-list" id="list_${uniqueId}"></div>
+        </div>
+      </div>
+      <div><label>規格</label><input type="text" class="i-spec" value="${spec}" placeholder="如：1.5L"></div>
+      <div>
+        <label>數量 / 單位</label>
+        <div style="display:flex; gap:3px;">
+          <input type="number" class="i-qty" value="${qty}" step="any" oninput="calculate()">
+          <input type="text" class="i-unit" value="${unit}" style="width:55px; padding:8px 4px; text-align:center;">
+        </div>
+        <span class="divider-box">
+          拆件除以 <input type="number" class="i-divider divider-input" value="1" min="1" oninput="onDividerChange('${uniqueId}')"> 入
+        </span>
+      </div>
+      <div>
+        <label>單價 (客看)</label>
+        <input type="number" class="i-price" value="${price}" oninput="calculate()">
+      </div>
+      <div>
+        <label>單位成本 (內)</label>
+        <input type="hidden" class="i-base-cost" value="${cost}">
+        <input type="number" class="i-cost cost-input" value="${cost}" oninput="calculate()">
+      </div>
+      <div style="flex:0; min-width:auto;">
+        <button type="button" class="btn-danger" onclick="removeItem('${uniqueId}')">刪除</button>
+      </div>
+    `;
+    container.appendChild(div);
+  }
+
+  function filterProducts(inputEl, rowId) {
+    var val = inputEl.value.toUpperCase();
+    var listEl = document.getElementById('list_' + rowId);
+    listEl.innerHTML = ""; 
+    var matchCount = 0;
+
+    for (var i = 1; i < globalProducts.length; i++) {
+      if (!globalProducts[i][0]) continue;
+      var itemText = globalProducts[i][0] + " - " + globalProducts[i][1];
+      
+      if (!val || itemText.toUpperCase().indexOf(val) > -1) {
+        var optDiv = document.createElement("div");
+        optDiv.innerText = itemText;
+        
+        var selectItem = function(e) {
+          e.preventDefault(); 
+          inputEl.value = this.innerText;
+          listEl.style.display = "none";
+          onItemNameChange(rowId);
+        };
+        
+        optDiv.onmousedown = selectItem;
+        optDiv.ontouchstart = selectItem;
+        
+        listEl.appendChild(optDiv);
+        matchCount++;
+      }
+      if (matchCount >= 30) break;
+    }
+    listEl.style.display = matchCount > 0 ? "block" : "none";
+  }
+
+  document.addEventListener("click", function(e) {
+    var lists = document.getElementsByClassName("autocomplete-list");
+    for (var i = 0; i < lists.length; i++) {
+      if (e.target !== lists[i].previousElementSibling) {
+        lists[i].style.display = "none";
+      }
+    }
+  });
+
+  function removeItem(id) {
+    var row = document.getElementById(id);
+    if (row && document.getElementsByClassName('item-row').length > 1) {
+      row.remove();
+      calculate();
+    } else {
+      alert("請至少保留一個商品品項！");
+    }
+  }
+
+  function onItemNameChange(rowId) {
+    var row = document.getElementById(rowId);
+    var val = row.querySelector('.i-name').value;
+    if (!val) return;
+    
+    var itemNo = val.split(" - ")[0];
+    var product = globalProducts.find(r => r[0] == itemNo);
+    if (product) {
+      row.querySelector('.i-name').value = product[1];
+      row.querySelector('.i-spec').value = product[2] || "";
+      row.querySelector('.i-unit').value = product[6] || "箱";
+      
+      var cost = Number(product[3]) || 0;
+      row.querySelector('.i-base-cost').value = cost;
+      row.querySelector('.i-cost').value = cost;
+      
+      row.querySelector('.i-price').value = Math.round(cost * 1.05);
+      row.querySelector('.i-divider').value = 1;
+      calculate();
+    }
+  }
+
+  function onDividerChange(rowId) {
+    var row = document.getElementById(rowId);
+    var divVal = parseFloat(row.querySelector('.i-divider').value) || 1;
+    if (divVal <= 0) divVal = 1;
+    
+    var baseCost = parseFloat(row.querySelector('.i-base-cost').value) || 0;
+    var currentCost = baseCost / divVal;
+    
+    row.querySelector('.i-cost').value = currentCost % 1 !== 0 ? currentCost.toFixed(1) : currentCost;
+    row.querySelector('.i-price').value = Math.round(currentCost * 1.05);
+    calculate();
+  }
+
+  function calculate() {
+    let total = 0;
+    let totalCost = 0;
+    const rows = document.getElementsByClassName('item-row');
+    
+    for(let row of rows) {
+      let qty = parseFloat(row.querySelector('.i-qty').value) || 0;
+      let price = parseFloat(row.querySelector('.i-price').value) || 0;
+      let cost = parseFloat(row.querySelector('.i-cost').value) || 0;
+      
+      total += qty * price;
+      totalCost += qty * cost;
+    }
+    document.getElementById('displayTotal').innerText = Math.round(total).toLocaleString();
+    document.getElementById('displayProfit').innerText = Math.round(total - totalCost).toLocaleString();
+  }
+
+  function submitQuote() {
+    const items = [];
+    const rows = document.getElementsByClassName('item-row');
+    let cartSum = 0;
+    for(let row of rows) {
+      var name = row.querySelector('.i-name').value.trim();
+      if(!name) continue;
+      
+      var qty = parseFloat(row.querySelector('.i-qty').value) || 0;
+      var price = parseFloat(row.querySelector('.i-price').value) || 0;
+      var subtotal = qty * price;
+      cartSum += subtotal;
+      
+      items.push({
+        name: name,
+        spec: row.querySelector('.i-spec').value,
+        qty: qty,
+        unit: row.querySelector('.i-unit').value,
+        price: price,
+        subtotal: subtotal,
+        cost: parseFloat(row.querySelector('.i-cost').value) || 0,
+        remark: "" 
+      });
+    }
+
+    const data = {
+      clientName: document.getElementById('clientName').value.trim(),
+      quoteId: document.getElementById('quoteId').value,
+      items: items,
+      note: document.getElementById('note').value,
+      cartSum: Math.round(cartSum),
+      taxAmt: 0,
+      totalSales: Math.round(cartSum),
+      // 🌟 將新欄位加入打包上傳
+      paymentTerms: document.getElementById('paymentTerms').value,
+      billingCycle: document.getElementById('billingCycle').value,
+      accountingContact: document.getElementById('accountingContact').value,
+      accountingPhone: document.getElementById('accountingPhone').value,
+      confirmDeal: document.getElementById('confirmDeal').checked
+    };
+
+    if(!data.clientName) { alert('請填寫客戶名稱'); return; }
+    if(items.length === 0) { alert('請至少完整輸入一項商品名稱'); return; }
+
+    document.getElementById('submitBtn').innerText = "系統正在打包總表並儲存細節明細中...";
+    document.getElementById('submitBtn').disabled = true;
+
+    google.script.run.withSuccessHandler(function(res) {
+      if(res.status === "success") {
+        alert("✅ 報價單 PDF 已生成，總表與商品明細庫已完全同步儲存！" + (data.confirmDeal ? "\n🚀 已同步通知 Telegram 群組！" : ""));
+        window.open(res.url, '_blank');
+        generateNewQuoteId();
+        document.getElementById('clientName').value = "";
+        document.getElementById('note').value = "";
+        // 清空新欄位
+        document.getElementById('paymentTerms').value = "";
+        document.getElementById('billingCycle').value = "";
+        document.getElementById('accountingContact').value = "";
+        document.getElementById('accountingPhone').value = "";
+        document.getElementById('confirmDeal').checked = false;
+      } else {
+        alert("❌ 發生非預期錯誤：" + res.message);
+      }
+      document.getElementById('submitBtn').innerText = "產生報價單 (不顯示成本) ➔";
+      document.getElementById('submitBtn').disabled = false;
+    }).generateQuotePdf(data);
+  }
+</script>
+</body>
+</html>
