@@ -64,7 +64,7 @@
     <div class="profit-info">預估總毛利：$<span id="displayProfit">0</span></div>
   </div>
 
-  <!-- 🌟 新增：會計對帳與建檔資訊區塊 -->
+  <!-- 📋 新增：會計對帳欄位區塊 -->
   <div class="card" style="margin-top: 15px; border-left: 4px solid #28a745;">
     <h4 style="margin-top:0; color:#28a745; border-bottom:1px solid #ddd; padding-bottom:5px;">📋 會計對帳與建檔資訊 (新客戶成交填寫)</h4>
     <div style="display: flex; gap: 15px; flex-wrap: wrap;">
@@ -83,20 +83,13 @@
         <input type="text" id="billingCycle" placeholder="如：每月25號結帳">
       </div>
       <div style="flex: 1; min-width: 150px;">
-        <label>對帳人員：</label>
+        <label>對帳窗口：</label>
         <input type="text" id="accountingContact" placeholder="對帳人姓名">
       </div>
       <div style="flex: 1; min-width: 150px;">
         <label>聯繫電話：</label>
         <input type="text" id="accountingPhone" placeholder="對帳人電話">
       </div>
-    </div>
-    
-    <div style="margin-top: 15px; padding: 12px; background: #e8f0fe; border-radius: 6px; border: 1px dashed #1a73e8;">
-      <label style="display:flex; align-items:center; cursor:pointer; color:#0d47a1; font-size: 15px; font-weight: bold; margin: 0;">
-        <input type="checkbox" id="confirmDeal" style="width:20px; height:20px; margin-right:10px; cursor:pointer;">
-        ✅ 確定成交 (勾選後，產生報價單時將同步發送建檔通知至 Telegram)
-      </label>
     </div>
   </div>
 
@@ -115,12 +108,14 @@
   window.onload = function() {
     generateNewQuoteId();
     // 預先同步商品清單和歷史報價單紀錄
-    if(google && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(function(res) {
-          if (res.products) globalProducts = res.products;
-          if (res.quotations) globalQuotations = res.quotations;
-        }).getInitialData();
-    }
+    google.script.run.withSuccessHandler(function(res) {
+      if (res.products || res.Products) {
+        globalProducts = res.products || res.Products;
+      }
+      if (res.quotations || res.Quotations) {
+        globalQuotations = res.quotations || res.Quotations;
+      }
+    }).getInitialData();
   };
 
   function generateNewQuoteId() {
@@ -133,6 +128,7 @@
     addItem();
   }
 
+  // 輸入客戶名稱時，自動比對並展開歷史紀錄區塊
   function onClientInput() {
     var name = document.getElementById('clientName').value.trim();
     var block = document.getElementById('historyBlock');
@@ -155,29 +151,44 @@
         hasHistory = true;
       }
     }
+    
     block.style.display = hasHistory ? 'block' : 'none';
   }
 
+  // 載入選定的舊報價單明細項目
   function loadHistoryDetails() {
     var quoteId = document.getElementById('historySelect').value;
     if (!quoteId) { alert("請先選擇一張歷史報價單"); return; }
     
     document.getElementById('itemsContainer').innerHTML = "<div style='padding:20px; color:#1a73e8; font-weight:bold;'>正在從明細庫中提取商品，請稍候...</div>";
     
-    google.script.run.withSuccessHandler(function(items) {
+    google.script.run.withSuccessHandler(function(res) {
+      var items = res.items || res;
       var container = document.getElementById('itemsContainer');
       container.innerHTML = "";
       if (items && items.length > 0) {
-        items.forEach(function(item) { addItem(item); });
+        items.forEach(function(item) {
+          addItem(item);
+        });
         calculate();
         alert("✅ 歷史商品明細已成功恢復至畫面！");
       } else {
         alert("❌ 找不到該筆單號的明細數據。");
         addItem();
       }
-    }).loadOldQuoteItems(quoteId);
+    }).loadOldQuoteItems ? google.script.run.loadOldQuoteItems(quoteId) : 
+    google.script.run.withSuccessHandler(function(res){
+       var items = res.items || [];
+       var container = document.getElementById('itemsContainer');
+       container.innerHTML = "";
+       if (items.length > 0) {
+         items.forEach(function(item) { addItem(item); });
+         calculate();
+       } else { addItem(); }
+    }).doPost({ postData: { contents: JSON.stringify({ action: "loadOldQuote", quoteId: quoteId }) } });
   }
 
+  // 🌟 處理手機鍵盤遮擋問題
   function onInputFocus(inputEl) {
     setTimeout(function() {
       inputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -237,6 +248,7 @@
     container.appendChild(div);
   }
 
+  // 🌟 過濾商品清單與生成手機友善的下拉選項
   function filterProducts(inputEl, rowId) {
     var val = inputEl.value.toUpperCase();
     var listEl = document.getElementById('list_' + rowId);
@@ -288,6 +300,7 @@
     }
   }
 
+  // 選擇資料庫商品時，自動帶出規格、單位與大包裝成本
   function onItemNameChange(rowId) {
     var row = document.getElementById(rowId);
     var val = row.querySelector('.i-name').value;
@@ -360,25 +373,23 @@
         unit: row.querySelector('.i-unit').value,
         price: price,
         subtotal: subtotal,
-        cost: parseFloat(row.querySelector('.i-cost').value) || 0,
-        remark: "" 
+        cost: parseFloat(row.querySelector('.i-cost').value) || 0
       });
     }
 
+    // 🌟 將會計對帳資訊一起打包傳送到後端與 PDF 中
     const data = {
+      action: "saveQuotation",
       clientName: document.getElementById('clientName').value.trim(),
       quoteId: document.getElementById('quoteId').value,
       items: items,
       note: document.getElementById('note').value,
       cartSum: Math.round(cartSum),
-      taxAmt: 0,
       totalSales: Math.round(cartSum),
-      // 🌟 將新欄位加入打包上傳
       paymentTerms: document.getElementById('paymentTerms').value,
       billingCycle: document.getElementById('billingCycle').value,
       accountingContact: document.getElementById('accountingContact').value,
-      accountingPhone: document.getElementById('accountingPhone').value,
-      confirmDeal: document.getElementById('confirmDeal').checked
+      accountingPhone: document.getElementById('accountingPhone').value
     };
 
     if(!data.clientName) { alert('請填寫客戶名稱'); return; }
@@ -388,24 +399,25 @@
     document.getElementById('submitBtn').disabled = true;
 
     google.script.run.withSuccessHandler(function(res) {
-      if(res.status === "success") {
-        alert("✅ 報價單 PDF 已生成，總表與商品明細庫已完全同步儲存！" + (data.confirmDeal ? "\n🚀 已同步通知 Telegram 群組！" : ""));
-        window.open(res.url, '_blank');
+      var responseStr = typeof res === 'object' ? (res.status === 'success' ? 'Success|' + res.url : 'Error: ' + res.message) : res;
+      if(responseStr.indexOf("Success") > -1) {
+        var url = responseStr.split("|")[1];
+        alert("✅ 報價單 PDF 已生成，總表與商品明細庫已完全同步儲存！");
+        window.open(url, '_blank');
         generateNewQuoteId();
         document.getElementById('clientName').value = "";
         document.getElementById('note').value = "";
-        // 清空新欄位
         document.getElementById('paymentTerms').value = "";
         document.getElementById('billingCycle').value = "";
         document.getElementById('accountingContact').value = "";
         document.getElementById('accountingPhone').value = "";
-        document.getElementById('confirmDeal').checked = false;
       } else {
-        alert("❌ 發生非預期錯誤：" + res.message);
+        alert("❌ 發生非預期錯誤：" + responseStr);
       }
       document.getElementById('submitBtn').innerText = "產生報價單 (不顯示成本) ➔";
       document.getElementById('submitBtn').disabled = false;
-    }).generateQuotePdf(data);
+    }).generateQuotePdf ? google.script.run.generateQuotePdf(data) : 
+    google.script.run.doPost({ postData: { contents: JSON.stringify(data) } });
   }
 </script>
 </body>
