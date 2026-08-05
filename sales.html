@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 業務神速報價系統 V5.9 (預警清除連動版)</title>
+    <title>禾禾園 - 業務神速報價系統 V5.9 (預警清除連動版 + Telegram推播)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --danger: #d93025; --text-main: #3c4043; --bg-gray: #f8f9fa; }
@@ -151,29 +151,21 @@
         </div>
     </div>
 
-    <!-- 🌟 更新：加入對帳與結帳相關欄位 -->
+    <!-- 🌟 新增：所有聯絡資訊與對帳結帳資訊都在這裡 -->
     <div class="details-panel">
         <div style="width: 100%; color: #888; font-size: 12px; font-weight: bold; margin-bottom: -5px;">📜 正式報價單 PDF 專用資訊 (非必填)</div>
         <div class="input-group"><label>🏢 統一編號</label><input type="text" id="qTaxId" oninput="saveDraft()" placeholder="客戶統編"></div>
-        <div class="input-group"><label>👤 收貨聯絡人</label><input type="text" id="qContact" oninput="saveDraft()" placeholder="收貨聯絡人"></div>
-        <div class="input-group"><label>📞 收件電話</label><input type="text" id="qPhone" oninput="saveDraft()" placeholder="收件聯絡電話"></div>
+        <div class="input-group"><label>👤 收貨聯絡人</label><input type="text" id="qContact" oninput="saveDraft()" placeholder="收件人姓名"></div>
+        <div class="input-group"><label>📞 收貨電話</label><input type="text" id="qPhone" oninput="saveDraft()" placeholder="客戶電話"></div>
         <div class="input-group" style="flex: 2; min-width: 250px;"><label>🚚 送貨地址</label><input type="text" id="qAddress" oninput="saveDraft()" placeholder="送貨完整地址"></div>
         
-        <div style="width: 100%; height: 0; border-top: 1px dashed #ddd; margin: 5px 0;"></div> <!-- 分隔線 -->
+        <!-- 分隔線 -->
+        <div style="width: 100%; height: 1px; background: #ddd; margin: 5px 0;"></div>
         
-        <div class="input-group"><label>🧾 對帳窗口</label><input type="text" id="qAccContact" oninput="saveDraft()" placeholder="財務/對帳人員"></div>
-        <div class="input-group"><label>☎️ 聯繫人電話</label><input type="text" id="qAccPhone" oninput="saveDraft()" placeholder="對帳人員電話"></div>
-        <div class="input-group">
-            <label>💳 結帳方式</label>
-            <select id="qPayMethod" onchange="saveDraft()">
-                <option value="">--未指定--</option>
-                <option value="現金">現金</option>
-                <option value="匯款">匯款</option>
-                <option value="月結開票">月結開票</option>
-                <option value="貨到付款">貨到付款</option>
-            </select>
-        </div>
-        <div class="input-group"><label>🗓️ 結帳周期</label><input type="text" id="qPayCycle" oninput="saveDraft()" placeholder="如: 月結30天, 次月15日"></div>
+        <div class="input-group"><label>💰 對帳窗口</label><input type="text" id="qAccContact" oninput="saveDraft()" placeholder="財務/對帳人姓名"></div>
+        <div class="input-group"><label>☎️ 對帳電話</label><input type="text" id="qAccPhone" oninput="saveDraft()" placeholder="對帳專線/分機"></div>
+        <div class="input-group"><label>💳 結帳方式</label><input type="text" id="qPayMethod" oninput="saveDraft()" placeholder="例如: 匯款, 現金"></div>
+        <div class="input-group"><label>🗓️ 結帳周期</label><input type="text" id="qPayCycle" oninput="saveDraft()" placeholder="例如: 月結30天"></div>
     </div>
 
     <div style="overflow-x: auto;">
@@ -211,7 +203,15 @@
         
         <button id="deleteBtn" class="btn btn-danger" style="font-size: 16px; flex: 1; min-width: 150px; display: none;" onclick="deleteCurrentQuote()">🗑️ 刪除此單</button>
 
+        <!-- 🌟 新增：Telegram 發送推播開關 -->
         <div style="flex: 2; min-width: 200px; display: flex; flex-direction: column; gap: 10px;" id="actionButtons">
+            <div style="background: #fffde7; padding: 12px; border-radius: 8px; border: 1px dashed #fbc02d; text-align: center; margin-bottom: 5px;">
+                <label style="cursor: pointer; font-size: 15px; font-weight: bold; color: #d35400; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <input type="checkbox" id="qNotifyTelegram" onchange="saveDraft()" style="transform: scale(1.3);"> 
+                    ✅ 報價成功後，同步發送 Telegram 成交通知
+                </label>
+            </div>
+            
             <button id="submitBtn" class="btn btn-primary" style="font-size: 18px; padding: 15px 40px; width: 100%;" onclick="saveQuote()">🚀 產生正式 PDF 報價單</button>
             <a id="manualPdfBtn" href="#" target="_blank" class="btn btn-outline" style="display: none; justify-content: center; font-size: 18px; padding: 15px 40px; text-decoration: none;">📄 點此手動開啟 PDF</a>
         </div>
@@ -407,12 +407,11 @@
             contact: document.getElementById('qContact').value,
             phone: document.getElementById('qPhone').value,
             address: document.getElementById('qAddress').value,
-            // 🌟 儲存新增的四個欄位
             accContact: document.getElementById('qAccContact').value,
             accPhone: document.getElementById('qAccPhone').value,
             payMethod: document.getElementById('qPayMethod').value,
             payCycle: document.getElementById('qPayCycle').value,
-            
+            notifyTelegram: document.getElementById('qNotifyTelegram').checked,
             salesName: salesName,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
@@ -452,13 +451,12 @@
             document.getElementById('qContact').value = payload.contact || "";
             document.getElementById('qPhone').value = payload.phone || "";
             document.getElementById('qAddress').value = payload.address || "";
-            
-            // 🌟 讀取草稿時恢復這四個欄位
             document.getElementById('qAccContact').value = payload.accContact || "";
             document.getElementById('qAccPhone').value = payload.accPhone || "";
             document.getElementById('qPayMethod').value = payload.payMethod || "";
             document.getElementById('qPayCycle').value = payload.payCycle || "";
-
+            if (payload.notifyTelegram !== undefined) document.getElementById('qNotifyTelegram').checked = payload.notifyTelegram;
+            
             document.getElementById('qSalesName').value = payload.salesName || "";
             document.getElementById('qLevel').value = payload.level || "E";
             document.getElementById('qTaxType').value = payload.taxType || "未稅";
@@ -554,12 +552,11 @@
             contact: document.getElementById('qContact').value,
             phone: document.getElementById('qPhone').value,
             address: document.getElementById('qAddress').value,
-            // 🌟 確保本地暫存也包含這四個欄位
             accContact: document.getElementById('qAccContact').value,
             accPhone: document.getElementById('qAccPhone').value,
             payMethod: document.getElementById('qPayMethod').value,
             payCycle: document.getElementById('qPayCycle').value,
-
+            notifyTelegram: document.getElementById('qNotifyTelegram').checked,
             salesName: document.getElementById('qSalesName').value,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
@@ -584,13 +581,12 @@
                 if(draft.contact) document.getElementById('qContact').value = draft.contact;
                 if(draft.phone) document.getElementById('qPhone').value = draft.phone;
                 if(draft.address) document.getElementById('qAddress').value = draft.address;
-                
-                // 🌟 恢復這四個欄位
                 if(draft.accContact) document.getElementById('qAccContact').value = draft.accContact;
                 if(draft.accPhone) document.getElementById('qAccPhone').value = draft.accPhone;
                 if(draft.payMethod) document.getElementById('qPayMethod').value = draft.payMethod;
                 if(draft.payCycle) document.getElementById('qPayCycle').value = draft.payCycle;
-
+                if(draft.notifyTelegram !== undefined) document.getElementById('qNotifyTelegram').checked = draft.notifyTelegram;
+                
                 setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
@@ -611,13 +607,12 @@
             document.getElementById('qContact').value = "";
             document.getElementById('qPhone').value = "";
             document.getElementById('qAddress').value = "";
-            
-            // 🌟 清空這四個欄位
             document.getElementById('qAccContact').value = "";
             document.getElementById('qAccPhone').value = "";
             document.getElementById('qPayMethod').value = "";
             document.getElementById('qPayCycle').value = "";
-
+            document.getElementById('qNotifyTelegram').checked = false;
+            
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
             document.getElementById('quoteId').value = ""; 
@@ -1102,13 +1097,11 @@
             contact: document.getElementById('qContact').value.trim(),
             phone: document.getElementById('qPhone').value.trim(),
             address: document.getElementById('qAddress').value.trim(),
-            
-            // 🌟 將四個新欄位傳送給後端做 PDF 排版
             accContact: document.getElementById('qAccContact').value.trim(),
             accPhone: document.getElementById('qAccPhone').value.trim(),
-            payMethod: document.getElementById('qPayMethod').value,
+            payMethod: document.getElementById('qPayMethod').value.trim(),
             payCycle: document.getElementById('qPayCycle').value.trim(),
-
+            notifyTelegram: document.getElementById('qNotifyTelegram').checked,
             salesName: salesName, 
             salesMobile: salesMobiles[salesName] || "02-26802486", 
             taxType: document.getElementById('qTaxType').value,
