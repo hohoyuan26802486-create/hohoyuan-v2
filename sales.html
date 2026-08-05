@@ -151,12 +151,29 @@
         </div>
     </div>
 
+    <!-- 🌟 更新：加入對帳與結帳相關欄位 -->
     <div class="details-panel">
         <div style="width: 100%; color: #888; font-size: 12px; font-weight: bold; margin-bottom: -5px;">📜 正式報價單 PDF 專用資訊 (非必填)</div>
         <div class="input-group"><label>🏢 統一編號</label><input type="text" id="qTaxId" oninput="saveDraft()" placeholder="客戶統編"></div>
-        <div class="input-group"><label>👤 聯絡人</label><input type="text" id="qContact" oninput="saveDraft()" placeholder="收件人姓名"></div>
-        <div class="input-group"><label>📞 聯繫電話</label><input type="text" id="qPhone" oninput="saveDraft()" placeholder="客戶電話"></div>
+        <div class="input-group"><label>👤 收貨聯絡人</label><input type="text" id="qContact" oninput="saveDraft()" placeholder="收貨聯絡人"></div>
+        <div class="input-group"><label>📞 收件電話</label><input type="text" id="qPhone" oninput="saveDraft()" placeholder="收件聯絡電話"></div>
         <div class="input-group" style="flex: 2; min-width: 250px;"><label>🚚 送貨地址</label><input type="text" id="qAddress" oninput="saveDraft()" placeholder="送貨完整地址"></div>
+        
+        <div style="width: 100%; height: 0; border-top: 1px dashed #ddd; margin: 5px 0;"></div> <!-- 分隔線 -->
+        
+        <div class="input-group"><label>🧾 對帳窗口</label><input type="text" id="qAccContact" oninput="saveDraft()" placeholder="財務/對帳人員"></div>
+        <div class="input-group"><label>☎️ 聯繫人電話</label><input type="text" id="qAccPhone" oninput="saveDraft()" placeholder="對帳人員電話"></div>
+        <div class="input-group">
+            <label>💳 結帳方式</label>
+            <select id="qPayMethod" onchange="saveDraft()">
+                <option value="">--未指定--</option>
+                <option value="現金">現金</option>
+                <option value="匯款">匯款</option>
+                <option value="月結開票">月結開票</option>
+                <option value="貨到付款">貨到付款</option>
+            </select>
+        </div>
+        <div class="input-group"><label>🗓️ 結帳周期</label><input type="text" id="qPayCycle" oninput="saveDraft()" placeholder="如: 月結30天, 次月15日"></div>
     </div>
 
     <div style="overflow-x: auto;">
@@ -390,6 +407,12 @@
             contact: document.getElementById('qContact').value,
             phone: document.getElementById('qPhone').value,
             address: document.getElementById('qAddress').value,
+            // 🌟 儲存新增的四個欄位
+            accContact: document.getElementById('qAccContact').value,
+            accPhone: document.getElementById('qAccPhone').value,
+            payMethod: document.getElementById('qPayMethod').value,
+            payCycle: document.getElementById('qPayCycle').value,
+            
             salesName: salesName,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
@@ -429,6 +452,13 @@
             document.getElementById('qContact').value = payload.contact || "";
             document.getElementById('qPhone').value = payload.phone || "";
             document.getElementById('qAddress').value = payload.address || "";
+            
+            // 🌟 讀取草稿時恢復這四個欄位
+            document.getElementById('qAccContact').value = payload.accContact || "";
+            document.getElementById('qAccPhone').value = payload.accPhone || "";
+            document.getElementById('qPayMethod').value = payload.payMethod || "";
+            document.getElementById('qPayCycle').value = payload.payCycle || "";
+
             document.getElementById('qSalesName').value = payload.salesName || "";
             document.getElementById('qLevel').value = payload.level || "E";
             document.getElementById('qTaxType').value = payload.taxType || "未稅";
@@ -467,7 +497,6 @@
         }
     }
 
-    // 🌟 新增功能 5：解除並刪除後端漲價預警
     async function dismissPriceAlert(alertName) {
         if(!confirm(`確定要解除【${alertName}】的漲價預警嗎？\n這會將此預警從雲端 PriceAlerts 表單中永久刪除！`)) return;
 
@@ -479,7 +508,6 @@
             });
             const text = await res.text();
             if(text.startsWith("AlertDeleted")) {
-                // 從前端全域變數移除，這樣畫面就會馬上消失
                 globalAlerts = globalAlerts.filter(a => String(a.name).trim() !== String(alertName).trim());
                 renderCart();
                 alert("✅ 預警已成功從系統中解除！");
@@ -526,6 +554,12 @@
             contact: document.getElementById('qContact').value,
             phone: document.getElementById('qPhone').value,
             address: document.getElementById('qAddress').value,
+            // 🌟 確保本地暫存也包含這四個欄位
+            accContact: document.getElementById('qAccContact').value,
+            accPhone: document.getElementById('qAccPhone').value,
+            payMethod: document.getElementById('qPayMethod').value,
+            payCycle: document.getElementById('qPayCycle').value,
+
             salesName: document.getElementById('qSalesName').value,
             level: document.getElementById('qLevel').value,
             taxType: document.getElementById('qTaxType').value,
@@ -550,6 +584,13 @@
                 if(draft.contact) document.getElementById('qContact').value = draft.contact;
                 if(draft.phone) document.getElementById('qPhone').value = draft.phone;
                 if(draft.address) document.getElementById('qAddress').value = draft.address;
+                
+                // 🌟 恢復這四個欄位
+                if(draft.accContact) document.getElementById('qAccContact').value = draft.accContact;
+                if(draft.accPhone) document.getElementById('qAccPhone').value = draft.accPhone;
+                if(draft.payMethod) document.getElementById('qPayMethod').value = draft.payMethod;
+                if(draft.payCycle) document.getElementById('qPayCycle').value = draft.payCycle;
+
                 setTimeout(() => { if(draft.salesName) document.getElementById('qSalesName').value = draft.salesName; }, 100);
                 if(draft.level) document.getElementById('qLevel').value = draft.level;
                 if(draft.taxType) document.getElementById('qTaxType').value = draft.taxType;
@@ -570,6 +611,13 @@
             document.getElementById('qContact').value = "";
             document.getElementById('qPhone').value = "";
             document.getElementById('qAddress').value = "";
+            
+            // 🌟 清空這四個欄位
+            document.getElementById('qAccContact').value = "";
+            document.getElementById('qAccPhone').value = "";
+            document.getElementById('qPayMethod').value = "";
+            document.getElementById('qPayCycle').value = "";
+
             document.getElementById('calcGrams').value = "";
             document.getElementById('calcResult').value = "";
             document.getElementById('quoteId').value = ""; 
@@ -953,7 +1001,6 @@
                 return false;
             });
 
-            // 🌟 配合功能 5：在紅框下方多出一顆「解除此警報」按鈕
             if(alertMatch) {
                 alertHtml = `
                 <div class="price-alert">🚨 預警：漲 $${alertMatch.increase} (${alertMatch.note})</div>
@@ -1055,6 +1102,13 @@
             contact: document.getElementById('qContact').value.trim(),
             phone: document.getElementById('qPhone').value.trim(),
             address: document.getElementById('qAddress').value.trim(),
+            
+            // 🌟 將四個新欄位傳送給後端做 PDF 排版
+            accContact: document.getElementById('qAccContact').value.trim(),
+            accPhone: document.getElementById('qAccPhone').value.trim(),
+            payMethod: document.getElementById('qPayMethod').value,
+            payCycle: document.getElementById('qPayCycle').value.trim(),
+
             salesName: salesName, 
             salesMobile: salesMobiles[salesName] || "02-26802486", 
             taxType: document.getElementById('qTaxType').value,
