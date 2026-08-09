@@ -329,6 +329,18 @@
             
             if (result === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
+            } else if (result === "Error_MissingIn") {
+                Swal.fire({
+                    icon: 'error',
+                    title: '未偵測到上班紀錄',
+                    text: '系統找不到您今天的上班打卡紀錄，已發送通知給幹部。請尋找主管會同人事進行補登作業！'
+                });
+            } else if (result === "Error_MissingOut") {
+                Swal.fire({
+                    icon: 'error',
+                    title: '前次下班未打卡',
+                    text: '系統發現您前一次出勤忘記打下班卡，已發送通知給幹部。請尋找主管會同人事進行補登作業！'
+                });
             } else if (result === "Duplicate") { 
                 Swal.fire('注意', `${name}，您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); 
             } else if (result === "Success") {
@@ -349,7 +361,6 @@
         });
     }
 
-    // 🚀 新增：把特准放行的勾選狀態送給後台
     async function submitLeave() {
         const name = document.getElementById('lvName').value;
         const type = document.getElementById('lvType').value;
@@ -358,12 +369,11 @@
         const reason = document.getElementById('lvReason').value;
         const agent = document.getElementById('lvAgent').value;
         const fileInput = document.getElementById('lvFile');
-        const isOverride = document.getElementById('managerOverride').checked; // 抓取打勾狀態
+        const isOverride = document.getElementById('managerOverride').checked; 
 
         if (!start || !end) return Swal.fire('提示', '請選擇開始與結束時間！', 'warning');
         showLoading("假單上傳中...");
         
-        // 將 managerOverride 加進送出的資料包中
         const p = { action: "write", sheetName: "leave", name: name, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "", managerOverride: isOverride };
         
         try {
@@ -374,7 +384,6 @@
             const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
             
-            // 如果遇到系統阻擋，跳出警告
             if (text.includes("系統阻擋")) {
                 Swal.fire('休假人數達上限', text, 'error');
             } else if (text === "Success") { 
