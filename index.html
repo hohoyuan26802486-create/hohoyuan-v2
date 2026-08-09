@@ -327,11 +327,16 @@
             });
             const result = await response.text();
             
-            if (result === "Duplicate") { Swal.fire('注意', `${name}，您剛剛已經打過卡了喔！請勿在5分鐘內連續重複點擊！`, 'warning'); } 
-            else if (result === "Success") {
+            if (result === "Error_TooFast") {
+                Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
+            } else if (result === "Duplicate") { 
+                Swal.fire('注意', `${name}，您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); 
+            } else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
-            } else { Swal.fire('失敗', result, 'error'); }
+            } else { 
+                Swal.fire('失敗', result, 'error'); 
+            }
         } catch (e) { Swal.fire('錯誤', '網路連線異常，請稍後再試！', 'error'); } 
         finally { hideLoading(); }
     }
