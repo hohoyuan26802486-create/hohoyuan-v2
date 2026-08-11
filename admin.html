@@ -50,8 +50,9 @@
 <div class="container top-nav">
     <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統</div>
     <div class="nav-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <!-- 💡 在下方下拉選單中加入了 採購部主管 的選項 -->
         <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:10px; border-radius:6px; outline:none; font-size:14px; cursor:pointer;">
-            <option value="業務部主管">業務部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="會計部主管">會計部主管</option><option value="打單行政部主管">打單行政部主管</option><option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>
+            <option value="業務部主管">業務部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="會計部主管">會計部主管</option><option value="打單行政部主管">打單行政部主管</option><option value="採購部主管">採購部主管</option><option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>
         </select>
         <button id="btnChangePwd" class="btn btn-edit" style="display:none; color:var(--danger) !important; font-weight:bold; border: 1px solid var(--danger);" onclick="changeAdminPassword()">🔑 更換專屬密碼</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
@@ -446,11 +447,11 @@
             document.getElementById('empStatus').value = emp[19] || "在職";
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             if (emp[3] === "*** LOCKED ***") { 
-                document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定"; 
-                document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true; document.getElementById('bonus').placeholder = "權限鎖定";
+                document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true document.getElementById('empSalary').placeholder = "權限鎖定"; 
+                document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true document.getElementById('bonus').placeholder = "權限鎖定";
             } else { 
-                document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = ""; 
-                document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = ""; 
+                document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false document.getElementById('empSalary').placeholder = ""; 
+                document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false document.getElementById('bonus').placeholder = ""; 
             }
             ['laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone'].forEach((id, idx) => document.getElementById(id).value = emp[7+idx] || (idx>2?"":"0")); document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; document.getElementById('idNumber').value = emp[17] || ""; 
         } 
@@ -459,11 +460,10 @@
     function quickEdit(n, d) { document.getElementById('filterDept').value = d; updateEmpDropdown(); document.getElementById('filterEmp').value = n; loadEmpDetails(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     function clearForm() { ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); document.getElementById('payType').value = "月薪"; document.getElementById('dutyType').value = "一般員工"; document.getElementById('empStatus').value = "在職"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; }
     
-    // 🚀 智慧型防呆封裝模組：同時發送雙重參數，100% 消除未定義錯誤
     async function saveEmployee() { 
         const p = { action: "saveEmployee", key: getCurrentKey() }; 
         p.name = document.getElementById('empName').value;
-        p.empName = document.getElementById('empName').value; // 🚀 雙重安全外殼發送
+        p.empName = document.getElementById('empName').value; 
         p.dept = document.getElementById('empDept').value;
         p.payType = document.getElementById('payType').value;
         p.salary = document.getElementById('empSalary').value;
