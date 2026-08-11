@@ -50,9 +50,9 @@
 <div class="container top-nav">
     <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統</div>
     <div class="nav-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <!-- 💡 在下方下拉選單中加入了 採購部主管 的選項 -->
+        <!-- 💡 這裡先放一個預設選項，稍後會被自動連動的程式碼覆蓋 -->
         <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:10px; border-radius:6px; outline:none; font-size:14px; cursor:pointer;">
-            <option value="業務部主管">業務部主管</option><option value="生產部主管">生產部主管</option><option value="運輸部主管">運輸部主管</option><option value="倉儲部主管">倉儲部主管</option><option value="會計部主管">會計部主管</option><option value="打單行政部主管">打單行政部主管</option><option value="採購部主管">採購部主管</option><option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>
+            <option value="人事部">資料載入中...</option>
         </select>
         <button id="btnChangePwd" class="btn btn-edit" style="display:none; color:var(--danger) !important; font-weight:bold; border: 1px solid var(--danger);" onclick="changeAdminPassword()">🔑 更換專屬密碼</button>
         <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
@@ -231,9 +231,23 @@
 
     function switchLvTab(tab) { currentLvTab = tab; document.querySelectorAll('#leaveBox .tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('lvTab-' + tab).classList.add('active'); renderLeave(); }
 
+    // 💡 已經替換為全自動連動的下拉選單邏輯
     function renderDynamicDropdowns() {
         const depts = db.departments || [];
-        const role = document.getElementById('adminRole').value;
+        const roleSelect = document.getElementById('adminRole');
+        const currentRole = roleSelect.value;
+
+        let roleHtml = depts.map(d => `<option value="${d}主管">${d}主管</option>`).join('');
+        roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>';
+        roleSelect.innerHTML = roleHtml;
+
+        if (roleHtml.includes(`"${currentRole}"`)) {
+            roleSelect.value = currentRole;
+        } else {
+            roleSelect.value = depts.length > 0 ? `${depts[0]}主管` : "人事部";
+        }
+
+        const role = roleSelect.value; 
 
         document.getElementById('leaveDeptFilter').innerHTML = '<option value="">顯示全公司假單</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('filterDept').innerHTML = '<option value="">顯示全公司...</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -241,6 +255,7 @@
 
         const schedSelect = document.getElementById('schedDept');
         const attSelect = document.getElementById('attDept');
+        
         if (!role.includes('主管') || role.includes('人事') || role.includes('財務') || role === '副總') {
             schedSelect.innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
             attSelect.innerHTML = '<option value="">全部門</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -436,6 +451,7 @@
     function renderStaff(filterDept = "") { if(!db.employees) return; let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); if (filterDept) staffData = staffData.filter(r => r[1] === filterDept); document.getElementById('staffBody').innerHTML = staffData.map(r => { let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`; let statusMark = r[19] === "已離職" ? `<br><span style="color:#d93025; font-size:12px; font-weight:bold;">(已離職)</span>` : ''; return `<tr><td><b>${r[0] || ""}</b>${statusMark}</td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><b style="color:#1a73e8;">${r[5] || 0} 天</b></td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`; }).join(''); }
     function updateEmpDropdown() { const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp'); empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept); if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); } }
     
+    // 💡 修正了先前遺漏分號的問題，現在能夠順利執行
     function loadEmpDetails() { 
         const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
@@ -447,11 +463,11 @@
             document.getElementById('empStatus').value = emp[19] || "在職";
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             if (emp[3] === "*** LOCKED ***") { 
-                document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true document.getElementById('empSalary').placeholder = "權限鎖定"; 
-                document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true document.getElementById('bonus').placeholder = "權限鎖定";
+                document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定"; 
+                document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true; document.getElementById('bonus').placeholder = "權限鎖定";
             } else { 
-                document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false document.getElementById('empSalary').placeholder = ""; 
-                document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false document.getElementById('bonus').placeholder = ""; 
+                document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = ""; 
+                document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = ""; 
             }
             ['laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone'].forEach((id, idx) => document.getElementById(id).value = emp[7+idx] || (idx>2?"":"0")); document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; document.getElementById('idNumber').value = emp[17] || ""; 
         } 
@@ -502,8 +518,9 @@
     async function generatePDF() { const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份"); showLoading(`生成中...`); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "generatePDF", targetMonth: m, key: getCurrentKey() }) }); if (await res.text() !== "Success") throw new Error("產出失敗"); alert("✅ PDF 產生完畢！"); } catch (e) { alert("❌ 錯誤"); } finally { hideLoading(); } }
     function exportExcel() { const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份"); const headers = db.Salary_Summary[0]; const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(m)); if (rows.length === 0) return alert("⚠️ 尚未結算！"); const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`); }
 
-    document.getElementById('adminRole').value = "業務部主管";
-    switchNavTab('leaveBox');
+    // 💡 我們不寫死第一項為業務部主管，讓系統隨資料動態跳轉
+    // switchNavTab('leaveBox');
+    // fetchData() 將會由 HTML body 載入時觸發或保持現狀
     fetchData();
 </script>
 </body>
