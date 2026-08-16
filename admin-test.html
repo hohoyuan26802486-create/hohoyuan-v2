@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V48.20 (智慧整合版)</title>
-    <!-- 引入強大的 SheetJS 套件，用來在前端直接解析 Excel -->
+    <title>禾禾園 - 專業管理後台 (測試環境)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #f1f3f4; color: var(--text-main); padding: 20px; margin: 0; }
-        .container { max-width: 1350px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 1px 3px rgba(60,64,67,0.3); margin-bottom: 25px; }
+        /* 測試環境特別加上橘色邊框提醒，避免跟正式版搞混 */
+        .container { max-width: 1350px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 1px 3px rgba(60,64,67,0.3); margin-bottom: 25px; border: 2px dashed #f4b400; }
         h1 { color: var(--text-main); font-size: 20px; font-weight: 500; margin-bottom: 15px; border-left: 5px solid var(--primary); padding-left: 15px; display: flex; justify-content: space-between; align-items: center;}
         
-        .top-nav { background: #202124; color: white; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; gap: 15px; }
+        .top-nav { background: #202124; color: white; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; gap: 15px; border: none; }
         .tab-container { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; flex-wrap: wrap;}
         .tab-btn { padding: 8px 16px; border: none; background: none; font-size: 15px; font-weight: bold; color: var(--text-sub); cursor: pointer; border-radius: 8px; transition: 0.2s; }
         .tab-btn.active { background: #e8f0fe; color: var(--primary); }
@@ -49,9 +49,8 @@
 <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:#1a73e8;">處理中，請稍候...</div></div>
 
 <div class="container top-nav">
-    <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統</div>
+    <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統 <span style="color:#f4b400;">(測試環境)</span></div>
     <div class="nav-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-        <!-- 💡 這裡會由程式碼全自動載入所有部門主管，免手動更新 -->
         <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:10px; border-radius:6px; outline:none; font-size:14px; cursor:pointer;">
             <option value="人事部">資料載入中...</option>
         </select>
@@ -60,7 +59,7 @@
     </div>
 </div>
 
-<div class="container">
+<div class="container" style="border: none; padding: 0; box-shadow: none; margin-bottom: 15px;">
     <div class="tab-container" style="border-bottom:none; margin-bottom:0;">
         <button id="tab-leave" class="tab-btn active" onclick="switchNavTab('leaveBox')">📝 假單審核中心</button>
         <button id="tab-schedule" class="tab-btn" onclick="switchNavTab('scheduleBox')">📅 部門排班表</button>
@@ -71,7 +70,6 @@
     </div>
 </div>
 
-<!-- (其他分頁介面略) -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -190,7 +188,6 @@
             </div>
         </div>
         <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-            <!-- 💡 新增：業績表一鍵匯入按鈕與隱藏的選擇器 -->
             <input type="file" id="perfExcelUpload" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelUpload(event)">
             <button class="btn btn-warning" style="height: 45px; padding: 0 25px; color:#333 !important;" onclick="triggerExcelUpload()">📤 匯入司機業績表</button>
             <button class="btn btn-primary" style="height: 45px; padding: 0 25px;" onclick="calculateSalary()">⚙️ 1. 執行薪資結算</button>
@@ -202,7 +199,9 @@
 </div>
 
 <script>
-    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
+    // 💡 已經替換為您的測試環境專屬 URL！
+    const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzaPP6NMHAGtKKTiIUYysctkvoLIxK7gcbv6mOzui70PzSmEShACRhfebjg-NLmC34O/exec";
+    
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     
     let db = {}; let currentLvTab = 'pending'; let rawAttData = [];
@@ -309,20 +308,13 @@
         } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
-    // 🚀 【全新升級】：前端一鍵匯入司機業績並自動解析
-    function triggerExcelUpload() {
-        document.getElementById('perfExcelUpload').click();
-    }
+    function triggerExcelUpload() { document.getElementById('perfExcelUpload').click(); }
 
     function handleExcelUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
         const month = document.getElementById('salaryMonth').value;
-        if (!month) {
-            alert("請先選擇要匯入的結算月份！");
-            event.target.value = "";
-            return;
-        }
+        if (!month) { alert("請先選擇要匯入的結算月份！"); event.target.value = ""; return; }
 
         showLoading("解析業績表中...");
         const reader = new FileReader();
@@ -330,104 +322,57 @@
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
-                // 抓取第一個工作表 "司機業績總表"
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                // 轉為 2D 陣列
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
 
                 let perfData = [];
-                // 從第 2 行 (index 1) 開始掃描
                 for (let i = 1; i < jsonData.length; i++) {
                     const row = jsonData[i];
                     if (!row || row.length < 2) continue;
                     
-                    let rawName = String(row[1] || "").trim(); // 第2欄: 司機送貨/調貨總表
+                    let rawName = String(row[1] || "").trim();
                     if (!rawName || rawName === "NaN" || rawName.includes("總計") || rawName === "司機送貨/調貨總表") continue;
-                    
-                    // 自動過濾名字 (例如 "06.王永駿" -> "王永駿")
                     let cleanName = rawName.replace(/^[0-9]+\./, '').trim();
                     
-                    let deliveryAmt = Number(row[2]) || 0; // 送貨金額
-                    let transferAmt = Number(row[3]) || 0; // 調貨金額
-                    let totalAmt = Number(row[4]) || 0;    // 總金額
+                    let deliveryAmt = Number(row[2]) || 0; 
+                    let transferAmt = Number(row[3]) || 0; 
+                    let totalAmt = Number(row[4]) || 0;    
                     
-                    // 獎金計算: (總金額 - 250萬) * 1% ，低於0則為0
                     let deliveryBonus = 0;
-                    if (totalAmt > 2500000) {
-                        deliveryBonus = Math.floor((totalAmt - 2500000) * 0.01);
-                    }
+                    if (totalAmt > 2500000) deliveryBonus = Math.floor((totalAmt - 2500000) * 0.01);
                     
-                    let yiBaoKang = Number(row[9]) || 0; // 益寶康代送
-                    let zhuJian = Number(row[10]) || 0;  // 築間代送
+                    let yiBaoKang = Number(row[9]) || 0; 
+                    let zhuJian = Number(row[10]) || 0;  
                     
                     let totalBonus = deliveryBonus + yiBaoKang + zhuJian;
                     
                     if (totalAmt > 0 || totalBonus > 0) {
-                        perfData.push({
-                            name: cleanName,
-                            delivery: deliveryAmt,
-                            transfer: transferAmt,
-                            totalBonus: totalBonus
-                        });
+                        perfData.push({ name: cleanName, delivery: deliveryAmt, transfer: transferAmt, totalBonus: totalBonus });
                     }
                 }
 
-                if (perfData.length === 0) {
-                    alert("解析不到任何有效的司機業績資料，請確認檔案格式！");
-                    hideLoading();
-                    return;
-                }
-
-                // 送往後端
+                if (perfData.length === 0) { alert("解析不到任何有效的司機業績資料，請確認檔案格式！"); hideLoading(); return; }
                 uploadPerfToBackend(month, perfData);
-                
-            } catch (err) {
-                console.error(err);
-                alert("解析失敗，請確認檔案格式是否正確！");
-                hideLoading();
-            } finally {
-                event.target.value = ""; // 重置 input
-            }
+            } catch (err) { console.error(err); alert("解析失敗，請確認檔案格式是否正確！"); hideLoading(); } finally { event.target.value = ""; }
         };
         reader.readAsArrayBuffer(file);
     }
 
     async function uploadPerfToBackend(month, perfData) {
         try {
-            const res = await fetch(CONFIG_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "uploadDriverPerf",
-                    key: getCurrentKey(),
-                    month: month,
-                    perfData: perfData
-                })
-            });
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData }) });
             const result = await res.text();
-            if (result === "Success") {
-                alert(`✅ ${month} 月司機業績已成功匯入！\n\n(各項獎金已自動加總完畢，系統將於您按下「執行薪資結算」時，自動併入司機本月薪資中)`);
-            } else {
-                alert("匯入失敗：" + result);
-            }
-        } catch (e) {
-            alert("網路連線異常，匯入失敗");
-        } finally {
-            hideLoading();
-        }
+            if (result === "Success") alert(`✅ ${month} 月司機業績已成功匯入！\n\n(各項獎金已自動加總完畢，系統將於您按下「執行薪資結算」時，自動併入司機本月薪資中)`);
+            else alert("匯入失敗：" + result);
+        } catch (e) { alert("網路連線異常，匯入失敗"); } finally { hideLoading(); }
     }
 
     function renderDeptTable() {
         const tbody = document.getElementById('deptTableBody');
         const depts = db.departments || [];
         tbody.innerHTML = depts.map(d => {
-            return `<tr>
-                <td><b style="font-size:16px; color:#333;">${d}</b></td>
-                <td>
-                    <button class="btn btn-edit" onclick="renameDeptBackend('${d}')">✏️ 更改名字</button>
-                    <button class="btn btn-danger" style="margin-left:8px;" onclick="deleteDeptBackend('${d}')">🗑️ 刪除部門</button>
-                </td>
-            </tr>`;
+            return `<tr><td><b style="font-size:16px; color:#333;">${d}</b></td><td><button class="btn btn-edit" onclick="renameDeptBackend('${d}')">✏️ 更改名字</button><button class="btn btn-danger" style="margin-left:8px;" onclick="deleteDeptBackend('${d}')">🗑️ 刪除部門</button></td></tr>`;
         }).join('');
     }
 
@@ -491,7 +436,6 @@
         } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
     }
 
-    // 🚀 升級：前端報表也改成智慧時間配對邏輯，解決異常標籤誤判
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody'); 
         if (!rawAttData || rawAttData.length <= 1) { 
@@ -508,46 +452,29 @@
         // 依照時間由舊到新排序，方便進行配對檢查
         records.sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
 
-        // 建立時間軸配對狀態
         let errorRecords = new Set();
         let empPunchState = {}; 
         
         records.forEach(r => {
-            let empName = r[1];
-            let type = r[3];
-            let timeStr = r[0]; 
-            
+            let empName = r[1]; let type = r[3]; let timeStr = r[0]; 
             if (!empPunchState[empName]) empPunchState[empName] = null;
-            
             if (type.includes('上班')) {
-                if (empPunchState[empName]) {
-                    // 連續兩次上班，上一筆判定異常
-                    errorRecords.add(empPunchState[empName]);
-                }
+                if (empPunchState[empName]) errorRecords.add(empPunchState[empName]);
                 empPunchState[empName] = timeStr; 
             } else if (type.includes('下班')) {
-                if (!empPunchState[empName]) {
-                    // 沒有上班卡直接下班，這筆異常
-                    errorRecords.add(timeStr);
-                } else {
-                    // 成功配對，清除狀態
-                    empPunchState[empName] = null;
-                }
+                if (!empPunchState[empName]) errorRecords.add(timeStr);
+                else empPunchState[empName] = null;
             }
         });
         
-        // 超過16小時未下班視為異常
         let now = new Date().getTime();
         for (let emp in empPunchState) {
             if (empPunchState[emp]) {
                 let pTime = new Date(empPunchState[emp]).getTime();
-                if (now - pTime > 16 * 3600000) { 
-                    errorRecords.add(empPunchState[emp]);
-                }
+                if (now - pTime > 16 * 3600000) errorRecords.add(empPunchState[emp]);
             }
         }
 
-        // 把 records 反轉回由新到舊，用於畫面顯示
         records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 
         tbody.innerHTML = records.map(r => {
@@ -555,12 +482,9 @@
             let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
             let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; 
             let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
-            
             let isError = errorRecords.has(r[0]);
             let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
-            
             let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
-
             return `<tr><td>${timeStr}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td><td>${r[4]}</td><td>${loc}</td><td>${delBtn}</td></tr>`;
         }).join('');
     }
