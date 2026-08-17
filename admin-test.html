@@ -198,7 +198,7 @@
 </div>
 
 <script>
-    // 💡 測試區專屬的 API 網址
+    // 💡 測試區專屬 API 網址已綁定
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbzaPP6NMHAGtKKTiIUYysctkvoLIxK7gcbv6mOzui70PzSmEShACRhfebjg-NLmC34O/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -243,14 +243,9 @@
         roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>';
         roleSelect.innerHTML = roleHtml;
 
-        if (roleHtml.includes(`"${currentRole}"`)) {
-            roleSelect.value = currentRole;
-        } else {
-            roleSelect.value = depts.length > 0 ? `${depts[0]}主管` : "人事部";
-        }
+        if (roleHtml.includes(`"${currentRole}"`)) { roleSelect.value = currentRole; } else { roleSelect.value = depts.length > 0 ? `${depts[0]}主管` : "人事部"; }
 
         const role = roleSelect.value; 
-
         document.getElementById('leaveDeptFilter').innerHTML = '<option value="">顯示全公司假單</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('filterDept').innerHTML = '<option value="">顯示全公司...</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
         document.getElementById('empDept').innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -289,7 +284,6 @@
         document.getElementById('tab-hr').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         document.getElementById('tab-dept').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         document.getElementById('tab-salary').style.display = (r === '財務部' || r === '副總') ? 'inline-block' : 'none';
-        
         switchNavTab('leaveBox'); fetchData();
     }
 
@@ -307,19 +301,12 @@
         } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
     }
 
-    function triggerExcelUpload() {
-        document.getElementById('perfExcelUpload').click();
-    }
+    function triggerExcelUpload() { document.getElementById('perfExcelUpload').click(); }
 
     function handleExcelUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const file = event.target.files[0]; if (!file) return;
         const month = document.getElementById('salaryMonth').value;
-        if (!month) {
-            alert("請先選擇要匯入的結算月份！");
-            event.target.value = "";
-            return;
-        }
+        if (!month) { alert("請先選擇要匯入的結算月份！"); event.target.value = ""; return; }
 
         showLoading("解析業績表中...");
         const reader = new FileReader();
@@ -333,216 +320,104 @@
 
                 let perfData = [];
                 for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i];
-                    if (!row || row.length < 2) continue;
-                    
+                    const row = jsonData[i]; if (!row || row.length < 2) continue;
                     let rawName = String(row[1] || "").trim();
                     if (!rawName || rawName === "NaN" || rawName.includes("總計") || rawName === "司機送貨/調貨總表") continue;
                     let cleanName = rawName.replace(/^[0-9]+\./, '').trim();
                     
-                    let deliveryAmt = Number(row[2]) || 0; 
-                    let transferAmt = Number(row[3]) || 0; 
-                    let totalAmt = Number(row[4]) || 0;    
+                    let deliveryAmt = Number(row[2]) || 0; let transferAmt = Number(row[3]) || 0; let totalAmt = Number(row[4]) || 0;    
+                    let deliveryBonus = 0; if (totalAmt > 2500000) deliveryBonus = Math.floor((totalAmt - 2500000) * 0.01);
                     
-                    let deliveryBonus = 0;
-                    if (totalAmt > 2500000) {
-                        deliveryBonus = Math.floor((totalAmt - 2500000) * 0.01);
-                    }
-                    
-                    let yiBaoKang = Number(row[9]) || 0; 
-                    let zhuJian = Number(row[10]) || 0;  
-                    let agentBonus = yiBaoKang + zhuJian;
+                    let yiBaoKang = Number(row[9]) || 0; let zhuJian = Number(row[10]) || 0; let agentBonus = yiBaoKang + zhuJian;
                     
                     if (totalAmt > 0 || deliveryBonus > 0 || agentBonus > 0) {
-                        perfData.push({
-                            name: cleanName,
-                            delivery: deliveryAmt,
-                            transfer: transferAmt,
-                            deliveryBonus: deliveryBonus,
-                            agentBonus: agentBonus
-                        });
+                        perfData.push({ name: cleanName, delivery: deliveryAmt, transfer: transferAmt, deliveryBonus: deliveryBonus, agentBonus: agentBonus });
                     }
                 }
 
-                if (perfData.length === 0) {
-                    alert("解析不到任何有效的司機業績資料，請確認檔案格式！");
-                    hideLoading();
-                    return;
-                }
-
+                if (perfData.length === 0) { alert("解析不到任何有效的司機業績資料，請確認檔案格式！"); hideLoading(); return; }
                 uploadPerfToBackend(month, perfData);
-                
-            } catch (err) {
-                console.error(err);
-                alert("解析失敗，請確認檔案格式是否正確！");
-                hideLoading();
-            } finally {
-                event.target.value = ""; 
-            }
+            } catch (err) { alert("解析失敗，請確認檔案格式是否正確！"); hideLoading(); } finally { event.target.value = ""; }
         };
         reader.readAsArrayBuffer(file);
     }
 
     async function uploadPerfToBackend(month, perfData) {
         try {
-            const res = await fetch(CONFIG_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: "uploadDriverPerf",
-                    key: getCurrentKey(),
-                    month: month,
-                    perfData: perfData
-                })
-            });
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData }) });
             const result = await res.text();
-            if (result === "Success") {
-                alert(`✅ ${month} 月司機業績已成功匯入！\n\n(「送貨達標」與「代送費」已獨立結算，將於您按下「執行薪資結算」時同步併入薪資單)`);
-            } else {
-                alert("匯入失敗：" + result);
-            }
-        } catch (e) {
-            alert("網路連線異常，匯入失敗");
-        } finally {
-            hideLoading();
-        }
+            if (result === "Success") alert(`✅ ${month} 月司機業績已成功匯入！\n\n(「送貨達標」與「代送費」已獨立結算，將於您按下「執行薪資結算」時同步併入薪資單)`);
+            else alert("匯入失敗：" + result);
+        } catch (e) { alert("網路連線異常，匯入失敗"); } finally { hideLoading(); }
     }
 
     function renderDeptTable() {
-        const tbody = document.getElementById('deptTableBody');
-        const depts = db.departments || [];
-        tbody.innerHTML = depts.map(d => {
-            return `<tr>
-                <td><b style="font-size:16px; color:#333;">${d}</b></td>
-                <td>
-                    <button class="btn btn-edit" onclick="renameDeptBackend('${d}')">✏️ 更改名字</button>
-                    <button class="btn btn-danger" style="margin-left:8px;" onclick="deleteDeptBackend('${d}')">🗑️ 刪除部門</button>
-                </td>
-            </tr>`;
-        }).join('');
+        const tbody = document.getElementById('deptTableBody'); const depts = db.departments || [];
+        tbody.innerHTML = depts.map(d => { return `<tr><td><b style="font-size:16px; color:#333;">${d}</b></td><td><button class="btn btn-edit" onclick="renameDeptBackend('${d}')">✏️ 更改名字</button><button class="btn btn-danger" style="margin-left:8px;" onclick="deleteDeptBackend('${d}')">🗑️ 刪除部門</button></td></tr>`; }).join('');
     }
 
     async function addDeptBackend() {
-        const name = document.getElementById('newDeptInput').value.trim();
-        if(!name) return alert("請輸入部門名稱！");
-        showLoading("正在建立新部門...");
-        try {
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "addDepartment", key: getCurrentKey(), deptName: name }) });
-            if (await res.text() === "Success") { alert("✅ 部門建立成功！所有選單已全自動同步。"); document.getElementById('newDeptInput').value = ""; fetchData(); }
-        } catch(e) { alert("連線發生錯誤"); } finally { hideLoading(); }
+        const name = document.getElementById('newDeptInput').value.trim(); if(!name) return alert("請輸入部門名稱！"); showLoading("正在建立新部門...");
+        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "addDepartment", key: getCurrentKey(), deptName: name }) }); if (await res.text() === "Success") { alert("✅ 部門建立成功！所有選單已全自動同步。"); document.getElementById('newDeptInput').value = ""; fetchData(); } } catch(e) { alert("連線發生錯誤"); } finally { hideLoading(); }
     }
 
     async function renameDeptBackend(oldName) {
-        const newName = prompt(`您正在將 [${oldName}] 進行更名。\n請輸入新的部門名稱：`, oldName);
-        if(!newName || newName.trim() === oldName) return;
-        showLoading("正在更改部門並自動搬移員工檔案...");
-        try {
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "renameDepartment", key: getCurrentKey(), oldName: oldName, newName: newName.trim() }) });
-            if (await res.text() === "Success") { alert("✅ 部門更名成功！原部門所有同仁已全自動打包搬移至新部門。"); fetchData(); }
-        } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
+        const newName = prompt(`您正在將 [${oldName}] 進行更名。\n請輸入新的部門名稱：`, oldName); if(!newName || newName.trim() === oldName) return; showLoading("正在更改部門並自動搬移員工檔案...");
+        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "renameDepartment", key: getCurrentKey(), oldName: oldName, newName: newName.trim() }) }); if (await res.text() === "Success") { alert("✅ 部門更名成功！原部門所有同仁已全自動打包搬移至新部門。"); fetchData(); } } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
 
     async function deleteDeptBackend(name) {
-        if(!confirm(`⚠️ 確定要刪除 [${name}] 嗎？\n請確保該部門內目前已無任何員工！`)) return;
-        showLoading("正在刪除部門...");
-        try {
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteDepartment", key: getCurrentKey(), deptName: name }) });
-            if (await res.text() === "Success") { alert("✅ 部門已成功移除。"); }
-        } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
+        if(!confirm(`⚠️ 確定要刪除 [${name}] 嗎？\n請確保該部門內目前已無任何員工！`)) return; showLoading("正在刪除部門...");
+        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteDepartment", key: getCurrentKey(), deptName: name }) }); if (await res.text() === "Success") { alert("✅ 部門已成功移除。"); } } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
 
     function updateAttEmpDropdown() {
-        const dept = document.getElementById('attDept').value; const empSelect = document.getElementById('attEmp');
-        empSelect.innerHTML = '<option value="">全部員工</option>';
-        if (db.employees) {
-            let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); if (dept) emps = emps.filter(r => r[1] === dept);
-            emps.forEach(r => { let statusMark = r[19] === "已離職" ? " [已離職]" : ""; empSelect.innerHTML += `<option value="${r[0]}">${r[0]}${statusMark}</option>`; });
-        }
+        const dept = document.getElementById('attDept').value; const empSelect = document.getElementById('attEmp'); empSelect.innerHTML = '<option value="">全部員工</option>';
+        if (db.employees) { let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); if (dept) emps = emps.filter(r => r[1] === dept); emps.forEach(r => { let statusMark = r[19] === "已離職" ? " [已離職]" : ""; empSelect.innerHTML += `<option value="${r[0]}">${r[0]}${statusMark}</option>`; }); }
     }
     
     function updatePunchEmpDropdown() {
-        const empSelect = document.getElementById('punchEmp'); const retroSelect = document.getElementById('retroEmp');
-        empSelect.innerHTML = ''; retroSelect.innerHTML = ''; const role = document.getElementById('adminRole').value; const myDept = role.includes('主管') ? role.replace('主管', '') : '';
-        if (db.employees) {
-            let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') emps = emps.filter(r => r[1] === myDept);
-            emps.forEach(r => { let statusMark = r[19] === "已離職" ? " [已離職]" : ""; let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})${statusMark}</option>`; empSelect.innerHTML += opt; retroSelect.innerHTML += opt; });
-        }
+        const empSelect = document.getElementById('punchEmp'); const retroSelect = document.getElementById('retroEmp'); empSelect.innerHTML = ''; retroSelect.innerHTML = ''; const role = document.getElementById('adminRole').value; const myDept = role.includes('主管') ? role.replace('主管', '') : '';
+        if (db.employees) { let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') emps = emps.filter(r => r[1] === myDept); emps.forEach(r => { let statusMark = r[19] === "已離職" ? " [已離職]" : ""; let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})${statusMark}</option>`; empSelect.innerHTML += opt; retroSelect.innerHTML += opt; }); }
     }
 
     function togglePunchPanel() { const panel1 = document.getElementById('punchPanel'); const panel2 = document.getElementById('retroLeavePanel'); let isHidden = panel1.style.display === 'none'; panel1.style.display = isHidden ? 'flex' : 'none'; panel2.style.display = isHidden ? 'flex' : 'none'; if(isHidden) updatePunchEmpDropdown(); }
     
     async function loadAttendanceRecords() { 
-        const month = document.getElementById('attMonth').value; 
-        if (!month) return alert("請選擇月份"); 
-        showLoading("正在撈取出勤紀錄..."); 
-        try { 
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) }); 
-            rawAttData = await res.json(); 
-            renderAttendanceTable(); 
-        } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
+        const month = document.getElementById('attMonth').value; if (!month) return alert("請選擇月份"); showLoading("正在撈取出勤紀錄..."); 
+        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) }); rawAttData = await res.json(); renderAttendanceTable(); } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
     }
 
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody'); 
-        if (!rawAttData || rawAttData.length <= 1) { 
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; 
-            return; 
-        }
+        if (!rawAttData || rawAttData.length <= 1) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; return; }
         
-        const filterDept = document.getElementById('attDept').value; 
-        const filterEmp = document.getElementById('attEmp').value;
+        const filterDept = document.getElementById('attDept').value; const filterEmp = document.getElementById('attEmp').value;
         let records = rawAttData.slice(1); 
         if (filterDept) records = records.filter(r => r[2] === filterDept); 
         if (filterEmp) records = records.filter(r => r[1] === filterEmp);
         
         records.sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
 
-        let errorRecords = new Set();
-        let empPunchState = {}; 
+        let errorRecords = new Set(); let empPunchState = {}; 
         
         records.forEach(r => {
-            let empName = r[1];
-            let type = r[3];
-            let timeStr = r[0]; 
-            
+            let empName = r[1]; let type = r[3]; let timeStr = r[0]; 
             if (!empPunchState[empName]) empPunchState[empName] = null;
-            
-            if (type.includes('上班')) {
-                if (empPunchState[empName]) {
-                    errorRecords.add(empPunchState[empName]);
-                }
-                empPunchState[empName] = timeStr; 
-            } else if (type.includes('下班')) {
-                if (!empPunchState[empName]) {
-                    errorRecords.add(timeStr);
-                } else {
-                    empPunchState[empName] = null;
-                }
-            }
+            if (type.includes('上班')) { if (empPunchState[empName]) errorRecords.add(empPunchState[empName]); empPunchState[empName] = timeStr; } 
+            else if (type.includes('下班')) { if (!empPunchState[empName]) errorRecords.add(timeStr); else empPunchState[empName] = null; }
         });
         
         let now = new Date().getTime();
-        for (let emp in empPunchState) {
-            if (empPunchState[emp]) {
-                let pTime = new Date(empPunchState[emp]).getTime();
-                if (now - pTime > 16 * 3600000) { 
-                    errorRecords.add(empPunchState[emp]);
-                }
-            }
-        }
+        for (let emp in empPunchState) { if (empPunchState[emp]) { let pTime = new Date(empPunchState[emp]).getTime(); if (now - pTime > 16 * 3600000) errorRecords.add(empPunchState[emp]); } }
 
         records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
 
         tbody.innerHTML = records.map(r => {
-            let dObj = new Date(r[0]); 
-            let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-            let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; 
-            let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
-            
-            let isError = errorRecords.has(r[0]);
-            let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
-            
+            let dObj = new Date(r[0]); let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+            let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
+            let isError = errorRecords.has(r[0]); let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
             let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
-
             return `<tr><td>${timeStr}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td><td>${r[4]}</td><td>${loc}</td><td>${delBtn}</td></tr>`;
         }).join('');
     }
@@ -678,20 +553,26 @@
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#d93025;">此月份尚未結算</td></tr>'; 
             return; 
         } 
+        
+        // 🚀 動態解析欄位標題，免疫舊資料錯位
+        const headers = db.Salary_Summary[0];
+        const hIdx = {};
+        for(let c = 0; c < headers.length; c++) hIdx[String(headers[c]).trim()] = c;
+
         tbody.innerHTML = rows.map(r => { 
-            const isNewFormat = r.length >= 25;
-            const idxLate = isNewFormat ? 15 : 14;
-            const idxPLeave = isNewFormat ? 18 : 17;
-            const idxSLeave = isNewFormat ? 21 : 20;
-            const idxTotal = isNewFormat ? 24 : 23;
+            const lateDeduct = Number(r[hIdx["遲到扣款"]]) || 0;
+            const pLeaveDeduct = Number(r[hIdx["事假扣款"]]) || 0;
+            const sLeaveDeduct = Number(r[hIdx["病假扣款"]]) || 0;
+            const idxTotal = hIdx["實發總計"];
             
-            const totalDeduct = Number(r[idxLate] || 0) + Number(r[idxPLeave] || 0) + Number(r[idxSLeave] || 0); 
+            const totalDeduct = lateDeduct + pLeaveDeduct + sLeaveDeduct; 
             return `<tr><td>${String(r[0] || "").replace(/'/g, "")}</td><td><b>${r[1] || ""}</b></td><td>${r[2] || ""}</td><td>${r[4] || 0} 工時</td><td>$${r[5] || 0}</td><td style="color:#d93025;">-$${totalDeduct}</td><td><h4 style="margin:0; color:#1a73e8;">$${r[idxTotal] || 0}</h4></td></tr>`; 
         }).join(''); 
     }
 
     async function calculateSalary() { const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份"); if (!confirm(`確定結算 ${m} 月？`)) return; showLoading(`結算中...`); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() }) }); if (await res.text() !== "Success") throw new Error("結算失敗"); alert("✅ 結算完成！"); fetchData(); } catch (e) { alert("❌ 錯誤"); } finally { hideLoading(); } }
     
+    // 🚀 PDF 錯誤精準捕捉
     async function generatePDF() { 
         const m = document.getElementById('salaryMonth').value; 
         if (!m) return alert("⚠️ 請選擇月份"); 
