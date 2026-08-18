@@ -289,7 +289,7 @@
         switchNavTab('leaveBox'); fetchData();
     }
 
-    // 🚀 加入智慧除錯器，如果連線失敗會印出原因
+    // 🚀 升級：智慧除錯雷達，直接把錯誤原因印在畫面上！
     async function fetchData() { 
         showLoading("獲取最新雲端資料...");
         try { 
@@ -300,7 +300,8 @@
             try {
                 db = JSON.parse(text);
             } catch(e) {
-                throw new Error("後端回傳的不是有效的資料 (可能 URL 錯誤或未建立新版本)。\n回傳內容：" + text.substring(0, 80));
+                // 如果後端回傳的不是 JSON，代表 URL 跑掉了！
+                throw new Error("後端回傳的不是有效資料。這通常是因為「API 網址錯誤」或沒有「建立新版本」。<br><br><span style='color:#666;font-size:12px;'>回傳內容：" + text.substring(0, 150).replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</span>");
             }
             
             const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -310,7 +311,9 @@
             
             renderDynamicDropdowns(); renderLeave(); renderStaff(document.getElementById('filterDept').value); renderSalary(); renderSchedule();
         } catch(e) { 
-            alert("🚨 系統連線發生錯誤：\n" + e.message); 
+            // 🚨 直接把錯誤印在畫面上，不靠 alert
+            document.getElementById('leaveBody').innerHTML = `<tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">🚨 系統連線崩潰：<br><br>${e.message}<br><br>👉 【解決方法】：請回到 Google 試算表 ➔ 擴充功能 ➔ Apps Script ➔ 部署 ➔ 管理部署 ➔ 複製最新的「網頁應用程式網址」，並更新到這份 admin.html 最下方的 CONFIG_URL 中！</td></tr>`;
+            document.getElementById('adminRole').innerHTML = `<option value="">⚠️ 連線失敗</option>`;
         } finally { 
             hideLoading(); 
         }
@@ -459,6 +462,7 @@
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) }); if (await res.text() === "Success") { alert("✅ 歷史假單補登完畢，天數已扣除。"); document.getElementById('retroStart').value = ""; document.getElementById('retroEnd').value = ""; fetchData(); } } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
+    // 🚀 假單列表升級：動態標題對應與加入刪除按鈕
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
