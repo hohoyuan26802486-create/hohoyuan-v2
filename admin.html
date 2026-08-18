@@ -69,6 +69,7 @@
     </div>
 </div>
 
+<!-- 假單審核中心 -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -77,10 +78,19 @@
             <select id="leaveDeptFilter" onchange="renderLeave()" style="padding:6px 10px; border-radius:6px; border:1px solid #1a73e8; outline:none; font-weight:bold; color:#1a73e8; cursor:pointer;"></select>
         </div>
     </div>
-    <div class="tab-container"><button id="lvTab-pending" class="tab-btn active" onclick="switchLvTab('pending')">🔴 待處理假單</button><button id="lvTab-history" class="tab-btn" onclick="switchLvTab('history')">⚪ 歷史紀錄</button></div>
-    <div class="table-responsive"><table><thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准/管理操作</th></tr></thead><tbody id="leaveBody"></tbody></table></div>
+    <div class="tab-container">
+        <button id="lvTab-pending" class="tab-btn active" onclick="switchLvTab('pending')">🔴 待處理假單</button>
+        <button id="lvTab-history" class="tab-btn" onclick="switchLvTab('history')">⚪ 歷史紀錄</button>
+    </div>
+    <div class="table-responsive">
+        <table>
+            <thead><tr><th>申請資訊</th><th>起訖時間</th><th>假別</th><th>證明文件</th><th>狀態</th><th>核准/管理操作</th></tr></thead>
+            <tbody id="leaveBody"></tbody>
+        </table>
+    </div>
 </div>
 
+<!-- 員工排班管理 -->
 <div id="scheduleBox" class="container" style="display:none; background-color: #f4f8fb; border: 1px solid #bbdefb;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">📅 員工排班管理</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -91,16 +101,22 @@
             <button class="btn btn-success" onclick="saveSchedule()">💾 儲存排班表</button>
         </div>
     </div>
-    <div class="table-responsive"><table class="sched-table"><thead id="schedHead"></thead><tbody id="schedBody"></tbody></table></div>
+    <div class="table-responsive">
+        <table class="sched-table"><thead id="schedHead"></thead><tbody id="schedBody"></tbody></table>
+    </div>
 </div>
 
+<!-- 出勤紀錄與手動補登 -->
 <div id="attendanceBox" class="container" style="display:none; background-color: #fcfdfe; border: 1px solid #d2e3fc;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">🕒 員工出勤紀錄與手動補登</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <div><label style="font-weight:bold; color:#5f6368; display:block; margin-bottom:5px;">月份：</label><input type="month" id="attMonth" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"></div>
         <div><label style="font-weight:bold; color:#5f6368; display:block; margin-bottom:5px;">部門篩選：</label><select id="attDept" onchange="updateAttEmpDropdown()" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"></select></div>
         <div><label style="font-weight:bold; color:#5f6368; display:block; margin-bottom:5px;">員工姓名：</label><select id="attEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="">全部員工</option></select></div>
-        <div style="display:flex; gap:10px;"><button class="btn btn-primary" onclick="loadAttendanceRecords()">🔍 查詢出勤紀錄</button><button class="btn btn-warning" onclick="togglePunchPanel()">➕ 展開補登面板</button></div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary" onclick="loadAttendanceRecords()">🔍 查詢出勤紀錄</button>
+            <button class="btn btn-warning" onclick="togglePunchPanel()">➕ 展開補登面板</button>
+        </div>
     </div>
     <div id="punchPanel" class="punch-panel" style="display:none;">
         <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 補登漏打卡紀錄</div>
@@ -124,6 +140,7 @@
     </div>
 </div>
 
+<!-- 部門編制管理 -->
 <div id="deptBox" class="container" style="display:none; background-color: #f7faff; border: 1px solid #bcd6ff;">
     <h1 style="color:#1a73e8; border-left-color:#1a73e8;">🏢 公司部門編制動態設定</h1>
     <div class="punch-panel" style="background:#fff; border: 1px solid #dadce0;">
@@ -139,6 +156,7 @@
     </div>
 </div>
 
+<!-- 人事維護 -->
 <div id="hrBox" class="container" style="display:none;">
     <h1>👥 員工人事維護與薪資調整</h1>
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
@@ -177,6 +195,7 @@
     <div class="table-responsive"><table><thead><tr><th>姓名</th><th>部門</th><th>計薪身分</th><th>薪資/類別</th><th>特休天數</th><th>操作</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </div>
 
+<!-- 薪資結算 -->
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
     <h1>💰 月底薪資結算與報表匯出</h1>
     <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -197,19 +216,26 @@
     <div class="table-responsive"><table><thead><tr style="background:#f8f9fa;"><th>結算月份</th><th>姓名</th><th>部門</th><th>總工時</th><th>基本薪資</th><th>遲到/請假扣款</th><th>實發總計</th></tr></thead><tbody id="salaryBody"></tbody></table></div>
 </div>
 
+<!-- ========================================== -->
+<!-- 核心程式碼區域 -->
+<!-- ========================================== -->
 <script>
-    // 🚨 終極防護網：如果代碼貼錯或語法崩潰，會整頁變成紅色警告！
+    // 🚨 終極防護網：如果發生重大錯誤，會在全螢幕顯示紅色警告，避免死當在白畫面。
     window.onerror = function(message, source, lineno, colno, error) {
-        document.body.innerHTML = `<div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh;">🚨 網頁程式碼發生嚴重錯誤！<br><br>這通常是因為您在 GitHub 複製貼上時，不小心漏掉了括號，或是不小心貼到了後端的 Code.gs 代碼。<br><br><span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span><br><br>👉 請重新複製我給您的整段 HTML 代碼，並「完全覆蓋」 GitHub 裡的內容！</div>`;
+        document.body.innerHTML = `<div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">🚨 網頁程式碼發生嚴重錯誤！<br><br>這通常是因為您在 GitHub 複製貼上時漏掉了括號，或是混到了後端的 Code.gs 代碼。<br><br><span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span><br><br>👉 請重新複製我給您的整段 HTML 代碼，並「完全覆蓋」 GitHub 裡的內容！</div>`;
         return true;
     };
+</script>
 
+<script>
     // 💡 正式區 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     
-    let db = {}; let currentLvTab = 'pending'; let rawAttData = [];
+    let db = {}; 
+    let currentLvTab = 'pending'; 
+    let rawAttData = [];
 
     function getCurrentKey() {
         const role = document.getElementById('adminRole').value;
@@ -219,14 +245,28 @@
     }
 
     function formatShortTime(timeStr) {
-        if (!timeStr) return ""; const d = new Date(timeStr); if (isNaN(d.getTime())) return String(timeStr);
+        if (!timeStr) return ""; 
+        const d = new Date(timeStr); 
+        if (isNaN(d.getTime())) return String(timeStr);
         const pad = (n) => n.toString().padStart(2, '0');
         return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    function getShiftColor(val) { if (val === '排休') return '#d93025'; if (val === '假日加班') return '#f4b400'; if (val === '假日值班') return '#0f9d58'; return '#1a73e8'; }
-    function showLoading(t){ document.getElementById('loadingText').innerText=t; document.getElementById('loadingOverlay').style.display='flex'; }
-    function hideLoading(){ document.getElementById('loadingOverlay').style.display='none'; }
+    function getShiftColor(val) { 
+        if (val === '排休') return '#d93025'; 
+        if (val === '假日加班') return '#f4b400'; 
+        if (val === '假日值班') return '#0f9d58'; 
+        return '#1a73e8'; 
+    }
+
+    function showLoading(t){ 
+        document.getElementById('loadingText').innerText=t; 
+        document.getElementById('loadingOverlay').style.display='flex'; 
+    }
+
+    function hideLoading(){ 
+        document.getElementById('loadingOverlay').style.display='none'; 
+    }
 
     function switchNavTab(boxId) {
         ['leaveBox', 'scheduleBox', 'attendanceBox', 'hrBox', 'deptBox', 'salaryBox'].forEach(id => document.getElementById(id).style.display = 'none');
@@ -238,7 +278,12 @@
         if(boxId === 'deptBox') renderDeptTable();
     }
 
-    function switchLvTab(tab) { currentLvTab = tab; document.querySelectorAll('#leaveBox .tab-btn').forEach(b => b.classList.remove('active')); document.getElementById('lvTab-' + tab).classList.add('active'); renderLeave(); }
+    function switchLvTab(tab) { 
+        currentLvTab = tab; 
+        document.querySelectorAll('#leaveBox .tab-btn').forEach(b => b.classList.remove('active')); 
+        document.getElementById('lvTab-' + tab).classList.add('active'); 
+        renderLeave(); 
+    }
 
     function renderDynamicDropdowns() {
         const depts = db.departments || [];
@@ -249,7 +294,11 @@
         roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>';
         roleSelect.innerHTML = roleHtml;
 
-        if (roleHtml.includes(`"${currentRole}"`)) { roleSelect.value = currentRole; } else { roleSelect.value = depts.length > 0 ? `${depts[0]}主管` : "人事部"; }
+        if (roleHtml.includes(`"${currentRole}"`)) { 
+            roleSelect.value = currentRole; 
+        } else { 
+            roleSelect.value = depts.length > 0 ? `${depts[0]}主管` : "人事部"; 
+        }
 
         const role = roleSelect.value; 
 
@@ -282,9 +331,15 @@
         if (needAuth) {
             const inputPwd = prompt(`【${r}】安全驗證，請輸入密碼：`);
             if (inputPwd !== expectedPwd) {
-                alert("❌ 密碼錯誤！"); document.getElementById('adminRole').value = "業務部主管";
-                document.getElementById('tab-hr').style.display = 'none'; document.getElementById('tab-salary').style.display = 'none'; document.getElementById('tab-dept').style.display = 'none'; document.getElementById('btnChangePwd').style.display = 'none';
-                switchNavTab('leaveBox'); fetchData(); return;
+                alert("❌ 密碼錯誤！"); 
+                document.getElementById('adminRole').value = "業務部主管";
+                document.getElementById('tab-hr').style.display = 'none'; 
+                document.getElementById('tab-salary').style.display = 'none'; 
+                document.getElementById('tab-dept').style.display = 'none'; 
+                document.getElementById('btnChangePwd').style.display = 'none';
+                switchNavTab('leaveBox'); 
+                fetchData(); 
+                return;
             }
         }
         document.getElementById('btnChangePwd').style.display = needAuth ? 'inline-block' : 'none';
@@ -292,33 +347,40 @@
         document.getElementById('tab-dept').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         document.getElementById('tab-salary').style.display = (r === '財務部' || r === '副總') ? 'inline-block' : 'none';
         
-        switchNavTab('leaveBox'); fetchData();
+        switchNavTab('leaveBox'); 
+        fetchData();
     }
 
     async function fetchData() { 
         showLoading("獲取最新雲端資料...");
         try { 
-            const key = getCurrentKey(); const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
+            const key = getCurrentKey(); 
+            const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
             const res = await fetch(urlWithKey); 
             
             const text = await res.text();
             try {
                 db = JSON.parse(text);
-            } catch(e) {
-                document.getElementById('leaveBody').innerHTML = `<tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">🚨 系統連線崩潰：<br><br>後端回傳的不是有效資料。這通常是因為「API 網址錯誤」或 Google Apps Script 沒有「建立新版本」。<br><br><span style='color:#666;font-size:12px;'>回傳內容截取：${text.substring(0, 150).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span><br><br>👉 【解決方法】：請回到 Google 試算表 ➔ 擴充功能 ➔ Apps Script ➔ 部署 ➔ 管理部署 ➔ 複製最新的「網頁應用程式網址」，並更新到這份 admin.html 最下方的 CONFIG_URL 中！</td></tr>`;
+            } catch(parseError) {
+                document.getElementById('leaveBody').innerHTML = `<tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">🚨 系統連線崩潰：<br><br>後端回傳的不是有效資料。這通常是因為「API 網址錯誤」或 Google Apps Script 沒有「建立新版本」。<br><br><span style='color:#666;font-size:12px;'>回傳內容：${text.substring(0, 150).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span><br><br>👉 【解決方法】：請回到 Google 試算表 ➔ 擴充功能 ➔ Apps Script ➔ 部署 ➔ 管理部署 ➔ 複製最新的「網頁應用程式網址」，並更新到這份 admin.html 最下方的 CONFIG_URL 中！</td></tr>`;
                 document.getElementById('adminRole').innerHTML = `<option value="">⚠️ 連線失敗</option>`;
                 hideLoading();
                 return;
             }
             
-            const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            const now = new Date(); 
+            const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
             if(!document.getElementById('schedMonth').value) document.getElementById('schedMonth').value = ym;
             if(!document.getElementById('salaryMonth').value) document.getElementById('salaryMonth').value = ym;
             if(!document.getElementById('attMonth').value) document.getElementById('attMonth').value = ym;
             
-            renderDynamicDropdowns(); renderLeave(); renderStaff(document.getElementById('filterDept').value); renderSalary(); renderSchedule();
+            renderDynamicDropdowns(); 
+            renderLeave(); 
+            renderStaff(document.getElementById('filterDept').value); 
+            renderSalary(); 
+            renderSchedule();
         } catch(e) { 
-            document.getElementById('leaveBody').innerHTML = `<tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">🚨 系統連線崩潰：<br><br>${e.message}<br><br>👉 【解決方法】：請回到 Google 試算表 ➔ 擴充功能 ➔ Apps Script ➔ 部署 ➔ 管理部署 ➔ 複製最新的「網頁應用程式網址」，並更新到這份 admin.html 最下方的 CONFIG_URL 中！</td></tr>`;
+            document.getElementById('leaveBody').innerHTML = `<tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">🚨 系統連線崩潰：<br><br>${e.message}<br><br>👉 【解決方法】：請確認您的 API 網址是否正確。</td></tr>`;
             document.getElementById('adminRole').innerHTML = `<option value="">⚠️ 連線失敗</option>`;
         } finally { 
             hideLoading(); 
@@ -328,7 +390,8 @@
     function triggerExcelUpload() { document.getElementById('perfExcelUpload').click(); }
 
     function handleExcelUpload(event) {
-        const file = event.target.files[0]; if (!file) return;
+        const file = event.target.files[0]; 
+        if (!file) return;
         const month = document.getElementById('salaryMonth').value;
         if (!month) { alert("請先選擇要匯入的結算月份！"); event.target.value = ""; return; }
 
@@ -344,7 +407,8 @@
 
                 let perfData = [];
                 for (let i = 1; i < jsonData.length; i++) {
-                    const row = jsonData[i]; if (!row || row.length < 2) continue;
+                    const row = jsonData[i]; 
+                    if (!row || row.length < 2) continue;
                     
                     let rawName = String(row[1] || "").trim();
                     if (!rawName || rawName === "NaN" || rawName.includes("總計") || rawName === "司機送貨/調貨總表") continue;
@@ -366,108 +430,278 @@
                     }
                 }
 
-                if (perfData.length === 0) { alert("解析不到任何有效的司機業績資料，請確認檔案格式！"); hideLoading(); return; }
+                if (perfData.length === 0) { 
+                    alert("解析不到任何有效的司機業績資料，請確認檔案格式！"); 
+                    hideLoading(); 
+                    return; 
+                }
                 uploadPerfToBackend(month, perfData);
-            } catch (err) { alert("解析失敗，請確認檔案格式是否正確！"); hideLoading(); } finally { event.target.value = ""; }
+            } catch (err) { 
+                alert("解析失敗，請確認檔案格式是否正確！"); 
+                hideLoading(); 
+            } finally { 
+                event.target.value = ""; 
+            }
         };
         reader.readAsArrayBuffer(file);
     }
 
     async function uploadPerfToBackend(month, perfData) {
         try {
-            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData }) });
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData }) 
+            });
             const result = await res.text();
-            if (result === "Success") alert(`✅ ${month} 月司機業績已成功匯入！\n\n(「送貨達標」與「代送費」已獨立結算，將於您按下「執行薪資結算」時同步併入薪資單)`);
-            else alert("匯入失敗：" + result);
-        } catch (e) { alert("網路連線異常，匯入失敗"); } finally { hideLoading(); }
+            if (result === "Success") {
+                alert(`✅ ${month} 月司機業績已成功匯入！\n\n(「送貨達標」與「代送費」已獨立結算，將於您按下「執行薪資結算」時同步併入薪資單)`);
+            } else {
+                alert("匯入失敗：" + result);
+            }
+        } catch (e) { 
+            alert("網路連線異常，匯入失敗"); 
+        } finally { 
+            hideLoading(); 
+        }
     }
 
     function renderDeptTable() {
-        const tbody = document.getElementById('deptTableBody'); const depts = db.departments || [];
-        tbody.innerHTML = depts.map(d => { return `<tr><td><b style="font-size:16px; color:#333;">${d}</b></td><td><button class="btn btn-edit" onclick="renameDeptBackend('${d}')">✏️ 更改名字</button><button class="btn btn-danger" style="margin-left:8px;" onclick="deleteDeptBackend('${d}')">🗑️ 刪除部門</button></td></tr>`; }).join('');
+        const tbody = document.getElementById('deptTableBody'); 
+        const depts = db.departments || [];
+        tbody.innerHTML = depts.map(d => { 
+            return `<tr><td><b style="font-size:16px; color:#333;">${d}</b></td><td><button class="btn btn-edit" onclick="renameDeptBackend('${d}')">✏️ 更改名字</button><button class="btn btn-danger" style="margin-left:8px;" onclick="deleteDeptBackend('${d}')">🗑️ 刪除部門</button></td></tr>`; 
+        }).join('');
     }
 
     async function addDeptBackend() {
-        const name = document.getElementById('newDeptInput').value.trim(); if(!name) return alert("請輸入部門名稱！"); showLoading("正在建立新部門...");
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "addDepartment", key: getCurrentKey(), deptName: name }) }); if (await res.text() === "Success") { alert("✅ 部門建立成功！所有選單已全自動同步。"); document.getElementById('newDeptInput').value = ""; fetchData(); } } catch(e) { alert("連線發生錯誤"); } finally { hideLoading(); }
+        const name = document.getElementById('newDeptInput').value.trim(); 
+        if(!name) return alert("請輸入部門名稱！"); 
+        showLoading("正在建立新部門...");
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "addDepartment", key: getCurrentKey(), deptName: name }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 部門建立成功！所有選單已全自動同步。"); 
+                document.getElementById('newDeptInput').value = ""; 
+                fetchData(); 
+            } 
+        } catch(e) { alert("連線發生錯誤"); } finally { hideLoading(); }
     }
 
     async function renameDeptBackend(oldName) {
-        const newName = prompt(`您正在將 [${oldName}] 進行更名。\n請輸入新的部門名稱：`, oldName); if(!newName || newName.trim() === oldName) return; showLoading("正在更改部門並自動搬移員工檔案...");
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "renameDepartment", key: getCurrentKey(), oldName: oldName, newName: newName.trim() }) }); if (await res.text() === "Success") { alert("✅ 部門更名成功！原部門所有同仁已全自動打包搬移至新部門。"); fetchData(); } } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
+        const newName = prompt(`您正在將 [${oldName}] 進行更名。\n請輸入新的部門名稱：`, oldName); 
+        if(!newName || newName.trim() === oldName) return; 
+        showLoading("正在更改部門並自動搬移員工檔案...");
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "renameDepartment", key: getCurrentKey(), oldName: oldName, newName: newName.trim() }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 部門更名成功！原部門所有同仁已全自動打包搬移至新部門。"); 
+                fetchData(); 
+            } 
+        } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
 
     async function deleteDeptBackend(name) {
-        if(!confirm(`⚠️ 確定要刪除 [${name}] 嗎？\n請確保該部門內目前已無任何員工！`)) return; showLoading("正在刪除部門...");
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteDepartment", key: getCurrentKey(), deptName: name }) }); if (await res.text() === "Success") { alert("✅ 部門已成功移除。"); } } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
+        if(!confirm(`⚠️ 確定要刪除 [${name}] 嗎？\n請確保該部門內目前已無任何員工！`)) return; 
+        showLoading("正在刪除部門...");
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "deleteDepartment", key: getCurrentKey(), deptName: name }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 部門已成功移除。"); 
+                fetchData();
+            } 
+        } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
 
     function updateAttEmpDropdown() {
-        const dept = document.getElementById('attDept').value; const empSelect = document.getElementById('attEmp'); empSelect.innerHTML = '<option value="">全部員工</option>';
-        if (db.employees) { let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); if (dept) emps = emps.filter(r => r[1] === dept); emps.forEach(r => { let statusMark = r[19] === "已離職" ? " [已離職]" : ""; empSelect.innerHTML += `<option value="${r[0]}">${r[0]}${statusMark}</option>`; }); }
+        const dept = document.getElementById('attDept').value; 
+        const empSelect = document.getElementById('attEmp'); 
+        empSelect.innerHTML = '<option value="">全部員工</option>';
+        if (db.employees) { 
+            let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); 
+            if (dept) emps = emps.filter(r => r[1] === dept); 
+            emps.forEach(r => { 
+                let statusMark = r[19] === "已離職" ? " [已離職]" : ""; 
+                empSelect.innerHTML += `<option value="${r[0]}">${r[0]}${statusMark}</option>`; 
+            }); 
+        }
     }
     
     function updatePunchEmpDropdown() {
-        const empSelect = document.getElementById('punchEmp'); const retroSelect = document.getElementById('retroEmp'); empSelect.innerHTML = ''; retroSelect.innerHTML = ''; const role = document.getElementById('adminRole').value; const myDept = role.includes('主管') ? role.replace('主管', '') : '';
-        if (db.employees) { let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') emps = emps.filter(r => r[1] === myDept); emps.forEach(r => { let statusMark = r[19] === "已離職" ? " [已離職]" : ""; let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})${statusMark}</option>`; empSelect.innerHTML += opt; retroSelect.innerHTML += opt; }); }
+        const empSelect = document.getElementById('punchEmp'); 
+        const retroSelect = document.getElementById('retroEmp'); 
+        empSelect.innerHTML = ''; 
+        retroSelect.innerHTML = ''; 
+        const role = document.getElementById('adminRole').value; 
+        const myDept = role.includes('主管') ? role.replace('主管', '') : '';
+        if (db.employees) { 
+            let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); 
+            if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') {
+                emps = emps.filter(r => r[1] === myDept); 
+            }
+            emps.forEach(r => { 
+                let statusMark = r[19] === "已離職" ? " [已離職]" : ""; 
+                let opt = `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})${statusMark}</option>`; 
+                empSelect.innerHTML += opt; 
+                retroSelect.innerHTML += opt; 
+            }); 
+        }
     }
 
-    function togglePunchPanel() { const panel1 = document.getElementById('punchPanel'); const panel2 = document.getElementById('retroLeavePanel'); let isHidden = panel1.style.display === 'none'; panel1.style.display = isHidden ? 'flex' : 'none'; panel2.style.display = isHidden ? 'flex' : 'none'; if(isHidden) updatePunchEmpDropdown(); }
+    function togglePunchPanel() { 
+        const panel1 = document.getElementById('punchPanel'); 
+        const panel2 = document.getElementById('retroLeavePanel'); 
+        let isHidden = panel1.style.display === 'none'; 
+        panel1.style.display = isHidden ? 'flex' : 'none'; 
+        panel2.style.display = isHidden ? 'flex' : 'none'; 
+        if(isHidden) updatePunchEmpDropdown(); 
+    }
     
     async function loadAttendanceRecords() { 
-        const month = document.getElementById('attMonth').value; if (!month) return alert("請選擇月份"); showLoading("正在撈取出勤紀錄..."); 
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) }); rawAttData = await res.json(); renderAttendanceTable(); } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
+        const month = document.getElementById('attMonth').value; 
+        if (!month) return alert("請選擇月份"); 
+        showLoading("正在撈取出勤紀錄..."); 
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) 
+            }); 
+            rawAttData = await res.json(); 
+            renderAttendanceTable(); 
+        } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
     }
 
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody'); 
-        if (!rawAttData || rawAttData.length <= 1) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; return; }
+        if (!rawAttData || rawAttData.length <= 1) { 
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; 
+            return; 
+        }
         
-        const filterDept = document.getElementById('attDept').value; const filterEmp = document.getElementById('attEmp').value;
+        const filterDept = document.getElementById('attDept').value; 
+        const filterEmp = document.getElementById('attEmp').value;
         let records = rawAttData.slice(1); 
         if (filterDept) records = records.filter(r => r[2] === filterDept); 
         if (filterEmp) records = records.filter(r => r[1] === filterEmp);
         
         records.sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
-        let errorRecords = new Set(); let empPunchState = {}; 
+        let errorRecords = new Set(); 
+        let empPunchState = {}; 
         
         records.forEach(r => {
-            let empName = r[1]; let type = r[3]; let timeStr = r[0]; 
+            let empName = r[1]; 
+            let type = r[3]; 
+            let timeStr = r[0]; 
             if (!empPunchState[empName]) empPunchState[empName] = null;
-            if (type.includes('上班')) { if (empPunchState[empName]) errorRecords.add(empPunchState[empName]); empPunchState[empName] = timeStr; } 
-            else if (type.includes('下班')) { if (!empPunchState[empName]) errorRecords.add(timeStr); else empPunchState[empName] = null; }
+            if (type.includes('上班')) { 
+                if (empPunchState[empName]) errorRecords.add(empPunchState[empName]); 
+                empPunchState[empName] = timeStr; 
+            } else if (type.includes('下班')) { 
+                if (!empPunchState[empName]) errorRecords.add(timeStr); 
+                else empPunchState[empName] = null; 
+            }
         });
         
         let now = new Date().getTime();
-        for (let emp in empPunchState) { if (empPunchState[emp]) { let pTime = new Date(empPunchState[emp]).getTime(); if (now - pTime > 16 * 3600000) errorRecords.add(empPunchState[emp]); } }
+        for (let emp in empPunchState) { 
+            if (empPunchState[emp]) { 
+                let pTime = new Date(empPunchState[emp]).getTime(); 
+                if (now - pTime > 16 * 3600000) errorRecords.add(empPunchState[emp]); 
+            } 
+        }
 
         records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
         tbody.innerHTML = records.map(r => {
-            let dObj = new Date(r[0]); let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-            let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
-            let isError = errorRecords.has(r[0]); let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
+            let dObj = new Date(r[0]); 
+            let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+            let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; 
+            let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
+            let isError = errorRecords.has(r[0]); 
+            let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
             let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
             return `<tr><td>${timeStr}</td><td><b>${r[1]}</b></td><td>${r[2]}</td><td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td><td>${r[4]}</td><td>${loc}</td><td>${delBtn}</td></tr>`;
         }).join('');
     }
 
     async function delAtt(timeStr, name) {
-        if(!confirm(`確定要刪除 [${name}] 在 [${timeStr}] 的打卡紀錄嗎？`)) return; const month = document.getElementById('attMonth').value; showLoading("刪除中...");
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) }); if (await res.text() === "Success") { alert("✅ 刪除成功！"); loadAttendanceRecords(); } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); } }
+        if(!confirm(`確定要刪除 [${name}] 在 [${timeStr}] 的打卡紀錄嗎？`)) return; 
+        const month = document.getElementById('attMonth').value; 
+        showLoading("刪除中...");
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 刪除成功！"); 
+                loadAttendanceRecords(); 
+            } 
+        } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
     async function submitManualPunch() {
-        const empSel = document.getElementById('punchEmp'); const empName = empSel.value; const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept'); const punchTime = document.getElementById('punchTime').value; const type = document.getElementById('punchType').value; const reason = document.getElementById('punchReason').value;
-        if (!empName || !punchTime) return alert("⚠️ 姓名與補登時間為必填欄位！"); const formattedTime = punchTime.replace('T', ' ').replace('-', '/').replace('-', '/'); if (!confirm(`確定補登嗎？`)) return; showLoading("補登中...");
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "manualPunch", key: getCurrentKey(), name: empName, dept: empDept, timestamp: formattedTime, type: type, reason: reason }) }); if (await res.text() === "Success") { alert("✅ 打卡補登成功！"); document.getElementById('punchTime').value = ""; document.getElementById('punchReason').value = ""; if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords(); } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); } }
+        const empSel = document.getElementById('punchEmp'); 
+        const empName = empSel.value; 
+        const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept'); 
+        const punchTime = document.getElementById('punchTime').value; 
+        const type = document.getElementById('punchType').value; 
+        const reason = document.getElementById('punchReason').value;
+        
+        if (!empName || !punchTime) return alert("⚠️ 姓名與補登時間為必填欄位！"); 
+        const formattedTime = punchTime.replace('T', ' ').replace('-', '/').replace('-', '/'); 
+        if (!confirm(`確定補登嗎？`)) return; 
+        
+        showLoading("補登中...");
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "manualPunch", key: getCurrentKey(), name: empName, dept: empDept, timestamp: formattedTime, type: type, reason: reason }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 打卡補登成功！"); 
+                document.getElementById('punchTime').value = ""; 
+                document.getElementById('punchReason').value = ""; 
+                if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords(); 
+            } 
+        } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
     async function submitRetroLeave() {
-        const empSel = document.getElementById('retroEmp'); const empName = empSel.value; const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept'); const leaveType = document.getElementById('retroLeaveType').value; const start = document.getElementById('retroStart').value; const end = document.getElementById('retroEnd').value; const reason = document.getElementById('retroReason').value;
-        if (!empName || !start || !end) return alert("⚠️ 必填欄位未填！"); if (!confirm(`確認補登歷史假單扣除天數？`)) return; showLoading("補登假單中...");
-        try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) }); if (await res.text() === "Success") { alert("✅ 歷史假單補登完畢，天數已扣除。"); document.getElementById('retroStart').value = ""; document.getElementById('retroEnd').value = ""; fetchData(); } } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
+        const empSel = document.getElementById('retroEmp'); 
+        const empName = empSel.value; 
+        const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept'); 
+        const leaveType = document.getElementById('retroLeaveType').value; 
+        const start = document.getElementById('retroStart').value; 
+        const end = document.getElementById('retroEnd').value; 
+        const reason = document.getElementById('retroReason').value;
+        
+        if (!empName || !start || !end) return alert("⚠️ 必填欄位未填！"); 
+        if (!confirm(`確認補登歷史假單扣除天數？`)) return; 
+        
+        showLoading("補登假單中...");
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 歷史假單補登完畢，天數已扣除。"); 
+                document.getElementById('retroStart').value = ""; 
+                document.getElementById('retroEnd').value = ""; 
+                fetchData(); 
+            } 
+        } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
+    // 🚀 假單列表升級：加入刪除按鈕
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
@@ -515,9 +749,13 @@
             let proofUrl = r[cProof] ? String(r[cProof]).trim() : "";
             
             let next = ''; let canApprove = false;
-            if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部'))) { canApprove = true; next = '待副總審核'; } 
-            else if (status === '待副總審核' && role === '副總') { canApprove = true; next = '待人事核銷'; } 
-            else if ((status === '待人事主管審核' || status === '待人事核銷') && role === '人事部') { canApprove = true; next = '已生效'; }
+            if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部'))) { 
+                canApprove = true; next = '待副總審核'; 
+            } else if (status === '待副總審核' && role === '副總') { 
+                canApprove = true; next = '待人事核銷'; 
+            } else if ((status === '待人事主管審核' || status === '待人事核銷') && role === '人事部') { 
+                canApprove = true; next = '已生效'; 
+            }
             
             let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${agent}</div>` : ''; 
             let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無"); 
@@ -545,32 +783,119 @@
     }
 
     function renderSchedule() {
-        const month = document.getElementById('schedMonth').value; const dept = document.getElementById('schedDept').value; if (!month || !dept || !db.employees) return;
-        const [yy, mm] = month.split('-'); const daysInMonth = new Date(yy, mm, 0).getDate();
+        const month = document.getElementById('schedMonth').value; 
+        const dept = document.getElementById('schedDept').value; 
+        if (!month || !dept || !db.employees) return;
+        
+        const [yy, mm] = month.split('-'); 
+        const daysInMonth = new Date(yy, mm, 0).getDate();
         let headHtml = '<tr><th>員工姓名</th>';
-        for(let i=1; i<=31; i++) { if (i <= daysInMonth) { let d = new Date(yy, mm-1, i).getDay(); let padM = String(mm).padStart(2, '0'); let padD = String(i).padStart(2, '0'); let dateStr = `${yy}-${padM}-${padD}`; let isHol = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr)); headHtml += `<th style="${isHol ? "color:#d93025; font-weight:bold; background:#fff0f0;" : ""}">${i}</th>`; } else { headHtml += `<th style="background:#eee;"></th>`; } }
-        headHtml += '</tr>'; document.getElementById('schedHead').innerHTML = headHtml;
-        let emps = db.employees.filter(r => r[0] && r[0] !== '姓名' && r[1] === dept); let bodyHtml = '';
+        
+        for(let i=1; i<=31; i++) { 
+            if (i <= daysInMonth) { 
+                let d = new Date(yy, mm-1, i).getDay(); 
+                let padM = String(mm).padStart(2, '0'); 
+                let padD = String(i).padStart(2, '0'); 
+                let dateStr = `${yy}-${padM}-${padD}`; 
+                let isHol = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr)); 
+                headHtml += `<th style="${isHol ? "color:#d93025; font-weight:bold; background:#fff0f0;" : ""}">${i}</th>`; 
+            } else { 
+                headHtml += `<th style="background:#eee;"></th>`; 
+            } 
+        }
+        headHtml += '</tr>'; 
+        document.getElementById('schedHead').innerHTML = headHtml;
+        
+        let emps = db.employees.filter(r => r[0] && r[0] !== '姓名' && r[1] === dept); 
+        let bodyHtml = '';
         emps.forEach(emp => {
-            let name = emp[0]; let existSched = db.schedule ? db.schedule.find(s => s[0] === month && s[1] === name) : null; bodyHtml += `<tr><td style="font-weight:bold; white-space:nowrap;">${name}</td>`;
+            let name = emp[0]; 
+            let existSched = db.schedule ? db.schedule.find(s => s[0] === month && s[1] === name) : null; 
+            bodyHtml += `<tr><td style="font-weight:bold; white-space:nowrap;">${name}</td>`;
             for(let i=1; i<=31; i++) {
                 if (i <= daysInMonth) {
-                    let val = existSched ? existSched[2+i] : ""; let color = getShiftColor(val);
+                    let val = existSched ? existSched[2+i] : ""; 
+                    let color = getShiftColor(val);
                     bodyHtml += `<td><select class="shift-sel" data-name="${name}" data-day="${i}" style="color:${color}" onchange="this.style.color = getShiftColor(this.value)"><option value=""></option><option value="上班" ${val==='上班'?'selected':''}>上</option><option value="排休" ${val==='排休'?'selected':''}>休</option><option value="假日值班" ${val==='假日值班'?'selected':''}>值</option><option value="假日加班" ${val==='假日加班'?'selected':''}>加</option></select></td>`;
-                } else { bodyHtml += `<td style="background:#eee;"></td>`; }
+                } else { 
+                    bodyHtml += `<td style="background:#eee;"></td>`; 
+                }
             }
             bodyHtml += '</tr>';
         });
         document.getElementById('schedBody').innerHTML = bodyHtml || `<tr><td colspan="32" style="text-align:center; padding:20px;">此部門無員工</td></tr>`;
     }
 
-    function autoFillSchedule() { const month = document.getElementById('schedMonth').value; const [yy, mm] = month.split('-'); document.querySelectorAll('.shift-sel').forEach(sel => { let day = parseInt(sel.getAttribute('data-day')); let dateObj = new Date(yy, mm-1, day); let d = dateObj.getDay(); let padM = String(dateObj.getMonth()+1).padStart(2, '0'); let padD = String(dateObj.getDate()).padStart(2, '0'); let dateStr = `${dateObj.getFullYear()}-${padM}-${padD}`; sel.value = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr)) ? '排休' : '上班'; sel.style.color = getShiftColor(sel.value); }); }
-    async function saveSchedule() { const month = document.getElementById('schedMonth').value; const dept = document.getElementById('schedDept').value; if(!month || !dept) return; let scheduleData = []; let rows = document.querySelectorAll('#schedBody tr'); rows.forEach(tr => { let name = tr.querySelector('td').innerText; if (name === "此部門無員工") return; let shifts = []; tr.querySelectorAll('.shift-sel').forEach(sel => shifts.push(sel.value)); scheduleData.push({ name: name, dept: dept, shifts: shifts }); }); if (scheduleData.length === 0) return; showLoading("儲存並同步日曆..."); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }) }); if (await res.text() === "Success") { alert("✅ 排班表儲存成功！"); fetchData(); } } catch(e) { alert("❌ 連線錯誤"); } finally { hideLoading(); } }
-    function renderStaff(filterDept = "") { if(!db.employees) return; let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); if (filterDept) staffData = staffData.filter(r => r[1] === filterDept); document.getElementById('staffBody').innerHTML = staffData.map(r => { let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`; let statusMark = r[19] === "已離職" ? `<br><span style="color:#d93025; font-size:12px; font-weight:bold;">(已離職)</span>` : ''; return `<tr><td><b>${r[0] || ""}</b>${statusMark}</td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><b style="color:#1a73e8;">${r[5] || 0} 天</b></td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`; }).join(''); }
-    function updateEmpDropdown() { const dept = document.getElementById('filterDept').value; const empSelect = document.getElementById('filterEmp'); empSelect.innerHTML = '<option value="">請選擇員工...</option>'; renderStaff(dept); if (dept && db.employees) { db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; }); } }
+    function autoFillSchedule() { 
+        const month = document.getElementById('schedMonth').value; 
+        const [yy, mm] = month.split('-'); 
+        document.querySelectorAll('.shift-sel').forEach(sel => { 
+            let day = parseInt(sel.getAttribute('data-day')); 
+            let dateObj = new Date(yy, mm-1, day); 
+            let d = dateObj.getDay(); 
+            let padM = String(dateObj.getMonth()+1).padStart(2, '0'); 
+            let padD = String(dateObj.getDate()).padStart(2, '0'); 
+            let dateStr = `${dateObj.getFullYear()}-${padM}-${padD}`; 
+            sel.value = (d === 0 || d === 6 || HOLIDAYS_2026.includes(dateStr)) ? '排休' : '上班'; 
+            sel.style.color = getShiftColor(sel.value); 
+        }); 
+    }
+
+    async function saveSchedule() { 
+        const month = document.getElementById('schedMonth').value; 
+        const dept = document.getElementById('schedDept').value; 
+        if(!month || !dept) return; 
+        let scheduleData = []; 
+        let rows = document.querySelectorAll('#schedBody tr'); 
+        rows.forEach(tr => { 
+            let name = tr.querySelector('td').innerText; 
+            if (name === "此部門無員工") return; 
+            let shifts = []; 
+            tr.querySelectorAll('.shift-sel').forEach(sel => shifts.push(sel.value)); 
+            scheduleData.push({ name: name, dept: dept, shifts: shifts }); 
+        }); 
+        if (scheduleData.length === 0) return; 
+        
+        showLoading("儲存並同步日曆..."); 
+        try { 
+            const res = await fetch(CONFIG_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }) 
+            }); 
+            if (await res.text() === "Success") { 
+                alert("✅ 排班表儲存成功！"); 
+                fetchData(); 
+            } 
+        } catch(e) { alert("❌ 連線錯誤"); } finally { hideLoading(); } 
+    }
+
+    function renderStaff(filterDept = "") { 
+        if(!db.employees) return; 
+        let staffData = db.employees.filter(r => r[0] && r[0] !== "姓名"); 
+        if (filterDept) staffData = staffData.filter(r => r[1] === filterDept); 
+        document.getElementById('staffBody').innerHTML = staffData.map(r => { 
+            let displaySalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3] || 0}`; 
+            let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`; 
+            let statusMark = r[19] === "已離職" ? `<br><span style="color:#d93025; font-size:12px; font-weight:bold;">(已離職)</span>` : ''; 
+            return `<tr><td><b>${r[0] || ""}</b>${statusMark}</td><td><span style="background:#f1f3f4; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#5f6368;">${r[1] || ""}</span></td><td>${dutyType}</td><td>${displaySalary}</td><td><b style="color:#1a73e8;">${r[5] || 0} 天</b></td><td><button class="btn btn-edit" style="padding:4px 8px;" onclick="quickEdit('${r[0]}', '${r[1] || ""}')">編輯</button><button class="btn btn-danger" style="padding:4px 8px; margin-left:5px;" onclick="deleteEmp('${r[0]}')">刪除</button></td></tr>`; 
+        }).join(''); 
+    }
+
+    function updateEmpDropdown() { 
+        const dept = document.getElementById('filterDept').value; 
+        const empSelect = document.getElementById('filterEmp'); 
+        empSelect.innerHTML = '<option value="">請選擇員工...</option>'; 
+        renderStaff(dept); 
+        if (dept && db.employees) { 
+            db.employees.filter(r => String(r[1] || "") === dept).forEach(r => { 
+                empSelect.innerHTML += `<option value="${r[0]}">${r[0]}</option>`; 
+            }); 
+        } 
+    }
     
     function loadEmpDetails() { 
-        const name = document.getElementById('filterEmp').value; if (!name) return clearForm();
+        const name = document.getElementById('filterEmp').value; 
+        if (!name) return clearForm();
         const emp = db.employees.find(r => r[0] === name);
         if (emp) {
             document.getElementById('empName').value = emp[0] || ""; 
@@ -580,18 +905,44 @@
             document.getElementById('empStatus').value = emp[19] || "在職";
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             if (emp[3] === "*** LOCKED ***") { 
-                document.getElementById('empSalary').value = ""; document.getElementById('empSalary').disabled = true; document.getElementById('empSalary').placeholder = "權限鎖定"; 
-                document.getElementById('bonus').value = ""; document.getElementById('bonus').disabled = true; document.getElementById('bonus').placeholder = "權限鎖定";
+                document.getElementById('empSalary').value = ""; 
+                document.getElementById('empSalary').disabled = true; 
+                document.getElementById('empSalary').placeholder = "權限鎖定"; 
+                document.getElementById('bonus').value = ""; 
+                document.getElementById('bonus').disabled = true; 
+                document.getElementById('bonus').placeholder = "權限鎖定";
             } else { 
-                document.getElementById('empSalary').value = emp[3] || 0; document.getElementById('empSalary').disabled = false; document.getElementById('empSalary').placeholder = ""; 
-                document.getElementById('bonus').value = emp[6] || 0; document.getElementById('bonus').disabled = false; document.getElementById('bonus').placeholder = ""; 
+                document.getElementById('empSalary').value = emp[3] || 0; 
+                document.getElementById('empSalary').disabled = false; 
+                document.getElementById('empSalary').placeholder = ""; 
+                document.getElementById('bonus').value = emp[6] || 0; 
+                document.getElementById('bonus').disabled = false; 
+                document.getElementById('bonus').placeholder = ""; 
             }
-            ['laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone'].forEach((id, idx) => document.getElementById(id).value = emp[7+idx] || (idx>2?"":"0")); document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; document.getElementById('idNumber').value = emp[17] || ""; 
+            ['laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone'].forEach((id, idx) => document.getElementById(id).value = emp[7+idx] || (idx>2?"":"0")); 
+            document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; 
+            document.getElementById('idNumber').value = emp[17] || ""; 
         } 
     }
 
-    function quickEdit(n, d) { document.getElementById('filterDept').value = d; updateEmpDropdown(); document.getElementById('filterEmp').value = n; loadEmpDetails(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-    function clearForm() { ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); document.getElementById('payType').value = "月薪"; document.getElementById('dutyType').value = "一般員工"; document.getElementById('empStatus').value = "在職"; document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; }
+    function quickEdit(n, d) { 
+        document.getElementById('filterDept').value = d; 
+        updateEmpDropdown(); 
+        document.getElementById('filterEmp').value = n; 
+        loadEmpDetails(); 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    }
+
+    function clearForm() { 
+        ['empName','empSalary','obDate','phone','address','homePhone','emerContact','emerRelation','emerPhone','birthday','idNumber'].forEach(id => document.getElementById(id).value = ""); 
+        ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
+        document.getElementById('payType').value = "月薪"; 
+        document.getElementById('dutyType').value = "一般員工"; 
+        document.getElementById('empStatus').value = "在職"; 
+        document.getElementById('empSalary').disabled = false; 
+        document.getElementById('bonus').disabled = false; 
+        document.getElementById('filterEmp').value = ""; 
+    }
     
     async function saveEmployee() { 
         const p = { action: "saveEmployee", key: getCurrentKey() }; 
@@ -621,15 +972,32 @@
         try { 
             const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify(p) }); 
             const text = await res.text(); 
-            if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } 
-            else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
+            if (text.includes("Error") || text.includes("權限不足")) { 
+                alert("❌ " + text); 
+            } else { 
+                alert("✅ 儲存成功"); 
+                fetchData(); 
+                clearForm(); 
+            } 
         } catch(e) { alert("連線失敗"); } finally { hideLoading(); } 
     }
 
-    async function updLv(id, s) { showLoading("審核中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); fetchData(); alert("✅ 審核完成"); }
-    async function rejectLeave(id) { if(!confirm("確定要退件這張假單嗎？")) return; showLoading("退件處理中..."); await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: "已退回" })}); fetchData(); alert("❌ 假單已退回！"); }
+    async function updLv(id, s) { 
+        showLoading("審核中..."); 
+        await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: s })}); 
+        fetchData(); 
+        alert("✅ 審核完成"); 
+    }
+
+    async function rejectLeave(id) { 
+        if(!confirm("確定要退件這張假單嗎？")) return; 
+        showLoading("退件處理中..."); 
+        await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updateLeave", id: id, newStatus: "已退回" })}); 
+        fetchData(); 
+        alert("❌ 假單已退回！"); 
+    }
     
-    // 🚀 新增刪除假單執行函式
+    // 🚀 執行刪除假單
     async function deleteLeave(id) { 
         if(!confirm("⚠️ 確定要徹底刪除這筆假單嗎？\n刪除後資料將無法復原！")) return; 
         showLoading("刪除中..."); 
@@ -641,16 +1009,41 @@
                 fetchData(); 
             } else {
                 alert("❌ " + text);
-                hideLoading();
             }
         } catch(e) { 
             alert("❌ 網路錯誤，刪除失敗"); 
-            hideLoading(); 
-        } 
+        } finally {
+            hideLoading();
+        }
     }
 
-    async function changeAdminPassword() { const r = document.getElementById('adminRole').value; if (!['人事部', '財務部', '副總'].includes(r)) return alert("⚠️ 無權限！"); const newPwd = prompt(`設定專屬新密碼：`); if (!newPwd) return; showLoading("同步中..."); try { await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd })}); alert("✅ 更新成功！"); location.reload(); } catch (e) { alert("更新失敗"); hideLoading(); } }
-    async function deleteEmp(name) { if(!confirm(`⚠️ 確定要刪除「${name}」？`)) return; showLoading("刪除中..."); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })}); const text = await res.text(); if (text.includes("Error")) { alert("❌ " + text); } else { alert("✅ 刪除成功！"); fetchData(); } } catch (e) { alert("刪除失敗"); } finally { hideLoading(); } }
+    async function changeAdminPassword() { 
+        const r = document.getElementById('adminRole').value; 
+        if (!['人事部', '財務部', '副總'].includes(r)) return alert("⚠️ 無權限！"); 
+        const newPwd = prompt(`設定專屬新密碼：`); 
+        if (!newPwd) return; 
+        showLoading("同步中..."); 
+        try { 
+            await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd })}); 
+            alert("✅ 更新成功！"); 
+            location.reload(); 
+        } catch (e) { alert("更新失敗"); hideLoading(); } 
+    }
+
+    async function deleteEmp(name) { 
+        if(!confirm(`⚠️ 確定要刪除「${name}」？`)) return; 
+        showLoading("刪除中..."); 
+        try { 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "deleteEmployee", name: name, key: getCurrentKey() })}); 
+            const text = await res.text(); 
+            if (text.includes("Error")) { 
+                alert("❌ " + text); 
+            } else { 
+                alert("✅ 刪除成功！"); 
+                fetchData(); 
+            } 
+        } catch (e) { alert("刪除失敗"); } finally { hideLoading(); } 
+    }
     
     function renderSalary() { 
         const month = document.getElementById('salaryMonth').value; 
@@ -680,7 +1073,18 @@
         }).join(''); 
     }
 
-    async function calculateSalary() { const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份"); if (!confirm(`確定結算 ${m} 月？`)) return; showLoading(`結算中...`); try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() }) }); if (await res.text() !== "Success") throw new Error("結算失敗"); alert("✅ 結算完成！"); fetchData(); } catch (e) { alert("❌ 錯誤"); } finally { hideLoading(); } }
+    async function calculateSalary() { 
+        const m = document.getElementById('salaryMonth').value; 
+        if (!m) return alert("⚠️ 請選擇月份"); 
+        if (!confirm(`確定結算 ${m} 月？`)) return; 
+        showLoading(`結算中...`); 
+        try { 
+            const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() }) }); 
+            if (await res.text() !== "Success") throw new Error("結算失敗"); 
+            alert("✅ 結算完成！"); 
+            fetchData(); 
+        } catch (e) { alert("❌ 錯誤"); } finally { hideLoading(); } 
+    }
     
     async function generatePDF() { 
         const m = document.getElementById('salaryMonth').value; 
@@ -698,8 +1102,19 @@
         } 
     }
     
-    function exportExcel() { const m = document.getElementById('salaryMonth').value; if (!m) return alert("⚠️ 請選擇月份"); const headers = db.Salary_Summary[0]; const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(m)); if (rows.length === 0) return alert("⚠️ 尚未結算！"); const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`); }
+    function exportExcel() { 
+        const m = document.getElementById('salaryMonth').value; 
+        if (!m) return alert("⚠️ 請選擇月份"); 
+        const headers = db.Salary_Summary[0]; 
+        const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(m)); 
+        if (rows.length === 0) return alert("⚠️ 尚未結算！"); 
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]); 
+        const wb = XLSX.utils.book_new(); 
+        XLSX.utils.book_append_sheet(wb, ws, "薪資報表"); 
+        XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`); 
+    }
 
+    // 啟動系統！
     fetchData();
 </script>
 </body>
