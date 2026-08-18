@@ -140,7 +140,7 @@
 </div>
 
 <div id="hrBox" class="container" style="display:none;">
-    <h1>👥 員工人事維護與薪 কাশী調整</h1>
+    <h1>👥 員工人事維護與薪資調整</h1>
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
         <div style="flex: 1; min-width: 200px;"><label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">1. 選擇部門</label><select id="filterDept" onchange="updateEmpDropdown()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"></select></div>
         <div style="flex: 1; min-width: 200px;"><label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">2. 選擇員工 (細部微調)</label><select id="filterEmp" onchange="loadEmpDetails()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;"><option value="">請先選擇部門...</option></select></div>
@@ -198,7 +198,13 @@
 </div>
 
 <script>
-    // 💡 正式區 API 網址 (請確認這組與您最新部署的網址一致！)
+    // 🚨 終極防護網：如果代碼貼錯或語法崩潰，會整頁變成紅色警告！
+    window.onerror = function(message, source, lineno, colno, error) {
+        document.body.innerHTML = `<div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh;">🚨 網頁程式碼發生嚴重錯誤！<br><br>這通常是因為您在 GitHub 複製貼上時，不小心漏掉了括號，或是不小心貼到了後端的 Code.gs 代碼。<br><br><span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span><br><br>👉 請重新複製我給您的整段 HTML 代碼，並「完全覆蓋」 GitHub 裡的內容！</div>`;
+        return true;
+    };
+
+    // 💡 正式區 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -289,7 +295,6 @@
         switchNavTab('leaveBox'); fetchData();
     }
 
-    // 🚀 升級：智慧除錯雷達，直接把錯誤原因印在畫面上！
     async function fetchData() { 
         showLoading("獲取最新雲端資料...");
         try { 
@@ -300,7 +305,10 @@
             try {
                 db = JSON.parse(text);
             } catch(e) {
-                throw new Error("後端回傳的不是有效資料。這通常是因為「API 網址錯誤」或沒有「建立新版本」。<br><br><span style='color:#666;font-size:12px;'>回傳內容：" + text.substring(0, 150).replace(/</g,"&lt;").replace(/>/g,"&gt;") + "</span>");
+                document.getElementById('leaveBody').innerHTML = `<tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">🚨 系統連線崩潰：<br><br>後端回傳的不是有效資料。這通常是因為「API 網址錯誤」或 Google Apps Script 沒有「建立新版本」。<br><br><span style='color:#666;font-size:12px;'>回傳內容截取：${text.substring(0, 150).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span><br><br>👉 【解決方法】：請回到 Google 試算表 ➔ 擴充功能 ➔ Apps Script ➔ 部署 ➔ 管理部署 ➔ 複製最新的「網頁應用程式網址」，並更新到這份 admin.html 最下方的 CONFIG_URL 中！</td></tr>`;
+                document.getElementById('adminRole').innerHTML = `<option value="">⚠️ 連線失敗</option>`;
+                hideLoading();
+                return;
             }
             
             const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -460,7 +468,6 @@
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) }); if (await res.text() === "Success") { alert("✅ 歷史假單補登完畢，天數已扣除。"); document.getElementById('retroStart').value = ""; document.getElementById('retroEnd').value = ""; fetchData(); } } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
-    // 🚀 假單列表升級：動態標題對應與加入刪除按鈕
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
