@@ -289,18 +289,31 @@
         switchNavTab('leaveBox'); fetchData();
     }
 
+    // 🚀 加入智慧除錯器，如果連線失敗會印出原因
     async function fetchData() { 
         showLoading("獲取最新雲端資料...");
         try { 
             const key = getCurrentKey(); const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
-            const res = await fetch(urlWithKey); db = await res.json(); 
+            const res = await fetch(urlWithKey); 
+            
+            const text = await res.text();
+            try {
+                db = JSON.parse(text);
+            } catch(e) {
+                throw new Error("後端回傳的不是有效的資料 (可能 URL 錯誤或未建立新版本)。\n回傳內容：" + text.substring(0, 80));
+            }
+            
             const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
             if(!document.getElementById('schedMonth').value) document.getElementById('schedMonth').value = ym;
             if(!document.getElementById('salaryMonth').value) document.getElementById('salaryMonth').value = ym;
             if(!document.getElementById('attMonth').value) document.getElementById('attMonth').value = ym;
             
             renderDynamicDropdowns(); renderLeave(); renderStaff(document.getElementById('filterDept').value); renderSalary(); renderSchedule();
-        } catch(e) { alert("連線失敗"); } finally { hideLoading(); }
+        } catch(e) { 
+            alert("🚨 系統連線發生錯誤：\n" + e.message); 
+        } finally { 
+            hideLoading(); 
+        }
     }
 
     function triggerExcelUpload() { document.getElementById('perfExcelUpload').click(); }
@@ -446,7 +459,6 @@
         try { const res = await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) }); if (await res.text() === "Success") { alert("✅ 歷史假單補登完畢，天數已扣除。"); document.getElementById('retroStart').value = ""; document.getElementById('retroEnd').value = ""; fetchData(); } } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
-    // 🚀 假單列表升級：動態標題對應與加入刪除按鈕
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
