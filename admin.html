@@ -126,15 +126,18 @@
         <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="punchReason" placeholder="例如：忘記帶手機" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><button class="btn btn-success" onclick="submitManualPunch()" style="height:32px;">💾 確認補登</button></div>
     </div>
+    
+    <!-- 🚀 介面優化：後台專用請假登錄面板 -->
     <div id="retroLeavePanel" class="punch-panel" style="display:none; background: #fce8e6; border: 1px solid #fad2cf; margin-top:15px;">
-        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #d93025; font-weight: bold;">🏖️ 補登歷史特休/請假紀錄</div>
+        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #d93025; font-weight: bold;">🏖️ 後台專案請假登錄 (全假別適用)</div>
         <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="retroEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
         <div><label style="font-weight:bold; font-size:12px;">假別：</label><br><select id="retroLeaveType" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="特休">特休</option><option value="事假">事假</option><option value="病假">病假</option><option value="公假">公假</option><option value="喪假">喪假</option><option value="婚假">婚假</option><option value="產假">產假</option></select></div>
         <div><label style="font-weight:bold; font-size:12px;">起始時間：</label><br><input type="datetime-local" id="retroStart" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><label style="font-weight:bold; font-size:12px;">結束時間：</label><br><input type="datetime-local" id="retroEnd" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
-        <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="retroReason" value="系統導入前已休" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
-        <div><button class="btn btn-danger" onclick="submitRetroLeave()" style="height:32px;">💾 扣除特休天數</button></div>
+        <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="retroReason" value="後台強制補登" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
+        <div><button class="btn btn-danger" onclick="submitRetroLeave()" style="height:32px;">💾 確認登錄假期</button></div>
     </div>
+    
     <div class="table-responsive">
         <table style="background:white;"><thead style="background:#f8f9fa;"><tr><th>打卡時間</th><th>姓名</th><th>部門</th><th>卡別</th><th>系統狀態</th><th>定位紀錄</th><th>管理操作</th></tr></thead><tbody id="attendanceBody"></tbody></table>
     </div>
@@ -570,7 +573,7 @@
             }); 
             if (await res.text() === "Success") { 
                 alert("✅ 部門已成功移除。"); 
-                fetchData(); 
+                fetchData();
             } 
         } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
@@ -750,16 +753,16 @@
         const reason = document.getElementById('retroReason').value;
         
         if (!empName || !start || !end) return alert("⚠️ 必填欄位未填！"); 
-        if (!confirm(`確認補登歷史假單扣除天數？`)) return; 
+        if (!confirm(`確認登錄假期紀錄嗎？`)) return; 
         
-        showLoading("補登假單中...");
+        showLoading("登錄假期中...");
         try { 
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start, end: end, reason: reason }) 
             }); 
             if (await res.text() === "Success") { 
-                alert("✅ 歷史假單補登完畢，天數已扣除。"); 
+                alert("✅ 假期登錄完畢，若為特休將自動扣除天數。"); 
                 document.getElementById('retroStart').value = ""; 
                 document.getElementById('retroEnd').value = ""; 
                 fetchData(); 
@@ -767,6 +770,7 @@
         } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
+    // 🚀 假單列表升級
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
@@ -1102,12 +1106,12 @@
                 fetchData(); 
             } else {
                 alert("❌ " + text);
-                hideLoading();
             }
         } catch(e) { 
             alert("❌ 網路錯誤，刪除失敗"); 
+        } finally {
             hideLoading();
-        } 
+        }
     }
 
     async function changeAdminPassword() { 
@@ -1229,7 +1233,7 @@
         XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`); 
     }
 
-    // 啟動系統
+    // 啟動系統！
     fetchData();
 </script>
 </body>
