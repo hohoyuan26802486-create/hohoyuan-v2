@@ -127,9 +127,8 @@
         <div><button class="btn btn-success" onclick="submitManualPunch()" style="height:32px;">💾 確認補登</button></div>
     </div>
     
-    <!-- 🚀 介面優化：後台專用請假登錄面板 -->
     <div id="retroLeavePanel" class="punch-panel" style="display:none; background: #fce8e6; border: 1px solid #fad2cf; margin-top:15px;">
-        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #d93025; font-weight: bold;">🏖️ 後台專案請假登錄 (全假別適用)</div>
+        <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #d93025; font-weight: bold;">🏖️ 後台專屬請假登錄 (全假別適用)</div>
         <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="retroEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
         <div><label style="font-weight:bold; font-size:12px;">假別：</label><br><select id="retroLeaveType" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="特休">特休</option><option value="事假">事假</option><option value="病假">病假</option><option value="公假">公假</option><option value="喪假">喪假</option><option value="婚假">婚假</option><option value="產假">產假</option></select></div>
         <div><label style="font-weight:bold; font-size:12px;">起始時間：</label><br><input type="datetime-local" id="retroStart" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
@@ -233,7 +232,7 @@
 <!-- 核心程式碼區域 -->
 <!-- ========================================== -->
 <script>
-    // 🚨 終極防護網：如果代碼有錯，會變成紅畫面警告
+    // 🚨 終極防護網
     window.onerror = function(message, source, lineno, colno, error) {
         document.body.innerHTML = `
             <div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">
@@ -248,7 +247,7 @@
 </script>
 
 <script>
-    // 💡 正式區 API 網址 (務必確認此網址正確)
+    // 💡 正式區 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -375,7 +374,6 @@
         fetchData();
     }
 
-    // 🚀 升級：智慧除錯雷達
     async function fetchData() { 
         showLoading("獲取最新雲端資料...");
         try { 
@@ -573,7 +571,7 @@
             }); 
             if (await res.text() === "Success") { 
                 alert("✅ 部門已成功移除。"); 
-                fetchData();
+                fetchData(); 
             } 
         } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
     }
@@ -770,7 +768,7 @@
         } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
-    // 🚀 假單列表升級
+    // 🚀 假單列表升級：加入「防卡關」越權核准按鈕機制
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
@@ -819,6 +817,10 @@
             let proofUrl = r[cProof] ? String(r[cProof]).trim() : "";
             
             let next = ''; let canApprove = false;
+            let btnText = '✔️ 核准';
+            let btnClass = 'btn-success';
+
+            // 1. 正常簽核邏輯
             if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部'))) { 
                 canApprove = true; next = '待副總審核'; 
             } else if (status === '待副總審核' && role === '副總') { 
@@ -827,12 +829,27 @@
                 canApprove = true; next = '已生效'; 
             }
             
+            // 2. 👑 越權核准邏輯 (填補斷層：防止假單卡死)
+            if (!canApprove) {
+                if (role === '副總' && status === '待主管審核') {
+                    canApprove = true; 
+                    next = '待人事核銷';
+                    btnText = '⚡ 越級核准';
+                    btnClass = 'btn-warning';
+                } else if (role === '人事部' && (status === '待主管審核' || status === '待副總審核')) {
+                    canApprove = true; 
+                    next = '已生效'; 
+                    btnText = '⚡ 強制生效';
+                    btnClass = 'btn-danger';
+                }
+            }
+            
             let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${agent}</div>` : ''; 
             let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無"); 
             
             let actionBtn = '';
             if(canApprove && currentLvTab === 'pending') {
-                actionBtn = `<div class="action-group" style="display:flex; gap:5px;"><button class="btn btn-success" onclick="updLv('${id}','${next}')">✔️ 核准</button><button class="btn btn-warning" onclick="rejectLeave('${id}')">❌ 退件</button><button class="btn btn-danger" onclick="deleteLeave('${id}')">🗑️ 刪除</button></div>`;
+                actionBtn = `<div class="action-group" style="display:flex; gap:5px;"><button class="btn ${btnClass}" onclick="updLv('${id}','${next}')">${btnText}</button><button class="btn btn-edit" style="color:#d93025 !important;" onclick="rejectLeave('${id}')">❌ 退件</button><button class="btn btn-danger" onclick="deleteLeave('${id}')">🗑️ 刪除</button></div>`;
             } else {
                 if (role === '人事部' || role === '副總') {
                      actionBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteLeave('${id}')">🗑️ 刪除</button>`;
