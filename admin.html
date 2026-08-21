@@ -105,7 +105,7 @@
 </div>
 
 <div id="attendanceBox" class="container" style="display:none; background-color: #fcfdfe; border: 1px solid #d2e3fc;">
-    <h1 style="margin-top:0; border-left-color: #1a73e8;">🕒 員工出勤紀錄與手 অটো補登</h1>
+    <h1 style="margin-top:0; border-left-color: #1a73e8;">🕒 員工出勤紀錄與手動補登</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <div><label style="font-weight:bold; color:#5f6368; display:block; margin-bottom:5px;">月份：</label><input type="month" id="attMonth" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"></div>
         <div><label style="font-weight:bold; color:#5f6368; display:block; margin-bottom:5px;">部門篩選：</label><select id="attDept" onchange="updateAttEmpDropdown()" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-weight:bold;"></select></div>
@@ -238,7 +238,7 @@
 </script>
 
 <script>
-    // 💡 已幫您無縫寫入最新產生的正確 API 網址！
+    // 💡 已幫老闆完美寫入最新產生的安全 API 網址！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -698,11 +698,14 @@
                 method: 'POST', 
                 body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
             }); 
-            if (await res.text() === "Success") { 
+            const resultText = await res.text();
+            if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
                 loadAttendanceRecords(); 
-            } 
-        } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
+            } else {
+                alert("❌ 刪除失敗：" + resultText);
+            }
+        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
     }
 
     async function submitManualPunch() {
