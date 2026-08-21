@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.27 (權限全開版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.28 (精準連線版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -141,8 +141,8 @@
 </div>
 
 <script>
-    // 💡 替換為全新的 API 網址！
-    const API_URL = "https://script.google.com/macros/s/AKfycby3dlT3IlQkh6ooT4OH14UZNSHrSZjvzuopxw7jGJnOfbUteacg-UxY67azlNZhphBRDw/exec";
+    // 💡 寫入老闆最新產生的 API 網址
+    const API_URL = "https://script.google.com/macros/s/AKfycbySLwSfvGzkZT1y4x-ZeIxwdmCrc2CNttRmYVZjDTj9wgqr8Sv9ucrHJuCXsPJ1v4Or/exec";
     
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
     const NO_GPS_WORKERS = ["蔡政達"];
@@ -155,31 +155,6 @@
     
     function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
-
-    // 強制穿透機制
-    async function safePost(payload) {
-        try {
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload)
-            });
-            return await res.text();
-        } catch (e) {
-            console.warn("觸發 Apple 攔截機制，啟動強制穿透模式...");
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(payload)
-                });
-                return "Fallback_Success"; 
-            } catch (err2) {
-                throw new Error("穿透失敗，請通知工程師。");
-            }
-        }
-    }
 
     function isHolidayToday() {
         const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
@@ -326,7 +301,7 @@
             } else { syncName(document.getElementById('attName').value); }
             loadPendingProofs();
         } catch (e) { 
-            Swal.fire('連線失敗', '無法讀取資料，請確認 Google Apps Script 權限是否設為「所有人」', 'error'); 
+            Swal.fire('連線失敗', '無法讀取資料，請確認 API_URL 網址是否正確且權限全開', 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -352,13 +327,14 @@
         
         showLoading("打卡資料傳送中...");
         try {
-            const payload = { action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" };
-            const result = await safePost(payload);
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
+            });
+            const result = await response.text();
             
-            if (result === "Fallback_Success") {
-                if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', name);
-                Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
-            } else if (result === "Error_TooFast") {
+            if (result === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
             } else if (result === "Error_MissingIn") {
                 Swal.fire({ icon: 'error', title: '未偵測到上班紀錄', text: '系統找不到您今天的上班打卡紀錄，已發送通知給幹部。請尋找主管會同人事進行補登作業！' });
@@ -373,7 +349,7 @@
                 Swal.fire('失敗', result, 'error'); 
             }
         } catch (e) { 
-            Swal.fire('連線錯誤', '網路異常，請確認訊號狀態。', 'error'); 
+            Swal.fire('連線錯誤', '伺服器拒絕接收，請確認後台權限是否設為「所有人」。', 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -407,17 +383,22 @@
                 p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
             
-            const text = await safePost(p);
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
             
-            if (text === "Fallback_Success" || text === "Success") { 
-                Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload()); 
-            } else if (text.includes("系統阻擋")) {
+            if (text.includes("系統阻擋")) {
                 Swal.fire('休假人數達上限', text, 'error');
+            } else if (text === "Success") { 
+                Swal.fire('成功', '假單送出成功！', 'success').then(() => location.reload()); 
             } else { 
                 Swal.fire('失敗', text, 'error'); 
             }
         } catch(e) { 
-            Swal.fire('錯誤', '網路異常，請確認連線狀態！', 'error'); 
+            Swal.fire('連線錯誤', '伺服器拒絕接收，請確認後台權限是否設為「所有人」。', 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -440,15 +421,20 @@
         try {
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
             
-            const text = await safePost(p);
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
             
-            if (text === "Fallback_Success" || text === "Success") { 
+            if (text === "Success") { 
                 Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); 
             } else { 
                 Swal.fire('失敗', text, 'error'); 
             }
         } catch (e) { 
-            Swal.fire('錯誤', '網路異常，請稍後再試！', 'error'); 
+            Swal.fire('連線錯誤', '伺服器拒絕接收，請確認後台權限是否設為「所有人」。', 'error'); 
         } 
         finally { hideLoading(); }
     }
