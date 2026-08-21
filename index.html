@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.20 (支援特准放行)</title>
+    <title>禾禾園 - 智能考勤系統 V37.21 (手機連線穿透版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -141,7 +141,7 @@
 </div>
 
 <script>
-    // ⚠️ 確認這裡是您的最新 API 網址！
+    // 💡 官方 API 網址
     const API_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
     const FLEX_WORKERS = ["陳美玲", "簡金嬌"]; 
@@ -280,10 +280,14 @@
         else { box.innerText = "❌ 距離太遠，請回公司再打卡"; box.className = "gps-box gps-fail"; btn.disabled = true; btn.innerText = "不在打卡範圍內"; }
     }
 
+    // 🚀 關鍵升級：加入自動防快取機制 (Cache Buster)
     async function fetchEmployees() {
         showLoading("載入資料中...");
         try {
-            const res = await fetch(API_URL); globalDB = await res.json();
+            // 在網址後方加上隨機時間戳，強迫手機每次重新抓取資料
+            const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
+            const res = await fetch(cacheBusterUrl); 
+            globalDB = await res.json();
             const validEmp = globalDB.employees.filter(r => r[0] !== "姓名" && r[0] !== "");
             const opts = validEmp.map(r => `<option value="${r[0]}">${r[0]}</option>`).join('');
             document.getElementById('attName').innerHTML = opts; 
@@ -298,7 +302,9 @@
                 syncName(bound); 
             } else { syncName(document.getElementById('attName').value); }
             loadPendingProofs();
-        } catch (e) { Swal.fire('錯誤', '連線失敗，請重新整理！', 'error'); } 
+        } catch (e) { 
+            Swal.fire('錯誤', '連線失敗：' + e.message, 'error'); 
+        } 
         finally { hideLoading(); }
     }
 
@@ -320,27 +326,24 @@
         if ((selectedStatus.includes("加班") || selectedStatus.includes("值班")) && !overtimeReason.trim()) return Swal.fire('提示', '請填寫事由', 'warning');
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
+        
         showLoading("打卡資料傳送中...");
         try {
+            // 🚀 關鍵升級：加入 headers 與 redirect 防止手機瀏覽器擋截 POST 請求
             const response = await fetch(API_URL, { 
-                method: 'POST', body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
+                method: 'POST', 
+                redirect: 'follow',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
             });
             const result = await response.text();
             
             if (result === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
             } else if (result === "Error_MissingIn") {
-                Swal.fire({
-                    icon: 'error',
-                    title: '未偵測到上班紀錄',
-                    text: '系統找不到您今天的上班打卡紀錄，已發送通知給幹部。請尋找主管會同人事進行補登作業！'
-                });
+                Swal.fire({ icon: 'error', title: '未偵測到上班紀錄', text: '系統找不到您今天的上班打卡紀錄，已發送通知給幹部。請尋找主管會同人事進行補登作業！' });
             } else if (result === "Error_MissingOut") {
-                Swal.fire({
-                    icon: 'error',
-                    title: '前次下班未打卡',
-                    text: '系統發現您前一次出勤忘記打下班卡，已發送通知給幹部。請尋找主管會同人事進行補登作業！'
-                });
+                Swal.fire({ icon: 'error', title: '前次下班未打卡', text: '系統發現您前一次出勤忘記打下班卡，已發送通知給幹部。請尋找主管會同人事進行補登作業！' });
             } else if (result === "Duplicate") { 
                 Swal.fire('注意', `${name}，您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); 
             } else if (result === "Success") {
@@ -349,7 +352,10 @@
             } else { 
                 Swal.fire('失敗', result, 'error'); 
             }
-        } catch (e) { Swal.fire('錯誤', '網路連線異常，請稍後再試！', 'error'); } 
+        } catch (e) { 
+            // 加入 e.message 顯示具體錯誤，幫助精準除錯
+            Swal.fire('錯誤', '連線異常，請截圖給工程師：' + e.message, 'error'); 
+        } 
         finally { hideLoading(); }
     }
 
@@ -381,7 +387,13 @@
                 p.imageFile = await getBase64(fileInput.files[0]);
                 p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
-            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            // 🚀 關鍵升級
+            const res = await fetch(API_URL, { 
+                method: 'POST', 
+                redirect: 'follow',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
             const text = await res.text(); 
             
             if (text.includes("系統阻擋")) {
@@ -391,7 +403,9 @@
             } else { 
                 Swal.fire('失敗', text, 'error'); 
             }
-        } catch(e) { Swal.fire('錯誤', '網路異常，請稍後再試。', 'error'); } 
+        } catch(e) { 
+            Swal.fire('錯誤', '網路異常：' + e.message, 'error'); 
+        } 
         finally { hideLoading(); }
     }
 
@@ -412,11 +426,19 @@
         showLoading("照片上傳中...");
         try {
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(p) }); 
+            // 🚀 關鍵升級
+            const res = await fetch(API_URL, { 
+                method: 'POST', 
+                redirect: 'follow',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
             const text = await res.text(); 
             if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); } 
             else { Swal.fire('失敗', text, 'error'); }
-        } catch (e) { Swal.fire('錯誤', '網路異常，請稍後再試。', 'error'); } 
+        } catch (e) { 
+            Swal.fire('錯誤', '網路異常：' + e.message, 'error'); 
+        } 
         finally { hideLoading(); }
     }
 
