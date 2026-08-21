@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.23 (蘋果 iOS 穿透版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.24 (最終穩定版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -156,23 +156,6 @@
     function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
 
-    // 🚀 核心升級：專門為蘋果 iOS 設計的 XHR 穿透傳送函數
-    function gasPost(payload) {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", API_URL, true);
-            xhr.onload = function() {
-                if(xhr.status === 200 || xhr.status === 0) { resolve(xhr.responseText); } 
-                else { reject(new Error("狀態碼異常: " + xhr.status)); }
-            };
-            xhr.onerror = function() {
-                reject(new Error("Apple 裝置強制阻擋了網路跳轉 (XHR Failed)"));
-            };
-            // 直接以純字串傳送，避免 Apple Safari 的預檢請求攔截
-            xhr.send(JSON.stringify(payload));
-        });
-    }
-
     function isHolidayToday() {
         const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
         return (day === 0 || day === 6 || HOLIDAYS_2026.includes(dateStr));
@@ -318,7 +301,7 @@
             } else { syncName(document.getElementById('attName').value); }
             loadPendingProofs();
         } catch (e) { 
-            Swal.fire('錯誤', '連線失敗：' + e.message, 'error'); 
+            Swal.fire('連線失敗', '網路不穩或權限未開放：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -333,6 +316,7 @@
         });
     }
 
+    // 🚀 最純粹的標準傳送方法 (無自訂 headers 避免被 Safari 攔截)
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const name = document.getElementById('attName').value;
@@ -344,8 +328,11 @@
         
         showLoading("打卡資料傳送中...");
         try {
-            // 🚀 改用防攔截 XHR 函數傳送
-            const result = await gasPost({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" });
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
+            });
+            const result = await response.text();
             
             if (result === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
@@ -395,8 +382,12 @@
                 p.imageFile = await getBase64(fileInput.files[0]);
                 p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
-            // 🚀 改用防攔截 XHR 函數傳送
-            const text = await gasPost(p);
+            
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
             
             if (text.includes("系統阻擋")) {
                 Swal.fire('休假人數達上限', text, 'error');
@@ -428,9 +419,12 @@
         showLoading("照片上傳中...");
         try {
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            // 🚀 改用防攔截 XHR 函數傳送
-            const text = await gasPost(p);
             
+            const response = await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
             if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); } 
             else { Swal.fire('失敗', text, 'error'); }
         } catch (e) { 
