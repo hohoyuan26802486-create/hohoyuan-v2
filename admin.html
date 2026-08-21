@@ -175,7 +175,6 @@
         <div class="form-group"><label style="color:#d93025;">在職狀態</label><select id="empStatus" style="border-color:#d93025; background:#fff5f5;"><option value="InService">🟢 在職中</option><option value="已離職">🔴 已離職</option></select></div>
         <div class="form-group"><label>基本薪資 (月/日/時薪額度)</label><input type="number" id="empSalary" placeholder="請輸入對應額度"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
-        <!-- 🚀 介面優化：特休天數手動校正輸入框 -->
         <div class="form-group"><label style="color:#1a73e8;">剩餘特休天數</label><input type="number" step="0.5" id="annualLeave" placeholder="可手動校正天數"></div>
         <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
         <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
@@ -225,7 +224,6 @@
 </div>
 
 <script>
-    // 🚨 終極防護網
     window.onerror = function(message, source, lineno, colno, error) {
         document.body.innerHTML = `
             <div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">
@@ -240,7 +238,6 @@
 </script>
 
 <script>
-    // 💡 正式區 API 網址
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw33nAqelLWJFWD4Sv1mfNLhBfLYPoC9fwYl80WUcJMuum-59xB8gJR_94IS11a-0wkOA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -761,7 +758,6 @@
         } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
     }
 
-    // 🚀 假單列表升級：加入「防卡關」越權核准按鈕機制
     function renderLeave() {
         const role = document.getElementById('adminRole').value;
         if(!db.leave || db.leave.length <= 1) {
@@ -960,7 +956,6 @@
             let dutyType = r[18] === "責任制幹部" ? `<span style="color:#d93025; font-weight:bold;">🔴幹部</span>` : `<span style="color:#0f9d58; font-weight:bold;">🟢一般</span>`; 
             let statusMark = r[19] === "已離職" ? `<br><span style="color:#d93025; font-size:12px; font-weight:bold;">(已離職)</span>` : ''; 
             
-            // 🚀 關鍵更新：介面顯示時，直接省略多餘小數點 (只留1位小數)
             let formattedAnnualLeave = parseFloat(Number(r[5] || 0).toFixed(1));
 
             htmlStr += `<tr>
@@ -1002,7 +997,6 @@
             document.getElementById('empStatus').value = emp[19] || "在職";
             document.getElementById('obDate').value = emp[4] ? new Date(emp[4]).toISOString().split('T')[0] : "";
             
-            // 🚀 將資料帶入手動特休欄位
             document.getElementById('annualLeave').value = emp[5] !== undefined ? parseFloat(Number(emp[5]).toFixed(1)) : "";
             
             if (emp[3] === "*** LOCKED ***") { 
@@ -1055,7 +1049,7 @@
         p.payType = document.getElementById('payType').value;
         p.salary = document.getElementById('empSalary').value;
         p.onboardingDate = document.getElementById('obDate').value;
-        p.annualLeave = document.getElementById('annualLeave').value; // 傳送手動輸入的特休天數
+        p.annualLeave = document.getElementById('annualLeave').value; 
         p.bonus = document.getElementById('bonus').value;
         p.laborIns = document.getElementById('laborIns').value;
         p.healthIns = document.getElementById('healthIns').value;
