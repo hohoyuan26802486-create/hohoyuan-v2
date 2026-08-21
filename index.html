@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.22 (iOS 連線修復版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.23 (蘋果 iOS 穿透版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -155,6 +155,23 @@
     
     function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    // 🚀 核心升級：專門為蘋果 iOS 設計的 XHR 穿透傳送函數
+    function gasPost(payload) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", API_URL, true);
+            xhr.onload = function() {
+                if(xhr.status === 200 || xhr.status === 0) { resolve(xhr.responseText); } 
+                else { reject(new Error("狀態碼異常: " + xhr.status)); }
+            };
+            xhr.onerror = function() {
+                reject(new Error("Apple 裝置強制阻擋了網路跳轉 (XHR Failed)"));
+            };
+            // 直接以純字串傳送，避免 Apple Safari 的預檢請求攔截
+            xhr.send(JSON.stringify(payload));
+        });
+    }
 
     function isHolidayToday() {
         const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
@@ -327,12 +344,8 @@
         
         showLoading("打卡資料傳送中...");
         try {
-            // 🚀 終極更新：移除 headers，採用最原生的 POST 方法，避免 Apple Safari 的跨域檢查阻擋
-            const response = await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
-            });
-            const result = await response.text();
+            // 🚀 改用防攔截 XHR 函數傳送
+            const result = await gasPost({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" });
             
             if (result === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
@@ -349,7 +362,7 @@
                 Swal.fire('失敗', result, 'error'); 
             }
         } catch (e) { 
-            Swal.fire('連線錯誤', '網路異常，請截圖給工程師：' + e.message, 'error'); 
+            Swal.fire('連線錯誤', '網路連線異常，請截圖回報：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -382,12 +395,8 @@
                 p.imageFile = await getBase64(fileInput.files[0]);
                 p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
-            // 🚀 終極更新：移除 headers，避免 Apple Safari 的跨域檢查阻擋
-            const res = await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify(p) 
-            }); 
-            const text = await res.text(); 
+            // 🚀 改用防攔截 XHR 函數傳送
+            const text = await gasPost(p);
             
             if (text.includes("系統阻擋")) {
                 Swal.fire('休假人數達上限', text, 'error');
@@ -397,7 +406,7 @@
                 Swal.fire('失敗', text, 'error'); 
             }
         } catch(e) { 
-            Swal.fire('錯誤', '網路異常：' + e.message, 'error'); 
+            Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -419,16 +428,13 @@
         showLoading("照片上傳中...");
         try {
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            // 🚀 終極更新：移除 headers，避免 Apple Safari 的跨域檢查阻擋
-            const res = await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify(p) 
-            }); 
-            const text = await res.text(); 
+            // 🚀 改用防攔截 XHR 函數傳送
+            const text = await gasPost(p);
+            
             if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); } 
             else { Swal.fire('失敗', text, 'error'); }
         } catch (e) { 
-            Swal.fire('錯誤', '網路異常：' + e.message, 'error'); 
+            Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
     }
