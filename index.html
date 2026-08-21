@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 智能考勤系統 V37.21 (手機連線穿透版)</title>
+    <title>禾禾園 - 智能考勤系統 V37.22 (iOS 連線修復版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { --primary: #1a73e8; --danger: #d93025; --success: #28a745; --bg: #f8f9fa; }
@@ -280,11 +280,9 @@
         else { box.innerText = "❌ 距離太遠，請回公司再打卡"; box.className = "gps-box gps-fail"; btn.disabled = true; btn.innerText = "不在打卡範圍內"; }
     }
 
-    // 🚀 關鍵升級：加入自動防快取機制 (Cache Buster)
     async function fetchEmployees() {
         showLoading("載入資料中...");
         try {
-            // 在網址後方加上隨機時間戳，強迫手機每次重新抓取資料
             const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
             const res = await fetch(cacheBusterUrl); 
             globalDB = await res.json();
@@ -329,11 +327,9 @@
         
         showLoading("打卡資料傳送中...");
         try {
-            // 🚀 關鍵升級：加入 headers 與 redirect 防止手機瀏覽器擋截 POST 請求
+            // 🚀 終極更新：移除 headers，採用最原生的 POST 方法，避免 Apple Safari 的跨域檢查阻擋
             const response = await fetch(API_URL, { 
                 method: 'POST', 
-                redirect: 'follow',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "write", sheetName: "attendance", name: name, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
             });
             const result = await response.text();
@@ -353,8 +349,7 @@
                 Swal.fire('失敗', result, 'error'); 
             }
         } catch (e) { 
-            // 加入 e.message 顯示具體錯誤，幫助精準除錯
-            Swal.fire('錯誤', '連線異常，請截圖給工程師：' + e.message, 'error'); 
+            Swal.fire('連線錯誤', '網路異常，請截圖給工程師：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -387,11 +382,9 @@
                 p.imageFile = await getBase64(fileInput.files[0]);
                 p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
-            // 🚀 關鍵升級
+            // 🚀 終極更新：移除 headers，避免 Apple Safari 的跨域檢查阻擋
             const res = await fetch(API_URL, { 
                 method: 'POST', 
-                redirect: 'follow',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(p) 
             }); 
             const text = await res.text(); 
@@ -426,11 +419,9 @@
         showLoading("照片上傳中...");
         try {
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            // 🚀 關鍵升級
+            // 🚀 終極更新：移除 headers，避免 Apple Safari 的跨域檢查阻擋
             const res = await fetch(API_URL, { 
                 method: 'POST', 
-                redirect: 'follow',
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(p) 
             }); 
             const text = await res.text(); 
