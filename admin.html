@@ -224,7 +224,21 @@
 </div>
 
 <script>
-    // 🚨 老闆，請把您剛剛在 Google 試算表產生的新網址，貼在下面這個引號裡面！
+    window.onerror = function(message, source, lineno, colno, error) {
+        document.body.innerHTML = `
+            <div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">
+                🚨 網頁程式碼發生嚴重錯誤！<br><br>
+                這通常是因為您在 GitHub 複製貼上時漏掉了括號，或是混到了後端的 Code.gs 代碼。<br><br>
+                <span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span><br><br>
+                👉 請重新複製我給您的整段 HTML 代碼，並「完全覆蓋」 GitHub 裡的內容！
+            </div>
+        `;
+        return true;
+    };
+</script>
+
+<script>
+    // 💡 固定的全新安全通道，不加任何會導致阻擋的亂碼
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -355,7 +369,7 @@
         showLoading("獲取最新雲端資料...");
         try { 
             const key = getCurrentKey(); 
-            // 🚀 加上防快取參數，逼迫瀏覽器抓新資料
+            // 讀取資料(GET)時使用防快取碼，這是正常的
             const urlWithKey = key ? `${CONFIG_URL}?key=${key}&t=${new Date().getTime()}` : `${CONFIG_URL}?t=${new Date().getTime()}`;
             const res = await fetch(urlWithKey); 
             
@@ -473,6 +487,7 @@
 
     async function uploadPerfToBackend(month, perfData) {
         try {
+            // 寫入/上傳資料 (POST) 絕對不能加防快取碼，直接用 CONFIG_URL
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData }) 
@@ -484,7 +499,7 @@
                 alert("匯入失敗：" + result);
             }
         } catch (e) { 
-            alert("網路連線異常，匯入失敗"); 
+            alert("網路連線異常，匯入失敗: " + e.message); 
         } finally { 
             hideLoading(); 
         }
@@ -520,7 +535,7 @@
                 document.getElementById('newDeptInput').value = ""; 
                 fetchData(); 
             } 
-        } catch(e) { alert("連線發生錯誤"); } finally { hideLoading(); }
+        } catch(e) { alert("連線發生錯誤: " + e.message); } finally { hideLoading(); }
     }
 
     async function renameDeptBackend(oldName) {
@@ -536,7 +551,7 @@
                 alert("✅ 部門更名成功！原部門所有同仁已全自動打包搬移至新部門。"); 
                 fetchData(); 
             } 
-        } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
+        } catch(e) { alert("連線錯誤: " + e.message); } finally { hideLoading(); }
     }
 
     async function deleteDeptBackend(name) {
@@ -551,7 +566,7 @@
                 alert("✅ 部門已成功移除。"); 
                 fetchData(); 
             } 
-        } catch(e) { alert("連線錯誤"); } finally { hideLoading(); }
+        } catch(e) { alert("連線錯誤: " + e.message); } finally { hideLoading(); }
     }
 
     function updateAttEmpDropdown() {
@@ -603,14 +618,17 @@
         if (!month) return alert("請選擇月份"); 
         showLoading("正在撈取出勤紀錄..."); 
         try { 
-            // 🚀 加上防快取參數，逼迫瀏覽器抓新資料
-            const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), { 
+            // 🚨 修正點：移除 POST 的防快取碼，恢復標準寫法，避免被當成跨站攻擊！
+            const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) 
             }); 
+            if (!res.ok) throw new Error("Google 伺服器回傳異常，狀態碼：" + res.status);
             rawAttData = await res.json(); 
             renderAttendanceTable(); 
-        } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
+        } catch(e) { 
+            alert("讀取失敗：" + e.message); 
+        } finally { hideLoading(); } 
     }
 
     function renderAttendanceTable() {
@@ -682,15 +700,14 @@
         const month = document.getElementById('attMonth').value; 
         showLoading("刪除中...");
         try { 
-            // 🚀 加上防快取參數，確保傳送沒有被阻擋
-            const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), { 
+            // 🚨 修正點：移除 POST 的防快取碼，恢復標準寫法
+            const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
             }); 
             const resultText = await res.text();
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
-                // 🚀 延遲半秒後再讀取，確保 Google 試算表已經把舊資料清空了
                 setTimeout(loadAttendanceRecords, 500); 
             } else {
                 alert("❌ 刪除失敗：" + resultText);
@@ -722,7 +739,7 @@
                 document.getElementById('punchReason').value = ""; 
                 if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords(); 
             } 
-        } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
+        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
     }
 
     async function submitRetroLeave() {
@@ -749,7 +766,7 @@
                 document.getElementById('retroEnd').value = ""; 
                 fetchData(); 
             } 
-        } catch(e) { alert("❌ 錯誤"); } finally { hideLoading(); }
+        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
     }
 
     function renderLeave() {
@@ -936,7 +953,7 @@
                 alert("✅ 排班表儲存成功！"); 
                 fetchData(); 
             } 
-        } catch(e) { alert("❌ 連線錯誤"); } finally { hideLoading(); } 
+        } catch(e) { alert("❌ 連線錯誤: " + e.message); } finally { hideLoading(); } 
     }
 
     function renderStaff(filterDept = "") { 
@@ -1071,7 +1088,7 @@
                 fetchData(); 
                 clearForm(); 
             } 
-        } catch(e) { alert("連線失敗"); } finally { hideLoading(); } 
+        } catch(e) { alert("連線失敗: " + e.message); } finally { hideLoading(); } 
     }
 
     async function updLv(id, s) { 
@@ -1081,7 +1098,7 @@
             alert("✅ 審核完成"); 
             fetchData(); 
         } catch(e) {
-            alert("❌ 審核失敗"); 
+            alert("❌ 審核失敗: " + e.message); 
             hideLoading();
         }
     }
@@ -1094,7 +1111,7 @@
             alert("❌ 假單已退回！"); 
             fetchData(); 
         } catch(e) {
-            alert("❌ 退件失敗"); 
+            alert("❌ 退件失敗: " + e.message); 
             hideLoading();
         }
     }
@@ -1109,10 +1126,10 @@
                 alert("✅ 假單已成功刪除！"); 
                 fetchData(); 
             } else {
-                alert("❌ " + text);
+                alert("❌ 刪除失敗：" + text);
             }
         } catch(e) { 
-            alert("❌ 網路錯誤，刪除失敗"); 
+            alert("❌ 網路錯誤，刪除失敗: " + e.message); 
             hideLoading();
         }
     }
@@ -1127,7 +1144,7 @@
             await fetch(CONFIG_URL, { method: 'POST', body: JSON.stringify({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd })}); 
             alert("✅ 更新成功！"); 
             location.reload(); 
-        } catch (e) { alert("更新失敗"); hideLoading(); } 
+        } catch (e) { alert("更新失敗: " + e.message); hideLoading(); } 
     }
 
     async function deleteEmp(name) { 
@@ -1143,7 +1160,7 @@
                 alert("✅ 刪除成功！"); 
                 fetchData(); 
             } 
-        } catch (e) { alert("刪除失敗"); hideLoading(); } 
+        } catch (e) { alert("刪除失敗: " + e.message); hideLoading(); } 
     }
     
     function renderSalary() { 
