@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V39.0 (無敵刪除版)</title>
+    <title>禾禾園 - 專業管理後台 V40.0 (絕對狙擊版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -238,6 +238,7 @@
 </script>
 
 <script>
+    // 💡 您的 API 網址已綁定
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -368,7 +369,7 @@
         showLoading("獲取最新雲端資料...");
         try { 
             const key = getCurrentKey(); 
-            const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
+            const urlWithKey = key ? `${CONFIG_URL}?key=${key}&t=${new Date().getTime()}` : `${CONFIG_URL}?t=${new Date().getTime()}`;
             const res = await fetch(urlWithKey); 
             
             const text = await res.text();
@@ -611,6 +612,7 @@
         try { 
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) 
             }); 
             if (!res.ok) throw new Error("Google 伺服器回傳異常，狀態碼：" + res.status);
@@ -628,14 +630,16 @@
 
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody'); 
-        if (!rawAttData || rawAttData.length <= 1) { 
+        if (!rawAttData || rawAttData.length === 0) { 
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; 
             return; 
         }
         
         const filterDept = document.getElementById('attDept').value; 
         const filterEmp = document.getElementById('attEmp').value;
-        let records = rawAttData.slice(1); 
+        
+        // rawAttData 是從 Google 後台取得的陣列，如果是從 V40 取來，裡面每一行會自帶 Google 試算表的真實行號
+        let records = rawAttData.slice(1); // 剃除標題行
         if (filterDept) records = records.filter(r => r[2] === filterDept); 
         if (filterEmp) records = records.filter(r => r[1] === filterEmp);
         
@@ -648,10 +652,10 @@
             let type = r[3]; 
             let timeStr = r[0]; 
             if (!empPunchState[empName]) empPunchState[empName] = null;
-            if (type.includes('上班')) { 
+            if (type && type.includes('上班')) { 
                 if (empPunchState[empName]) errorRecords.add(empPunchState[empName]); 
                 empPunchState[empName] = timeStr; 
-            } else if (type.includes('下班')) { 
+            } else if (type && type.includes('下班')) { 
                 if (!empPunchState[empName]) errorRecords.add(timeStr); 
                 else empPunchState[empName] = null; 
             }
@@ -676,8 +680,12 @@
             let isError = errorRecords.has(r[0]); 
             let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
             
-            // 🚀 回歸最純粹的呼叫，讓強大後台負責處理
-            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
+            // 🚀 V40 核心：取出陣列最後一個元素，這就是它在 Google 試算表裡的真實列數
+            let rowIndex = r[r.length - 1]; 
+            // 轉義名字中的單引號防呆
+            let safeName = String(r[1]).replace(/'/g, "\\'");
+            
+            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${safeName}', ${rowIndex})">🗑️ 刪除</button>`;
             
             htmlStr += `<tr>
                 <td>${timeStr}</td>
@@ -692,18 +700,20 @@
         tbody.innerHTML = htmlStr;
     }
 
-    async function delAtt(timeStr, name) {
+    async function delAtt(timeStr, name, rowIndex) {
         if(!confirm(`確定要刪除 [${name}] 的打卡紀錄嗎？`)) return; 
         const month = document.getElementById('attMonth').value; 
-        showLoading("精準刪除中...");
+        showLoading("精準座標刪除中...");
         try { 
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month, rowIndex: rowIndex }) 
             }); 
             const resultText = await res.text();
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
+                // 畫面無延遲更新
                 loadAttendanceRecords(); 
             } else {
                 alert("❌ 刪除失敗：" + resultText);
