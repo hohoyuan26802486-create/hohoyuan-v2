@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 (最新通道版)</title>
+    <title>禾禾園 - 專業管理後台 V38.6</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -62,7 +62,7 @@
     <div class="tab-container" style="border-bottom:none; margin-bottom:0;">
         <button id="tab-leave" class="tab-btn active" onclick="switchNavTab('leaveBox')">📝 假單審核中心</button>
         <button id="tab-schedule" class="tab-btn" onclick="switchNavTab('scheduleBox')">📅 部門排班表</button>
-        <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與手動補登</button>
+        <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與補登</button>
         <button id="tab-hr" class="tab-btn" onclick="switchNavTab('hrBox')" style="display:none;">👥 人事維護</button>
         <button id="tab-dept" class="tab-btn" onclick="switchNavTab('deptBox')" style="display:none;">🏢 部門編制管理</button>
         <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪資結算</button>
@@ -238,7 +238,7 @@
 </script>
 
 <script>
-    // 💡 已幫老闆完美寫入最新產生的安全 API 網址！
+    // 💡 老闆的專屬 API 網址已完美寫入！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -369,7 +369,6 @@
         showLoading("獲取最新雲端資料...");
         try { 
             const key = getCurrentKey(); 
-            // 讀取資料(GET)時使用防快取碼，這是正常的
             const urlWithKey = key ? `${CONFIG_URL}?key=${key}&t=${new Date().getTime()}` : `${CONFIG_URL}?t=${new Date().getTime()}`;
             const res = await fetch(urlWithKey); 
             
@@ -379,9 +378,8 @@
             } catch(parseError) {
                 document.getElementById('leaveBody').innerHTML = `
                     <tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">
-                    🚨 系統連線崩潰：<br><br>後端回傳的不是有效資料。這通常是因為「API 網址錯誤」或沒有「建立新版本」。<br><br>
+                    🚨 系統連線崩潰：<br><br>後端回傳的不是有效資料。<br><br>
                     <span style='color:#666;font-size:12px;'>回傳內容截取：${text.substring(0, 150).replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span><br><br>
-                    👉 【解決方法】：請回到 Google 試算表 ➔ 擴充功能 ➔ Apps Script ➔ 部署 ➔ 管理部署 ➔ 複製最新的「網頁應用程式網址」，並更新到這份 admin.html 最下方的 CONFIG_URL 中！
                     </td></tr>
                 `;
                 document.getElementById('adminRole').innerHTML = `<option value="">⚠️ 連線失敗</option>`;
@@ -401,12 +399,7 @@
             renderSalary(); 
             renderSchedule();
         } catch(e) { 
-            document.getElementById('leaveBody').innerHTML = `
-                <tr><td colspan="6" style="text-align:left;padding:30px;color:#d93025;font-weight:bold;background:#fce8e6;border-radius:8px;">
-                🚨 系統連線崩潰：<br><br>${e.message}<br><br>👉 【解決方法】：請確認您的 API 網址是否正確。
-                </td></tr>
-            `;
-            document.getElementById('adminRole').innerHTML = `<option value="">⚠️ 連線失敗</option>`;
+            alert("⚠️ 連線失敗：" + e.message); 
         } finally { 
             hideLoading(); 
         }
@@ -487,7 +480,6 @@
 
     async function uploadPerfToBackend(month, perfData) {
         try {
-            // 寫入/上傳資料 (POST) 絕對不能加防快取碼，直接用 CONFIG_URL
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData }) 
@@ -618,14 +610,18 @@
         if (!month) return alert("請選擇月份"); 
         showLoading("正在撈取出勤紀錄..."); 
         try { 
-            // 🚨 修正點：移除 POST 的防快取碼，恢復標準寫法，避免被當成跨站攻擊！
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) 
             }); 
             if (!res.ok) throw new Error("Google 伺服器回傳異常，狀態碼：" + res.status);
-            rawAttData = await res.json(); 
-            renderAttendanceTable(); 
+            const text = await res.text();
+            try {
+                rawAttData = JSON.parse(text);
+                renderAttendanceTable(); 
+            } catch(e) {
+                alert("資料解析失敗，請確認 Code.gs 已經完整更新！\n伺服器回傳：" + text.substring(0, 100));
+            }
         } catch(e) { 
             alert("讀取失敗：" + e.message); 
         } finally { hideLoading(); } 
@@ -680,7 +676,10 @@
             let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
             let isError = errorRecords.has(r[0]); 
             let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
-            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
+            
+            // 🚀 精準列數狙擊綁定 (r[7] 為在 Google 試算表中的真實列數)
+            let rowIndex = r[7] || 0; 
+            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}', ${rowIndex})">🗑️ 刪除</button>`;
             
             htmlStr += `<tr>
                 <td>${timeStr}</td>
@@ -695,20 +694,25 @@
         tbody.innerHTML = htmlStr;
     }
 
-    async function delAtt(timeStr, name) {
-        if(!confirm(`確定要刪除 [${name}] 在 [${timeStr}] 的打卡紀錄嗎？`)) return; 
+    async function delAtt(timeStr, name, rowIndex) {
+        if(!confirm(`確定要刪除 [${name}] 的打卡紀錄嗎？`)) return; 
         const month = document.getElementById('attMonth').value; 
-        showLoading("刪除中...");
+        showLoading("精準狙擊刪除中...");
         try { 
-            // 🚨 修正點：移除 POST 的防快取碼，恢復標準寫法
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
+                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month, rowIndex: rowIndex }) 
             }); 
             const resultText = await res.text();
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
-                setTimeout(loadAttendanceRecords, 500); 
+                // 🚀 畫面立刻抽走，零殘影
+                if (rowIndex) {
+                    rawAttData = rawAttData.filter(r => r[7] !== rowIndex);
+                    renderAttendanceTable();
+                } else {
+                    setTimeout(loadAttendanceRecords, 500); 
+                }
             } else {
                 alert("❌ 刪除失敗：" + resultText);
             }
