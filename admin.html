@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V38.6</title>
+    <title>禾禾園 - 專業管理後台 V39.0 (無敵刪除版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -62,7 +62,7 @@
     <div class="tab-container" style="border-bottom:none; margin-bottom:0;">
         <button id="tab-leave" class="tab-btn active" onclick="switchNavTab('leaveBox')">📝 假單審核中心</button>
         <button id="tab-schedule" class="tab-btn" onclick="switchNavTab('scheduleBox')">📅 部門排班表</button>
-        <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與補登</button>
+        <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與手動補登</button>
         <button id="tab-hr" class="tab-btn" onclick="switchNavTab('hrBox')" style="display:none;">👥 人事維護</button>
         <button id="tab-dept" class="tab-btn" onclick="switchNavTab('deptBox')" style="display:none;">🏢 部門編制管理</button>
         <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪資結算</button>
@@ -238,7 +238,6 @@
 </script>
 
 <script>
-    // 💡 老闆的專屬 API 網址已完美寫入！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -369,7 +368,7 @@
         showLoading("獲取最新雲端資料...");
         try { 
             const key = getCurrentKey(); 
-            const urlWithKey = key ? `${CONFIG_URL}?key=${key}&t=${new Date().getTime()}` : `${CONFIG_URL}?t=${new Date().getTime()}`;
+            const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
             const res = await fetch(urlWithKey); 
             
             const text = await res.text();
@@ -677,9 +676,8 @@
             let isError = errorRecords.has(r[0]); 
             let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
             
-            // 🚀 精準列數狙擊綁定 (r[7] 為在 Google 試算表中的真實列數)
-            let rowIndex = r[7] || 0; 
-            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}', ${rowIndex})">🗑️ 刪除</button>`;
+            // 🚀 回歸最純粹的呼叫，讓強大後台負責處理
+            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${r[1]}')">🗑️ 刪除</button>`;
             
             htmlStr += `<tr>
                 <td>${timeStr}</td>
@@ -694,25 +692,19 @@
         tbody.innerHTML = htmlStr;
     }
 
-    async function delAtt(timeStr, name, rowIndex) {
+    async function delAtt(timeStr, name) {
         if(!confirm(`確定要刪除 [${name}] 的打卡紀錄嗎？`)) return; 
         const month = document.getElementById('attMonth').value; 
-        showLoading("精準狙擊刪除中...");
+        showLoading("精準刪除中...");
         try { 
             const res = await fetch(CONFIG_URL, { 
                 method: 'POST', 
-                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month, rowIndex: rowIndex }) 
+                body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
             }); 
             const resultText = await res.text();
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
-                // 🚀 畫面立刻抽走，零殘影
-                if (rowIndex) {
-                    rawAttData = rawAttData.filter(r => r[7] !== rowIndex);
-                    renderAttendanceTable();
-                } else {
-                    setTimeout(loadAttendanceRecords, 500); 
-                }
+                loadAttendanceRecords(); 
             } else {
                 alert("❌ 刪除失敗：" + resultText);
             }
