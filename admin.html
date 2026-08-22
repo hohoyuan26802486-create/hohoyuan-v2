@@ -62,7 +62,7 @@
     <div class="tab-container" style="border-bottom:none; margin-bottom:0;">
         <button id="tab-leave" class="tab-btn active" onclick="switchNavTab('leaveBox')">📝 假單審核中心</button>
         <button id="tab-schedule" class="tab-btn" onclick="switchNavTab('scheduleBox')">📅 部門排班表</button>
-        <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與補登</button>
+        <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與手動補登</button>
         <button id="tab-hr" class="tab-btn" onclick="switchNavTab('hrBox')" style="display:none;">👥 人事維護</button>
         <button id="tab-dept" class="tab-btn" onclick="switchNavTab('deptBox')" style="display:none;">🏢 部門編制管理</button>
         <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪資結算</button>
@@ -238,7 +238,7 @@
 </script>
 
 <script>
-    // 💡 固定的全新安全通道，不加任何會導致阻擋的亂碼
+    // 💡 已幫老闆完美寫入最新產生的安全 API 網址！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
