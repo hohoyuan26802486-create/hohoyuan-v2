@@ -224,21 +224,7 @@
 </div>
 
 <script>
-    window.onerror = function(message, source, lineno, colno, error) {
-        document.body.innerHTML = `
-            <div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">
-                🚨 網頁程式碼發生嚴重錯誤！<br><br>
-                這通常是因為您在 GitHub 複製貼上時漏掉了括號，或是混到了後端的 Code.gs 代碼。<br><br>
-                <span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span><br><br>
-                👉 請重新複製我給您的整段 HTML 代碼，並「完全覆蓋」 GitHub 裡的內容！
-            </div>
-        `;
-        return true;
-    };
-</script>
-
-<script>
-    // 💡 已幫老闆完美寫入最新產生的安全 API 網址！
+    // 🚨 老闆，請把您剛剛在 Google 試算表產生的新網址，貼在下面這個引號裡面！
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -369,7 +355,8 @@
         showLoading("獲取最新雲端資料...");
         try { 
             const key = getCurrentKey(); 
-            const urlWithKey = key ? `${CONFIG_URL}?key=${key}` : CONFIG_URL;
+            // 🚀 加上防快取參數，逼迫瀏覽器抓新資料
+            const urlWithKey = key ? `${CONFIG_URL}?key=${key}&t=${new Date().getTime()}` : `${CONFIG_URL}?t=${new Date().getTime()}`;
             const res = await fetch(urlWithKey); 
             
             const text = await res.text();
@@ -616,7 +603,8 @@
         if (!month) return alert("請選擇月份"); 
         showLoading("正在撈取出勤紀錄..."); 
         try { 
-            const res = await fetch(CONFIG_URL, { 
+            // 🚀 加上防快取參數，逼迫瀏覽器抓新資料
+            const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) 
             }); 
@@ -694,14 +682,16 @@
         const month = document.getElementById('attMonth').value; 
         showLoading("刪除中...");
         try { 
-            const res = await fetch(CONFIG_URL, { 
+            // 🚀 加上防快取參數，確保傳送沒有被阻擋
+            const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), { 
                 method: 'POST', 
                 body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, month: month }) 
             }); 
             const resultText = await res.text();
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
-                loadAttendanceRecords(); 
+                // 🚀 延遲半秒後再讀取，確保 Google 試算表已經把舊資料清空了
+                setTimeout(loadAttendanceRecords, 500); 
             } else {
                 alert("❌ 刪除失敗：" + resultText);
             }
