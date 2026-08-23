@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V41.0 (基因強殺版)</title>
+    <title>禾禾園 - 專業管理後台 V42.0 (無痕淨化版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -175,7 +175,7 @@
         <div class="form-group"><label style="color:#d93025;">在職狀態</label><select id="empStatus" style="border-color:#d93025; background:#fff5f5;"><option value="InService">🟢 在職中</option><option value="已離職">🔴 已離職</option></select></div>
         <div class="form-group"><label>基本薪資 (月/日/時薪額度)</label><input type="number" id="empSalary" placeholder="請輸入對應額度"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
-        <div class="form-group"><label style="color:#1a73e8;">剩餘特休天數</label><input type="number" step="0.5" id="annualLeave" placeholder="可手 manual校正天數"></div>
+        <div class="form-group"><label style="color:#1a73e8;">剩餘特休天數</label><input type="number" step="0.5" id="annualLeave" placeholder="可手動校正天數"></div>
         <div class="form-group"><label>變動獎金基數 (月)</label><input type="number" id="bonus" value="0"></div>
         <div class="form-group"><label>勞保自付額</label><input type="number" id="laborIns" value="0"></div>
         <div class="form-group"><label>健保自付額</label><input type="number" id="healthIns" value="0"></div>
@@ -238,9 +238,7 @@
 </script>
 
 <script>
-    // 💡 您的 API 網址已綁定
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
-    
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     
     let db = {}; 
@@ -612,7 +610,6 @@
         try { 
             const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), { 
                 method: 'POST', 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "getAttendance", month: month, key: getCurrentKey() }) 
             }); 
             if (!res.ok) throw new Error("Google 伺服器回傳異常，狀態碼：" + res.status);
@@ -678,11 +675,12 @@
             let isError = errorRecords.has(r[0]); 
             let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
             
-            // 🚀 V41：把時間、姓名、還有「上班/下班(r[3])」一併送給後台做基因比對
+            // 🚀 核心 V42: 剝除所有外衣，直接將原始字串帶入刪除函數
             let safeName = String(r[1]).replace(/'/g, "\\'");
             let safeType = String(r[3]).replace(/'/g, "\\'");
+            let safeTime = String(r[0]).replace(/'/g, "\\'");
             
-            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${r[0]}', '${safeName}', '${safeType}')">🗑️ 刪除</button>`;
+            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${safeTime}', '${safeName}', '${safeType}')">🗑️ 刪除</button>`;
             
             htmlStr += `<tr>
                 <td>${timeStr}</td>
@@ -704,14 +702,24 @@
         try { 
             const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), { 
                 method: 'POST', 
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, type: typeStr, month: month }) 
             }); 
             const resultText = await res.text();
+            
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
-                // 重新載入，保證乾淨
-                await loadAttendanceRecords(); 
+                
+                // 🚀 V42 Optimistic UI 機制：一旦後台回報成功，網頁立刻把該行從畫面上抽走！不給殘影留活路！
+                let removed = false;
+                rawAttData = rawAttData.filter(r => {
+                    if (!removed && String(r[1]).trim() === name && String(r[3]).trim() === typeStr && String(r[0]).trim() === timeStr) {
+                        removed = true;
+                        return false; 
+                    }
+                    return true;
+                });
+                renderAttendanceTable();
+                
             } else {
                 alert("❌ 刪除失敗：" + resultText);
             }
@@ -740,7 +748,7 @@
                 alert("✅ 打卡補登成功！"); 
                 document.getElementById('punchTime').value = ""; 
                 document.getElementById('punchReason').value = ""; 
-                if(document.getElementById('attMonth').value === punchTime.substring(0,7)) await loadAttendanceRecords(); 
+                if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords(); 
             } 
         } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
     }
