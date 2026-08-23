@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專屬考勤 App</title>
+    <title>禾禾園 - 專屬考勤 App (測試版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -13,11 +13,12 @@
             --text-main: #202124; 
             --text-sub: #5f6368;
             --white: #ffffff;
+            --danger: #d93025;
+            --warning: #f4b400;
         }
         * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
         
-        /* App 容器模擬手機螢幕 */
         .app-container { width: 100%; max-width: 480px; height: 100%; background: var(--bg); position: relative; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;}
         
         /* ================= 登入畫面 ================= */
@@ -29,29 +30,27 @@
         .login-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
         .btn-login { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
 
-        /* ================= 主看板畫面 ================= */
+        /* ================= 主畫面共用頭部 ================= */
         #mainScreen { display: none; flex-direction: column; height: 100%; padding-bottom: 70px; }
-        
-        /* 頂部圓弧背景與問候 */
-        .header-bg { background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%); padding: 30px 20px 60px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;}
+        .header-bg { background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%); padding: 30px 20px 20px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;}
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
         .app-title { font-weight: 900; color: var(--primary); font-size: 18px; letter-spacing: 1px;}
-        .avatar { width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; }
-        .greeting h2 { font-size: 32px; color: var(--text-main); margin: 0 0 5px 0; font-weight: 800;}
+        .avatar { width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; }
+        .greeting h2 { font-size: 28px; color: var(--text-main); margin: 0 0 5px 0; font-weight: 800;}
         .greeting p { font-size: 14px; color: var(--text-sub); margin: 0; font-weight: 500;}
 
-        /* 資訊卡片區 */
-        .info-cards { display: flex; gap: 15px; padding: 0 20px; margin-top: -30px; }
+        /* 切換視圖容器 */
+        .view-section { display: none; flex: 1; flex-direction: column; padding: 20px; overflow-y: auto;}
+        .view-section.active { display: flex; }
+
+        /* ================= 打卡視圖 (Home) ================= */
+        .info-cards { display: flex; gap: 15px; margin-top: -10px; margin-bottom: 20px;}
         .card { flex: 1; background: var(--white); padding: 15px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.06); display: flex; flex-direction: column; justify-content: space-between; }
         .card-icon { width: 32px; height: 32px; background: var(--primary-light); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 16px; margin-bottom: 10px; color: var(--primary); }
         .card-title { font-size: 12px; color: var(--text-sub); font-weight: bold; margin-bottom: 5px; }
-        .card-value { font-size: 16px; color: var(--text-main); font-weight: 800; }
+        .card-value { font-size: 18px; color: var(--text-main); font-weight: 800; }
 
-        /* 打卡核心區 */
-        .punch-section { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; margin-top: 20px;}
-        
-        /* 同心圓脈衝按鈕 */
-        .punch-btn-wrapper { position: relative; width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; margin-bottom: 30px;}
+        .punch-btn-wrapper { position: relative; width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; margin: 20px auto 30px auto;}
         .pulse-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--primary); animation: pulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
         .pulse-ring:nth-child(2) { animation-delay: 0.6s; }
         .punch-btn { width: 140px; height: 140px; background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%); border-radius: 50%; box-shadow: 0 15px 35px rgba(26,115,232,0.4); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; z-index: 10; transition: transform 0.1s;}
@@ -61,22 +60,33 @@
         
         @keyframes pulse { 0% { transform: scale(0.7); opacity: 0.8; } 100% { transform: scale(1.1); opacity: 0; } }
 
-        /* 上下班切換開關 */
-        .toggle-group { display: flex; background: white; border-radius: 30px; padding: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .toggle-group { display: flex; background: white; border-radius: 30px; padding: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 0 auto;}
         .toggle-group label { padding: 10px 30px; border-radius: 25px; font-size: 15px; font-weight: bold; color: var(--text-sub); cursor: pointer; transition: 0.3s; }
         .toggle-group input { display: none; }
         .toggle-group input:checked + label { background: var(--primary-light); color: var(--primary); }
+        .gps-status { margin-top: 20px; font-size: 13px; font-weight: bold; color: #0f9d58; text-align: center;}
 
-        .gps-status { margin-top: 15px; font-size: 13px; font-weight: bold; color: #0f9d58; display: flex; align-items: center; gap: 5px;}
+        /* ================= 表單視圖 (請假/補件) ================= */
+        .app-form { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.03); margin-bottom: 20px;}
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
+        .form-control { width: 100%; padding: 14px; border: 1px solid #dadce0; border-radius: 12px; font-size: 15px; background-color: var(--bg); color: var(--text-main); outline: none; -webkit-appearance: none; appearance: none;}
+        .form-control:focus { border-color: var(--primary); background-color: white; box-shadow: 0 0 0 3px var(--primary-light); }
+        
+        .btn-action { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); transition: 0.2s;}
+        .btn-action:active { transform: translateY(2px); }
+
+        .warning-box { background: #fff8e1; border: 1px solid #fde293; padding: 12px; border-radius: 12px; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 18px;}
+        .warning-box input { margin-top: 3px; transform: scale(1.2); }
+        .warning-box p { margin: 0; font-size: 12px; color: #b06000; font-weight: 600; line-height: 1.4;}
 
         /* ================= 底部導覽列 ================= */
-        .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-sub); font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;}
-        .nav-icon { font-size: 20px; margin-bottom: 3px; opacity: 0.6; }
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 12px 0 25px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #9aa0a6; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; padding: 5px 15px;}
+        .nav-icon { font-size: 22px; margin-bottom: 4px; transition: 0.2s;}
         .nav-item.active { color: var(--primary); }
-        .nav-item.active .nav-icon { opacity: 1; }
+        .nav-item.active .nav-icon { transform: translateY(-3px); }
 
-        /* Loading 遮罩 */
         #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -85,104 +95,169 @@
 <body>
 
 <div class="app-container">
-    <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">系統連線中...</div></div>
+    <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">處理中...</div></div>
 
     <!-- 登入畫面 -->
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>HOHO YUAN 智能考勤 V2.0</p>
+            <p>專屬智能考勤 App</p>
         </div>
-        <!-- 測試階段使用文字輸入，未來可替換為下拉或綁定 ID -->
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
-        <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (測試請隨意輸入)">
+        <input type="password" id="loginPwd" class="login-input" placeholder="密碼 (測試版隨意輸入)">
         <button class="btn-login" onclick="doLogin()">登入專屬系統</button>
     </div>
 
-    <!-- App 主畫面 -->
+    <!-- App 主畫面 (包含頂部狀態) -->
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
-                <div class="app-title">禾禾園考勤</div>
-                <div class="avatar" onclick="doLogout()" style="cursor:pointer;">👤</div>
+                <div class="app-title">HOHO YUAN</div>
+                <div class="avatar" onclick="doLogout()" title="登出">👤</div>
             </div>
             <div class="greeting">
-                <h2>Hello! <span id="displayUserName">員工</span></h2>
-                <p>祝您有美好的一天</p>
+                <h2>Hello, <span id="displayUserName">員工</span></h2>
+                <p>今天也是充滿活力的一天！</p>
             </div>
         </div>
 
-        <div class="info-cards">
-            <div class="card">
-                <div class="card-icon">⏱️</div>
-                <div class="card-title">個人出勤</div>
-                <div class="card-value" id="cardAttStatus">尚未打卡</div>
-            </div>
-            <div class="card">
-                <div class="card-icon">🏖️</div>
-                <div class="card-title">特休餘額</div>
-                <!-- 雛形展示用假資料，正式上線後從後台抓 -->
-                <div class="card-value">同步中...</div> 
-            </div>
-        </div>
-
-        <div class="punch-section">
-            <div class="punch-btn-wrapper">
-                <div class="pulse-ring"></div>
-                <div class="pulse-ring"></div>
-                <div class="punch-btn" onclick="submitAttendance()">
-                    <div class="punch-icon">📍</div>
-                    <div class="punch-text">定位打卡</div>
+        <!-- 視圖 1：打卡 (Home) -->
+        <div id="viewHome" class="view-section active">
+            <div class="info-cards">
+                <div class="card">
+                    <div class="card-icon">⏱️</div>
+                    <div class="card-title">出勤狀態</div>
+                    <div class="card-value" id="cardAttStatus">尚未打卡</div>
+                </div>
+                <div class="card">
+                    <div class="card-icon">🏖️</div>
+                    <div class="card-title">特休餘額</div>
+                    <div class="card-value" id="cardAnnualLeave" style="color:var(--primary);">讀取中...</div>
                 </div>
             </div>
 
-            <div class="toggle-group">
-                <input type="radio" name="attType" id="typeIn" value="上班" checked>
-                <label for="typeIn">上班</label>
-                <input type="radio" name="attType" id="typeOut" value="下班">
-                <label for="typeOut">下班</label>
+            <div class="app-form" style="display:flex; flex-direction:column; align-items:center;">
+                <div class="toggle-group">
+                    <input type="radio" name="attType" id="typeIn" value="上班" checked>
+                    <label for="typeIn">上班</label>
+                    <input type="radio" name="attType" id="typeOut" value="下班">
+                    <label for="typeOut">下班</label>
+                </div>
+                
+                <div class="punch-btn-wrapper">
+                    <div class="pulse-ring"></div>
+                    <div class="pulse-ring"></div>
+                    <div class="punch-btn" onclick="submitAttendance()">
+                        <div class="punch-icon">📍</div>
+                        <div class="punch-text">打卡</div>
+                    </div>
+                </div>
+                
+                <div class="gps-status" id="gpsStatus">📍 獲取定位中...</div>
             </div>
-
-            <div class="gps-status" id="gpsStatus">📍 定位精準中</div>
         </div>
 
+        <!-- 視圖 2：請假 (Leave) -->
+        <div id="viewLeave" class="view-section">
+            <h3 style="margin-top:0; color:var(--primary);">送出新假單</h3>
+            <div class="app-form">
+                <div class="form-group">
+                    <label>📌 假別選擇</label>
+                    <select id="lvType" class="form-control">
+                        <option value="事假">事假</option>
+                        <option value="病假">病假</option>
+                        <option value="生理假">生理假</option>
+                        <option value="特休">特休</option>
+                        <option value="補休">補休</option> 
+                        <option value="公假">公假</option>
+                        <option value="婚假">婚假</option>
+                        <option value="喪假">喪假</option>
+                        <option value="產假">產假</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>🤝 職位代理人</label>
+                    <select id="lvAgent" class="form-control"><option value="無">載入中...</option></select>
+                </div>
+                <div class="form-group">
+                    <label>📅 開始時間</label>
+                    <input type="datetime-local" id="lvStart" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>📅 結束時間</label>
+                    <input type="datetime-local" id="lvEnd" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>📝 請假事由</label>
+                    <input type="text" id="lvReason" class="form-control" placeholder="請簡述原因">
+                </div>
+                <div class="form-group">
+                    <label>📸 證明照片 (可後補)</label>
+                    <input type="file" id="lvFile" class="form-control" accept="image/*" style="padding:10px;">
+                </div>
+                
+                <div class="warning-box">
+                    <input type="checkbox" id="managerOverride">
+                    <p>若遭系統阻擋（如休假人數達上限），請於主管協調同意後勾選此處，方可強制送出假單。</p>
+                </div>
+
+                <button class="btn-action" onclick="submitLeave()">🚀 確認送出假單</button>
+            </div>
+        </div>
+
+        <!-- 視圖 3：補件 (Proof) -->
+        <div id="viewProof" class="view-section">
+            <h3 style="margin-top:0; color:var(--primary);">假單缺件上傳</h3>
+            <div class="app-form">
+                <div class="form-group">
+                    <label>📝 選擇待補件的假單</label>
+                    <select id="prfSelect" class="form-control">
+                        <option value="">讀取中...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📸 上傳照片/證明</label>
+                    <input type="file" id="prfFile" class="form-control" accept="image/*" style="padding:10px;">
+                </div>
+                <button class="btn-action" onclick="submitProof()">📤 上傳補件</button>
+            </div>
+        </div>
+
+        <!-- 底部導航 -->
         <div class="bottom-nav">
-            <div class="nav-item active">
-                <div class="nav-icon">📍</div>
-                打卡
+            <div class="nav-item active" onclick="switchNav('viewHome', this)">
+                <div class="nav-icon">📍</div>打卡
             </div>
-            <div class="nav-item" onclick="Swal.fire('提示','【請假模組】即將在下一階段導入專屬介面！','info')">
-                <div class="nav-icon">📝</div>
-                請假
+            <div class="nav-item" onclick="switchNav('viewLeave', this)">
+                <div class="nav-icon">📝</div>請假
             </div>
-            <div class="nav-item" onclick="Swal.fire('提示','【補件模組】即將在下一階段導入專屬介面！','info')">
-                <div class="nav-icon">📎</div>
-                補件
+            <div class="nav-item" onclick="switchNav('viewProof', this)">
+                <div class="nav-icon">📎</div>補件
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 您的專屬 API 網址
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
     let currentUser = "";
     let userLat = null, userLon = null;
+    let globalDB = null;
 
-    // 啟動時檢查是否已登入
+    // 啟動與登入檢查
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
+            fetchBackendData(); // 登入後自動抓真實資料
         }
         
-        // 取得定位
         if(navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
-                pos => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; document.getElementById('gpsStatus').innerText = "✅ 定位已就緒"; },
-                err => { document.getElementById('gpsStatus').innerText = "❌ 尚未取得定位"; document.getElementById('gpsStatus').style.color = "#d93025"; }
+                pos => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; document.getElementById('gpsStatus').innerText = "✅ 定位已鎖定"; },
+                err => { document.getElementById('gpsStatus').innerText = "❌ 未允許定位權限"; document.getElementById('gpsStatus').style.color = "var(--danger)"; }
             );
         }
     };
@@ -193,23 +268,16 @@
     }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
 
-    // 執行登入邏輯
+    // 登入邏輯
     function doLogin() {
         const nameInput = document.getElementById('loginName').value.trim();
-        const pwdInput = document.getElementById('loginPwd').value;
-        
         if (!nameInput) return Swal.fire('提示', '請輸入姓名！', 'warning');
         
-        showLoading("驗證身分中...");
-        
-        // 【雛形測試】：目前只要有打名字就讓您直接登入，未來這裡會加上密碼比對的連線
-        setTimeout(() => {
-            hideLoading();
-            currentUser = nameInput;
-            localStorage.setItem('hohoyuan_user', currentUser); // 綁定設備
-            showMainScreen();
-            Swal.fire({ title: '登入成功', text: `歡迎回來，${currentUser}！`, icon: 'success', timer: 1500, showConfirmButton: false });
-        }, 800);
+        currentUser = nameInput;
+        localStorage.setItem('hohoyuan_user', currentUser);
+        showMainScreen();
+        fetchBackendData();
+        Swal.fire({ title: '登入成功', text: `歡迎，${currentUser}！`, icon: 'success', timer: 1500, showConfirmButton: false });
     }
 
     function showMainScreen() {
@@ -233,7 +301,83 @@
         });
     }
 
-    // 核心打卡功能 (直接串接您現有的 V42.1 API)
+    // 導航切換
+    function switchNav(viewId, element) {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        
+        document.getElementById(viewId).classList.add('active');
+        element.classList.add('active');
+    }
+
+    // ==========================================
+    // 📡 核心：從 Google 後台撈取「真實個人資料」
+    // ==========================================
+    async function fetchBackendData() {
+        try {
+            const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
+            const res = await fetch(cacheBusterUrl); 
+            globalDB = await res.json();
+            
+            updateAnnualLeaveUI();
+            populateAgentDropdown();
+            loadPendingProofs();
+        } catch (e) { 
+            console.error("資料載入失敗:", e);
+        }
+    }
+
+    // 更新特休餘額
+    function updateAnnualLeaveUI() {
+        if (!globalDB || !globalDB.employees) return;
+        const emp = globalDB.employees.find(r => r[0] === currentUser);
+        if (emp) {
+            const totalLeave = Number(emp[5]) || 0; 
+            let usedLeave = 0;
+            if (globalDB.leave) {
+                usedLeave = globalDB.leave.filter(r => r[2] === currentUser && r[4] === "特休" && r[8] === "已生效").length;
+            }
+            const remain = totalLeave - usedLeave;
+            document.getElementById('cardAnnualLeave').innerText = remain + " 天";
+        } else {
+            document.getElementById('cardAnnualLeave').innerText = "-";
+        }
+    }
+
+    // 載入代理人選單 (排除自己)
+    function populateAgentDropdown() {
+        if (!globalDB || !globalDB.employees) return;
+        let opts = '<option value="無">無</option>';
+        globalDB.employees.forEach(r => {
+            if (r[0] !== "姓名" && r[0] !== "" && r[0] !== currentUser) {
+                opts += `<option value="${r[0]}">${r[0]}</option>`;
+            }
+        });
+        document.getElementById('lvAgent').innerHTML = opts;
+    }
+
+    // 載入缺件假單
+    function loadPendingProofs() {
+        const sel = document.getElementById('prfSelect');
+        sel.innerHTML = "";
+        if (!globalDB || !globalDB.leave) {
+            sel.innerHTML = "<option value=''>資料讀取中...</option>";
+            return;
+        }
+        
+        const pending = globalDB.leave.filter(r => r[2] === currentUser && r[9] === "待補件");
+        if (pending.length === 0) { 
+            sel.innerHTML = "<option value=''>✅ 您目前沒有需要補件的假單</option>"; 
+        } else { 
+            pending.forEach(r => { 
+                sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; 
+            }); 
+        }
+    }
+
+    // ==========================================
+    // 🚀 功能：打卡、請假、補件
+    // ==========================================
     async function submitAttendance() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         
@@ -244,31 +388,24 @@
             showCancelButton: true,
             confirmButtonText: '確認送出',
             cancelButtonText: '取消',
-            confirmButtonColor: '#1a73e8'
+            confirmButtonColor: 'var(--primary)'
         }).then(async (result) => {
             if (result.isConfirmed) {
                 showLoading("資料傳送中...");
                 
-                // 簡易的狀態判定 (雛形版簡化)
+                // V42.1 簡化判定邏輯
                 const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
                 let statusMsg = "正常";
-                if (type === "上班" && time > 450) statusMsg = "遲到"; // 07:30 後算遲到
-                if (type === "下班" && time < 1010) statusMsg = "早退"; // 16:50 前算早退
+                if (type === "上班" && time > 450) statusMsg = "遲到"; 
+                if (type === "下班" && time < 1010) statusMsg = "早退"; 
                 
                 try {
-                    // 呼叫您現成的強大 Google 後台
                     const response = await fetch(API_URL + "?t=" + new Date().getTime(), { 
                         method: 'POST', 
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ 
-                            action: "write", 
-                            sheetName: "attendance", 
-                            name: currentUser, 
-                            type: type, 
-                            status: statusMsg, 
-                            reason: "", 
-                            lat: userLat || "", 
-                            lon: userLon || "" 
+                            action: "write", sheetName: "attendance", name: currentUser, 
+                            type: type, status: statusMsg, reason: "", lat: userLat || "", lon: userLon || "" 
                         }) 
                     });
                     
@@ -277,7 +414,7 @@
                     
                     if (resultText === "Success") {
                         document.getElementById('cardAttStatus').innerText = `已完成${type}`;
-                        document.getElementById('cardAttStatus').style.color = "#0f9d58";
+                        document.getElementById('cardAttStatus').style.color = "var(--success)";
                         Swal.fire('打卡成功', '您的出勤紀錄已送達系統！', 'success');
                     } else if (resultText === "Error_TooFast") {
                         Swal.fire('打卡太頻繁', '您剛剛已經打過卡了喔！', 'warning');
@@ -290,6 +427,91 @@
                 } 
             }
         });
+    }
+
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    async function submitLeave() {
+        const type = document.getElementById('lvType').value;
+        const start = document.getElementById('lvStart').value;
+        const end = document.getElementById('lvEnd').value;
+        const reason = document.getElementById('lvReason').value;
+        const agent = document.getElementById('lvAgent').value;
+        const fileInput = document.getElementById('lvFile');
+        const isOverride = document.getElementById('managerOverride').checked; 
+
+        if (!start || !end) return Swal.fire('提示', '請選擇開始與結束時間！', 'warning');
+        
+        showLoading("假單上傳中...");
+        const p = { action: "write", sheetName: "leave", name: currentUser, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "", managerOverride: isOverride };
+        
+        try {
+            if (fileInput.files.length > 0) {
+                p.imageFile = await getBase64(fileInput.files[0]);
+                p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
+            }
+            
+            const response = await fetch(API_URL + "?t=" + new Date().getTime(), { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
+            hideLoading();
+            
+            if (text === "Success") { 
+                Swal.fire('太棒了！', '假單已成功送進資料庫，並通知主管審核！', 'success').then(() => {
+                    document.getElementById('lvStart').value = ""; document.getElementById('lvEnd').value = ""; document.getElementById('lvReason').value = ""; fileInput.value = "";
+                    fetchBackendData(); // 重新抓資料更新特休跟補件狀態
+                }); 
+            } else if (text.includes("系統阻擋")) {
+                Swal.fire('休假人數達上限', text, 'error');
+            } else { 
+                Swal.fire('寫入失敗', text, 'error'); 
+            }
+        } catch(e) { 
+            hideLoading();
+            Swal.fire('連線錯誤', '系統異常：' + e.message, 'error'); 
+        } 
+    }
+
+    async function submitProof() {
+        const rowIdx = document.getElementById('prfSelect').value;
+        const fileInput = document.getElementById('prfFile');
+        
+        if (!rowIdx) return Swal.fire('提示', '目前沒有需要補件的紀錄', 'warning');
+        if (fileInput.files.length === 0) return Swal.fire('提示', '請選擇要上傳的照片！', 'warning');
+        
+        showLoading("照片上傳中...");
+        try {
+            const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
+            
+            const response = await fetch(API_URL + "?t=" + new Date().getTime(), { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
+            hideLoading();
+            
+            if (text === "Success") { 
+                Swal.fire('成功', '補件成功！主管將會進行審核。', 'success').then(() => {
+                    fileInput.value = "";
+                    fetchBackendData(); // 重新抓資料更新補件選單
+                }); 
+            } else { 
+                Swal.fire('失敗', text, 'error'); 
+            }
+        } catch (e) { 
+            hideLoading();
+            Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); 
+        } 
     }
 </script>
 </body>
