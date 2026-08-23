@@ -80,9 +80,17 @@
         .warning-box input { margin-top: 3px; transform: scale(1.2); }
         .warning-box p { margin: 0; font-size: 12px; color: #b06000; font-weight: 600; line-height: 1.4;}
 
+        /* ================= 個人紀錄視圖 ================= */
+        .history-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary); margin-bottom: 10px;}
+        .history-card.leave { border-left-color: var(--warning); }
+        .history-card.error { border-left-color: var(--danger); }
+        .hist-title { font-size: 15px; font-weight: bold; color: var(--text-main); margin-bottom: 4px;}
+        .hist-sub { font-size: 12px; color: var(--text-sub); }
+        .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); }
+
         /* ================= 底部導覽列 ================= */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 12px 0 25px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #9aa0a6; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; padding: 5px 15px;}
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #9aa0a6; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; padding: 5px 10px; width: 25%;}
         .nav-icon { font-size: 22px; margin-bottom: 4px; transition: 0.2s;}
         .nav-item.active { color: var(--primary); }
         .nav-item.active .nav-icon { transform: translateY(-3px); }
@@ -126,13 +134,13 @@
             <div class="info-cards">
                 <div class="card">
                     <div class="card-icon">⏱️</div>
-                    <div class="card-title">出勤狀態</div>
-                    <div class="card-value" id="cardAttStatus">尚未打卡</div>
+                    <div class="card-title">今日出勤</div>
+                    <div class="card-value" id="cardAttStatus" style="font-size: 15px;">同步中...</div>
                 </div>
                 <div class="card">
                     <div class="card-icon">🏖️</div>
                     <div class="card-title">特休餘額</div>
-                    <div class="card-value" id="cardAnnualLeave" style="color:var(--primary);">讀取中...</div>
+                    <div class="card-value" id="cardAnnualLeave" style="color:var(--primary);">同步中...</div>
                 </div>
             </div>
 
@@ -223,6 +231,20 @@
             </div>
         </div>
 
+        <!-- 視圖 4：個人紀錄 (History) -->
+        <div id="viewHistory" class="view-section">
+            <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
+                <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
+                <label for="histAtt" style="flex:1; text-align:center;">本月出勤</label>
+                <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
+                <label for="histLeave" style="flex:1; text-align:center;">請假紀錄</label>
+            </div>
+            
+            <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;">
+                <!-- 紀錄卡片會在這裡生成 -->
+            </div>
+        </div>
+
         <!-- 底部導航 -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="switchNav('viewHome', this)">
@@ -234,6 +256,9 @@
             <div class="nav-item" onclick="switchNav('viewProof', this)">
                 <div class="nav-icon">📎</div>補件
             </div>
+            <div class="nav-item" onclick="switchNav('viewHistory', this)">
+                <div class="nav-icon">📊</div>紀錄
+            </div>
         </div>
     </div>
 </div>
@@ -244,6 +269,7 @@
     let currentUser = "";
     let userLat = null, userLon = null;
     let globalDB = null;
+    let currentMonthAttData = []; // 用來存本月的打卡紀錄
 
     // 啟動與登入檢查
     window.onload = () => {
@@ -251,7 +277,8 @@
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
-            fetchBackendData(); // 登入後自動抓真實資料
+            fetchBackendData(); 
+            checkTodayAttendance(); 
         }
         
         if(navigator.geolocation) {
@@ -277,6 +304,7 @@
         localStorage.setItem('hohoyuan_user', currentUser);
         showMainScreen();
         fetchBackendData();
+        checkTodayAttendance(); 
         Swal.fire({ title: '登入成功', text: `歡迎，${currentUser}！`, icon: 'success', timer: 1500, showConfirmButton: false });
     }
 
@@ -305,13 +333,17 @@
     function switchNav(viewId, element) {
         document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        
         document.getElementById(viewId).classList.add('active');
         element.classList.add('active');
+        
+        // 如果切換到紀錄頁面，立刻渲染
+        if(viewId === 'viewHistory') {
+            renderHistory();
+        }
     }
 
     // ==========================================
-    // 📡 核心：從 Google 後台撈取「真實個人資料」
+    // 📡 核心 1：從 Google 後台撈取特休與假單
     // ==========================================
     async function fetchBackendData() {
         try {
@@ -327,7 +359,6 @@
         }
     }
 
-    // 更新特休餘額
     function updateAnnualLeaveUI() {
         if (!globalDB || !globalDB.employees) return;
         const emp = globalDB.employees.find(r => r[0] === currentUser);
@@ -344,7 +375,6 @@
         }
     }
 
-    // 載入代理人選單 (排除自己)
     function populateAgentDropdown() {
         if (!globalDB || !globalDB.employees) return;
         let opts = '<option value="無">無</option>';
@@ -356,7 +386,6 @@
         document.getElementById('lvAgent').innerHTML = opts;
     }
 
-    // 載入缺件假單
     function loadPendingProofs() {
         const sel = document.getElementById('prfSelect');
         sel.innerHTML = "";
@@ -376,7 +405,155 @@
     }
 
     // ==========================================
-    // 🚀 功能：打卡、請假、補件
+    // 📡 核心 2：自動抓取「今日」與「本月」出勤
+    // ==========================================
+    async function checkTodayAttendance() {
+        try {
+            const now = new Date();
+            const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const todayStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}`;
+            
+            const res = await fetch(API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "getAttendance", month: yearMonth, key: "" }) 
+            }); 
+            
+            if (!res.ok) throw new Error("伺服器錯誤");
+            currentMonthAttData = await res.json(); // 存到全域變數供紀錄頁面使用
+            
+            let hasIn = false;
+            let hasOut = false;
+            let inTime = "";
+            let outTime = "";
+
+            for (let i = 1; i < currentMonthAttData.length; i++) {
+                let rowName = String(currentMonthAttData[i][1]).trim();
+                let rowTimeStr = String(currentMonthAttData[i][0]).trim(); 
+                let rowType = String(currentMonthAttData[i][3]).trim();
+                
+                if (rowName === currentUser && rowTimeStr.startsWith(todayStr)) {
+                    let timeMatch = rowTimeStr.match(/ (\d{2}:\d{2})/);
+                    let shortTime = timeMatch ? timeMatch[1] : "";
+                    
+                    if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
+                    if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
+                }
+            }
+
+            const statusCard = document.getElementById('cardAttStatus');
+            if (hasIn && hasOut) {
+                statusCard.innerHTML = `<span style="color:var(--primary);">✅ 已下班 (${outTime})</span>`;
+            } else if (hasIn) {
+                statusCard.innerHTML = `<span style="color:#0f9d58;">✅ 已上班 (${inTime})</span>`;
+            } else {
+                statusCard.innerHTML = `<span style="color:var(--text-sub);">尚未打卡</span>`;
+            }
+
+            // 更新歷史頁面
+            if(document.getElementById('viewHistory').classList.contains('active')) {
+                renderHistory();
+            }
+
+        } catch (e) {
+            console.error("無法獲取今日出勤:", e);
+            document.getElementById('cardAttStatus').innerText = "無法載入";
+        }
+    }
+
+    // ==========================================
+    // 📊 核心 3：渲染個人專屬歷史紀錄
+    // ==========================================
+    function renderHistory() {
+        const type = document.querySelector('input[name="historyType"]:checked').value;
+        const container = document.getElementById('historyContent');
+        container.innerHTML = "";
+
+        if (type === 'att') {
+            // 顯示出勤紀錄
+            if (!currentMonthAttData || currentMonthAttData.length <= 1) {
+                container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>本月尚無您的打卡紀錄喔！</div>";
+                return;
+            }
+            
+            // 過濾出自己的紀錄
+            let myAtts = currentMonthAttData.slice(1).filter(r => String(r[1]).trim() === currentUser);
+            // 依時間新到舊排序
+            myAtts.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+
+            if (myAtts.length === 0) {
+                 container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>本月尚無您的打卡紀錄喔！</div>";
+                 return;
+            }
+
+            myAtts.forEach(r => {
+                let dObj = new Date(r[0]);
+                let timeStr = isNaN(dObj.getTime()) ? r[0] : `${dObj.getMonth()+1}/${dObj.getDate()} ${String(dObj.getHours()).padStart(2,'0')}:${String(dObj.getMinutes()).padStart(2,'0')}`;
+                let typeStr = r[3];
+                let status = r[4];
+                
+                let colorClass = 'history-card';
+                if(status.includes('遲到') || status.includes('早退') || status.includes('異常')) colorClass += ' error';
+
+                container.innerHTML += `
+                    <div class="${colorClass}">
+                        <div>
+                            <div class="hist-title">${typeStr}</div>
+                            <div class="hist-sub">${timeStr}</div>
+                        </div>
+                        <div class="hist-status" style="color:var(--primary);">${status}</div>
+                    </div>
+                `;
+            });
+            
+        } else {
+            // 顯示請假紀錄
+            if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
+                container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>您目前沒有任何請假紀錄喔！</div>";
+                return;
+            }
+            
+            let myLeaves = globalDB.leave.slice(1).filter(r => String(r[2]).trim() === currentUser);
+            myLeaves.sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
+
+            if (myLeaves.length === 0) {
+                 container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>您目前沒有任何請假紀錄喔！</div>";
+                 return;
+            }
+
+            myLeaves.forEach(r => {
+                let typeStr = r[4]; // 假別
+                let sDate = new Date(r[5]);
+                let eDate = new Date(r[6]);
+                
+                let sStr = isNaN(sDate.getTime()) ? r[5] : `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
+                let eStr = isNaN(eDate.getTime()) ? r[6] : `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
+                
+                let status = r[8];
+                let reason = r[7];
+                
+                let statusColor = "#1a73e8"; // 預設藍色
+                if(status.includes("退回") || status.includes("撤銷")) statusColor = "#d93025";
+                else if(status.includes("待")) statusColor = "#f4b400";
+                else if(status === "已生效") statusColor = "#28a745";
+
+                container.innerHTML += `
+                    <div class="history-card leave">
+                        <div>
+                            <div class="hist-title">${typeStr}</div>
+                            <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
+                            <div class="hist-sub">📝 ${reason}</div>
+                        </div>
+                        <div class="hist-status" style="color:${statusColor};">${status}</div>
+                    </div>
+                `;
+            });
+        }
+    }
+
+
+    // ==========================================
+    // 🚀 功能：打卡、請假、補件送出
     // ==========================================
     async function submitAttendance() {
         const type = document.querySelector('input[name="attType"]:checked').value;
@@ -393,7 +570,6 @@
             if (result.isConfirmed) {
                 showLoading("資料傳送中...");
                 
-                // V42.1 簡化判定邏輯
                 const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
                 let statusMsg = "正常";
                 if (type === "上班" && time > 450) statusMsg = "遲到"; 
@@ -413,8 +589,8 @@
                     hideLoading();
                     
                     if (resultText === "Success") {
-                        document.getElementById('cardAttStatus').innerText = `已完成${type}`;
-                        document.getElementById('cardAttStatus').style.color = "var(--success)";
+                        // 打卡成功後，立刻重新抓取今日狀態來更新看板
+                        await checkTodayAttendance();
                         Swal.fire('打卡成功', '您的出勤紀錄已送達系統！', 'success');
                     } else if (resultText === "Error_TooFast") {
                         Swal.fire('打卡太頻繁', '您剛剛已經打過卡了喔！', 'warning');
