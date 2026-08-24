@@ -90,12 +90,19 @@
         .warning-box p { margin: 0; font-size: 12px; color: #b06000; font-weight: 600; line-height: 1.4;}
 
         /* ================= 個人紀錄視圖 ================= */
-        .history-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--primary); margin-bottom: 10px;}
+        .history-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; border-left: 4px solid var(--primary); margin-bottom: 10px;}
         .history-card.leave { border-left-color: var(--warning); }
         .history-card.error { border-left-color: var(--danger); }
+        .hist-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .hist-title { font-size: 15px; font-weight: bold; color: var(--text-main); margin-bottom: 4px;}
         .hist-sub { font-size: 12px; color: var(--text-sub); }
         .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); text-align: center;}
+        
+        /* 行動簽核按鈕 */
+        .action-btns { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eee; display: flex; gap: 10px; }
+        .action-btns button { flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;}
+        .btn-approve { background: var(--primary-light); color: var(--primary); }
+        .btn-reject { background: #fce8e6; color: var(--danger); }
 
         /* ================= 底部導覽列 ================= */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 12px 0 25px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
@@ -594,6 +601,9 @@
         }
     }
 
+    // ==========================================
+    // 📊 渲染個人專屬歷史紀錄 & 部屬假單 (包含行動簽核功能)
+    // ==========================================
     function renderHistory() {
         const type = document.querySelector('input[name="historyType"]:checked').value;
         const container = document.getElementById('historyContent');
@@ -624,11 +634,13 @@
 
                 container.innerHTML += `
                     <div class="${colorClass}">
-                        <div>
-                            <div class="hist-title">${typeStr}</div>
-                            <div class="hist-sub">${timeStr}</div>
+                        <div class="hist-content">
+                            <div>
+                                <div class="hist-title">${typeStr}</div>
+                                <div class="hist-sub">${timeStr}</div>
+                            </div>
+                            <div class="hist-status" style="color:var(--primary);">${status}</div>
                         </div>
-                        <div class="hist-status" style="color:var(--primary);">${status}</div>
                     </div>
                 `;
             });
@@ -665,12 +677,14 @@
 
                 container.innerHTML += `
                     <div class="history-card leave" style="border-left-color:${statusColor};">
-                        <div>
-                            <div class="hist-title">${typeStr}</div>
-                            <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
-                            <div class="hist-sub">📝 ${reason}</div>
+                        <div class="hist-content">
+                            <div>
+                                <div class="hist-title">${typeStr}</div>
+                                <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
+                                <div class="hist-sub">📝 ${reason}</div>
+                            </div>
+                            <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
                         </div>
-                        <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
                     </div>
                 `;
             });
@@ -706,6 +720,7 @@
             }
 
             teamLeaves.forEach(r => {
+                let leaveId = r[0]; // 假單 ID
                 let empName = r[2];
                 let empDept = r[3];
                 let typeStr = r[4]; 
@@ -723,18 +738,83 @@
                 else if(status.includes("待")) statusColor = "#f4b400";
                 else if(status === "已生效") statusColor = "#28a745";
 
+                // 🚀 行動簽核：根據身分與狀態，產生「核准/退件」按鈕
+                let actionBtnsHTML = '';
+                if (status.includes("待")) {
+                    let nextStatus = "已生效"; // 預設下一關
+                    let canApprove = false;
+
+                    if (status === "待主管審核") {
+                        if (currentUser === "蔡政達") {
+                            canApprove = true; nextStatus = "待人事核銷"; // 老闆越級核准
+                        } else {
+                            canApprove = true; nextStatus = "待副總審核"; // 部門主管核准
+                        }
+                    } else if (status === "待副總審核" && currentUser === "蔡政達") {
+                        canApprove = true; nextStatus = "待人事核銷";
+                    }
+
+                    if (canApprove) {
+                        actionBtnsHTML = `
+                            <div class="action-btns">
+                                <button class="btn-approve" onclick="mobileApproveLeave('${leaveId}', '${nextStatus}')">✔️ 核准</button>
+                                <button class="btn-reject" onclick="mobileApproveLeave('${leaveId}', '已退回')">❌ 退回</button>
+                            </div>
+                        `;
+                    }
+                }
+
                 container.innerHTML += `
                     <div class="history-card leave" style="border-left-color:${statusColor};">
-                        <div>
-                            <div class="hist-title">${empName} <small style="color:gray;">(${empDept})</small> - ${typeStr}</div>
-                            <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
-                            <div class="hist-sub">📝 ${reason}</div>
+                        <div class="hist-content">
+                            <div>
+                                <div class="hist-title">${empName} <small style="color:gray;">(${empDept})</small> - ${typeStr}</div>
+                                <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
+                                <div class="hist-sub">📝 ${reason}</div>
+                            </div>
+                            <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
                         </div>
-                        <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
+                        ${actionBtnsHTML}
                     </div>
                 `;
             });
         }
+    }
+
+    // 🚀 手機端：執行假單簽核
+    async function mobileApproveLeave(leaveId, newStatus) {
+        let actionText = newStatus === '已退回' ? '退回' : '核准';
+        
+        Swal.fire({
+            title: `確認要 ${actionText} 此假單？`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '確認',
+            cancelButtonText: '取消',
+            confirmButtonColor: newStatus === '已退回' ? '#d93025' : '#1a73e8'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                showLoading("處理中...");
+                try {
+                    const response = await fetch(API_URL + "?t=" + new Date().getTime(), { 
+                        method: 'POST', 
+                        body: JSON.stringify({ action: "updateLeave", id: leaveId, newStatus: newStatus }) 
+                    }); 
+                    const text = await response.text();
+                    
+                    if (text === "Success") {
+                        Swal.fire('成功', `假單已成功${actionText}！`, 'success');
+                        fetchBackendData(); // 重新向後台要最新資料並重繪畫面
+                    } else {
+                        Swal.fire('錯誤', text, 'error');
+                    }
+                } catch(e) {
+                    Swal.fire('連線失敗', e.message, 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+        });
     }
 
     async function submitAttendance() {
@@ -761,6 +841,11 @@
         }).then(async (result) => {
             if (result.isConfirmed) {
                 showLoading("資料傳送中...");
+                
+                const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
+                let statusMsg = "正常";
+                if (type === "上班" && time > 450) statusMsg = "遲到"; 
+                if (type === "下班" && time < 1010) statusMsg = "早退"; 
                 
                 try {
                     const response = await fetch(API_URL + "?t=" + new Date().getTime(), { 
