@@ -283,7 +283,7 @@
         const savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
             currentUser = savedUser;
-            checkManagerUI(); // 檢查是否解鎖主管介面
+            checkManagerUI(); 
             showMainScreen();
             fetchBackendData(); 
             checkTodayAttendance(); 
@@ -306,10 +306,9 @@
     // 主管介面解鎖機制
     function checkManagerUI() {
         if (MANAGERS.includes(currentUser)) {
-            document.getElementById('lblHistTeam').style.display = 'block'; // 顯示部屬假單按鈕
+            document.getElementById('lblHistTeam').style.display = 'block'; 
         } else {
             document.getElementById('lblHistTeam').style.display = 'none';
-            // 防呆：如果一般員工不小心切到了部屬假單，把它切回本月出勤
             if (document.getElementById('histTeam').checked) {
                 document.getElementById('histAtt').checked = true;
             }
@@ -322,7 +321,7 @@
         
         currentUser = nameInput;
         localStorage.setItem('hohoyuan_user', currentUser);
-        checkManagerUI(); // 登入瞬間檢查權限
+        checkManagerUI(); 
         showMainScreen();
         fetchBackendData();
         checkTodayAttendance(); 
@@ -366,8 +365,10 @@
     // ==========================================
     async function fetchBackendData() {
         try {
-            const res = await fetch(API_URL + "?t=" + new Date().getTime()); 
+            const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
+            const res = await fetch(cacheBusterUrl); 
             globalDB = await res.json();
+            
             updateAnnualLeaveUI();
             populateAgentDropdown();
             loadPendingProofs();
@@ -381,6 +382,7 @@
         }
     }
 
+    // 🚀 更新特休餘額 (加入四捨五入到小數點後三位機制)
     function updateAnnualLeaveUI() {
         if (!globalDB || !globalDB.employees) return;
         const emp = globalDB.employees.find(r => r[0] === currentUser);
@@ -391,7 +393,11 @@
                 usedLeave = globalDB.leave.filter(r => r[2] === currentUser && r[4] === "特休" && r[8] === "已生效").length;
             }
             const remain = totalLeave - usedLeave;
-            document.getElementById('cardAnnualLeave').innerText = remain + " 天";
+            
+            // 將數字四捨五入到 3 位小數，並去除多餘的 0 (例如: 0.125 會保留，5.000 會變成 5)
+            const formattedRemain = parseFloat(Number(remain).toFixed(3));
+            
+            document.getElementById('cardAnnualLeave').innerText = formattedRemain + " 天";
         } else {
             document.getElementById('cardAnnualLeave').innerText = "-";
         }
@@ -475,6 +481,7 @@
             if(document.getElementById('viewHistory').classList.contains('active')) {
                 renderHistory();
             }
+
         } catch (e) {
             console.error("無法獲取今日出勤:", e);
             document.getElementById('cardAttStatus').innerText = "無法載入";
@@ -566,26 +573,23 @@
             });
             
         } else if (type === 'team') {
-            // 🚀 主管專屬：查看部屬假單
             if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
                 container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單。</div>";
                 return;
             }
             
-            // 找出登入主管自己的部門
             let myDept = "";
             let empRecord = globalDB.employees.find(r => r[0] === currentUser);
             if (empRecord) myDept = empRecord[1];
 
             let teamLeaves = globalDB.leave.slice(1).filter(r => {
                 let isSameDept = (r[3] === myDept);
-                let isBoss = (currentUser === "蔡政達"); // 👑 老闆權限：看全公司
-                let isNotMe = (r[2] !== currentUser); // 不顯示自己的假單
+                let isBoss = (currentUser === "蔡政達"); 
+                let isNotMe = (r[2] !== currentUser); 
                 
                 return (isSameDept || isBoss) && isNotMe;
             });
             
-            // 排序：有「待」字的待辦事項優先置頂，其次依時間新到舊排序
             teamLeaves.sort((a,b) => {
                 let aPending = String(a[8]).includes('待') ? -1 : 1;
                 let bPending = String(b[8]).includes('待') ? -1 : 1;
