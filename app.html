@@ -3,7 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專屬考勤 App (主管戰情版)</title>
+    
+    <!-- 🚀 讓網頁變成全螢幕原生 App 的魔法標籤 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="禾禾園">
+    <meta name="theme-color" content="#f4f7f6">
+    <!-- ========================================== -->
+
+    <title>禾禾園 - 專屬考勤 App (全螢幕版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -240,7 +249,6 @@
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
 
-                <!-- 主管專屬按鈕：預設隱藏，登入後若為主管則顯示 -->
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
                 <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
@@ -270,8 +278,6 @@
 
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
-    
-    // 👑 主管名單 (擁有查看「部屬假單」的權限)
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達"];
 
     let currentUser = "";
@@ -303,7 +309,6 @@
     }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
 
-    // 主管介面解鎖機制
     function checkManagerUI() {
         if (MANAGERS.includes(currentUser)) {
             document.getElementById('lblHistTeam').style.display = 'block'; 
@@ -360,9 +365,6 @@
         }
     }
 
-    // ==========================================
-    // 📡 撈取特休與假單
-    // ==========================================
     async function fetchBackendData() {
         try {
             const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
@@ -373,7 +375,6 @@
             populateAgentDropdown();
             loadPendingProofs();
             
-            // 如果剛好停在紀錄頁面，抓完資料順便幫它重整一下畫面
             if(document.getElementById('viewHistory').classList.contains('active')) {
                 renderHistory();
             }
@@ -382,7 +383,6 @@
         }
     }
 
-    // 🚀 更新特休餘額 (加入四捨五入到小數點後三位機制)
     function updateAnnualLeaveUI() {
         if (!globalDB || !globalDB.employees) return;
         const emp = globalDB.employees.find(r => r[0] === currentUser);
@@ -394,7 +394,6 @@
             }
             const remain = totalLeave - usedLeave;
             
-            // 將數字四捨五入到 3 位小數，並去除多餘的 0 (例如: 0.125 會保留，5.000 會變成 5)
             const formattedRemain = parseFloat(Number(remain).toFixed(3));
             
             document.getElementById('cardAnnualLeave').innerText = formattedRemain + " 天";
@@ -432,9 +431,6 @@
         }
     }
 
-    // ==========================================
-    // 📡 抓取今日與本月出勤
-    // ==========================================
     async function checkTodayAttendance() {
         try {
             const now = new Date();
@@ -488,9 +484,6 @@
         }
     }
 
-    // ==========================================
-    // 📊 渲染個人專屬歷史紀錄 & 部屬假單
-    // ==========================================
     function renderHistory() {
         const type = document.querySelector('input[name="historyType"]:checked').value;
         const container = document.getElementById('historyContent');
@@ -634,9 +627,6 @@
         }
     }
 
-    // ==========================================
-    // 🚀 功能：打卡、請假、補件送出
-    // ==========================================
     async function submitAttendance() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         
