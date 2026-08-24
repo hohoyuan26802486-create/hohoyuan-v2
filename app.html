@@ -161,7 +161,6 @@
                     <label for="typeOut">下班</label>
                 </div>
                 
-                <!-- 🚀 找回來的：假日值班選項 (隱藏/顯示) -->
                 <div id="holidayTypeBox" class="warning-box" style="display:none; flex-direction:column; align-items:center; width:100%; margin-top: 15px; margin-bottom: 0;">
                     <p style="margin-bottom:8px;">🚨 本日為假日/週末，請選擇出勤屬性：</p>
                     <select id="holidayType" class="form-control" style="padding: 8px; border-color: var(--primary);">
@@ -170,13 +169,11 @@
                     </select>
                 </div>
 
-                <!-- 🚀 找回來的：智能狀態按鈕 -->
                 <div id="statusArea" style="width: 100%; margin-top: 20px;">
                     <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); text-align: center; margin-bottom: 10px;">⏱️ 自動狀態判定</div>
                     <div id="statusList" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;"></div>
                 </div>
 
-                <!-- 🚀 找回來的：加班事由填寫框 (隱藏/顯示) -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px;">
                     <input type="text" id="overtimeReason" class="form-control" placeholder="📝 請填寫事由 (加班/值班必填)" style="border-color: var(--warning); background-color: #fffde7;">
                 </div>
@@ -269,6 +266,7 @@
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
 
+                <!-- 主管專屬按鈕：預設隱藏，登入後若為主管則顯示 -->
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
                 <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
@@ -298,7 +296,9 @@
 
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
-    const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達"];
+    
+    // 👑 主管名單更新：加入 姜道凌 與 許芳瑜
+    const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜"];
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
@@ -306,7 +306,7 @@
     let userLat = null, userLon = null;
     let globalDB = null;
     let currentMonthAttData = []; 
-    let selectedStatus = ""; // 儲存目前選擇的打卡狀態
+    let selectedStatus = ""; 
 
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
@@ -332,7 +332,6 @@
     }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
 
-    // 判斷是否為假日
     function isHolidayToday() {
         const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
         return (day === 0 || day === 6 || HOLIDAYS_2026.includes(dateStr));
@@ -366,7 +365,7 @@
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainScreen').style.display = 'flex';
         document.getElementById('displayUserName').innerText = currentUser;
-        handleTypeChange(); // 進入主畫面時，初始化一次狀態按鈕
+        handleTypeChange(); 
     }
 
     function doLogout() {
@@ -395,9 +394,6 @@
         }
     }
 
-    // ==========================================
-    // 🚀 核心：智能出勤狀態按鈕產生器 (完美結合新版 App UI)
-    // ==========================================
     function handleTypeChange() {
         try {
             if(!currentUser) return;
@@ -442,7 +438,6 @@
         } catch(e) { console.error(e); }
     }
 
-    // 產生美美的 App 風格狀態按鈕
     function addStatusBtn(txt, isSelected) {
         const div = document.createElement('div');
         div.style.padding = "8px 16px";
@@ -742,13 +737,9 @@
         }
     }
 
-    // ==========================================
-    // 🚀 功能：送出打卡 (整合智能狀態與加班事由)
-    // ==========================================
     async function submitAttendance() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         
-        // 抓取加班事由
         const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
         if ((selectedStatus.includes("加班") || selectedStatus.includes("值班")) && !overtimeReason.trim()) {
             return Swal.fire('提示', '因為您選擇了加班/值班，請務必在上方黃色框填寫事由！', 'warning');
@@ -797,6 +788,14 @@
                     Swal.fire('網路錯誤', '無法連線到資料庫：' + e.message, 'error'); 
                 } 
             }
+        });
+    }
+
+    function getBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = error => reject(error);
         });
     }
 
