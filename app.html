@@ -12,7 +12,7 @@
     <meta name="theme-color" content="#f4f7f6">
     <!-- ========================================== -->
 
-    <title>禾禾園 - 專屬考勤 App (全螢幕版)</title>
+    <title>禾禾園 - 專屬考勤 App</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -59,13 +59,13 @@
         .card-title { font-size: 12px; color: var(--text-sub); font-weight: bold; margin-bottom: 5px; }
         .card-value { font-size: 18px; color: var(--text-main); font-weight: 800; }
 
-        .punch-btn-wrapper { position: relative; width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; margin: 20px auto 30px auto;}
+        .punch-btn-wrapper { position: relative; width: 180px; height: 180px; display: flex; justify-content: center; align-items: center; margin: 20px auto 10px auto;}
         .pulse-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid var(--primary); animation: pulse 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
         .pulse-ring:nth-child(2) { animation-delay: 0.6s; }
-        .punch-btn { width: 140px; height: 140px; background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%); border-radius: 50%; box-shadow: 0 15px 35px rgba(26,115,232,0.4); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; z-index: 10; transition: transform 0.1s;}
+        .punch-btn { width: 125px; height: 125px; background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%); border-radius: 50%; box-shadow: 0 15px 35px rgba(26,115,232,0.4); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; cursor: pointer; z-index: 10; transition: transform 0.1s;}
         .punch-btn:active { transform: scale(0.95); }
-        .punch-icon { font-size: 36px; margin-bottom: 5px; }
-        .punch-text { font-size: 18px; font-weight: bold; letter-spacing: 2px;}
+        .punch-icon { font-size: 32px; margin-bottom: 5px; }
+        .punch-text { font-size: 16px; font-weight: bold; letter-spacing: 2px;}
         
         @keyframes pulse { 0% { transform: scale(0.7); opacity: 0.8; } 100% { transform: scale(1.1); opacity: 0; } }
 
@@ -73,10 +73,10 @@
         .toggle-group label { padding: 10px 25px; border-radius: 25px; font-size: 14px; font-weight: bold; color: var(--text-sub); cursor: pointer; transition: 0.3s; }
         .toggle-group input { display: none; }
         .toggle-group input:checked + label { background: var(--primary-light); color: var(--primary); }
-        .gps-status { margin-top: 20px; font-size: 13px; font-weight: bold; color: #0f9d58; text-align: center;}
+        .gps-status { margin-top: 15px; font-size: 13px; font-weight: bold; color: #0f9d58; text-align: center;}
 
         /* ================= 表單視圖 (請假/補件) ================= */
-        .app-form { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.03); margin-bottom: 20px;}
+        .app-form { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.03); margin-bottom: 20px; width: 100%;}
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
         .form-control { width: 100%; padding: 14px; border: 1px solid #dadce0; border-radius: 12px; font-size: 15px; background-color: var(--bg); color: var(--text-main); outline: none; -webkit-appearance: none; appearance: none;}
@@ -155,12 +155,32 @@
 
             <div class="app-form" style="display:flex; flex-direction:column; align-items:center;">
                 <div class="toggle-group">
-                    <input type="radio" name="attType" id="typeIn" value="上班" checked>
+                    <input type="radio" name="attType" id="typeIn" value="上班" checked onchange="handleTypeChange()">
                     <label for="typeIn">上班</label>
-                    <input type="radio" name="attType" id="typeOut" value="下班">
+                    <input type="radio" name="attType" id="typeOut" value="下班" onchange="handleTypeChange()">
                     <label for="typeOut">下班</label>
                 </div>
                 
+                <!-- 🚀 找回來的：假日值班選項 (隱藏/顯示) -->
+                <div id="holidayTypeBox" class="warning-box" style="display:none; flex-direction:column; align-items:center; width:100%; margin-top: 15px; margin-bottom: 0;">
+                    <p style="margin-bottom:8px;">🚨 本日為假日/週末，請選擇出勤屬性：</p>
+                    <select id="holidayType" class="form-control" style="padding: 8px; border-color: var(--primary);">
+                        <option value="假日值班 (算加班費)">假日值班 (算加班費)</option>
+                        <option value="假日值班 (擇日補休)">假日值班 (擇日補休)</option>
+                    </select>
+                </div>
+
+                <!-- 🚀 找回來的：智能狀態按鈕 -->
+                <div id="statusArea" style="width: 100%; margin-top: 20px;">
+                    <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); text-align: center; margin-bottom: 10px;">⏱️ 自動狀態判定</div>
+                    <div id="statusList" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;"></div>
+                </div>
+
+                <!-- 🚀 找回來的：加班事由填寫框 (隱藏/顯示) -->
+                <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px;">
+                    <input type="text" id="overtimeReason" class="form-control" placeholder="📝 請填寫事由 (加班/值班必填)" style="border-color: var(--warning); background-color: #fffde7;">
+                </div>
+
                 <div class="punch-btn-wrapper">
                     <div class="pulse-ring"></div>
                     <div class="pulse-ring"></div>
@@ -279,11 +299,14 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達"];
+    const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
+    const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
     let currentUser = "";
     let userLat = null, userLon = null;
     let globalDB = null;
     let currentMonthAttData = []; 
+    let selectedStatus = ""; // 儲存目前選擇的打卡狀態
 
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
@@ -308,6 +331,12 @@
         document.getElementById('loadingOverlay').style.display = 'flex'; 
     }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    // 判斷是否為假日
+    function isHolidayToday() {
+        const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE');
+        return (day === 0 || day === 6 || HOLIDAYS_2026.includes(dateStr));
+    }
 
     function checkManagerUI() {
         if (MANAGERS.includes(currentUser)) {
@@ -337,6 +366,7 @@
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainScreen').style.display = 'flex';
         document.getElementById('displayUserName').innerText = currentUser;
+        handleTypeChange(); // 進入主畫面時，初始化一次狀態按鈕
     }
 
     function doLogout() {
@@ -365,10 +395,98 @@
         }
     }
 
+    // ==========================================
+    // 🚀 核心：智能出勤狀態按鈕產生器 (完美結合新版 App UI)
+    // ==========================================
+    function handleTypeChange() {
+        try {
+            if(!currentUser) return;
+            const isFlexWorker = FLEX_WORKERS.includes(currentUser);
+            const holidayBox = document.getElementById('holidayTypeBox');
+            if(holidayBox) holidayBox.style.display = isHolidayToday() ? "flex" : "none";
+
+            const typeInput = document.querySelector('input[name="attType"]:checked');
+            if(!typeInput) return;
+            const type = typeInput.value;
+            const list = document.getElementById('statusList');
+            const overtimeBox = document.getElementById('overtimeBox');
+            if(overtimeBox) overtimeBox.style.display = "none";
+
+            const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
+            if(list) list.innerHTML = "";
+
+            if (type === "上班") {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性上班)", true); 
+                } else {
+                    if (time < 440) addStatusBtn("個人因素提早上班", true);
+                    else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
+                    else addStatusBtn("遲到", true);
+                    
+                    addStatusBtn("請假後上班", false); 
+                    addStatusBtn("外出回廠上班", false);
+                }
+            } else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性下班)", true); 
+                } else {
+                    if (time >= 1010) { 
+                        addStatusBtn("因個人因素延後下班", true); 
+                        addStatusBtn("經主管核准加班", false);
+                    } else { addStatusBtn("正常下班", true); }
+                    
+                    addStatusBtn("值班(換補休)", false); 
+                    addStatusBtn("外出暫時下班", false);
+                }
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    // 產生美美的 App 風格狀態按鈕
+    function addStatusBtn(txt, isSelected) {
+        const div = document.createElement('div');
+        div.style.padding = "8px 16px";
+        div.style.borderRadius = "20px";
+        div.style.fontSize = "13px";
+        div.style.fontWeight = "bold";
+        div.style.cursor = "pointer";
+        div.style.transition = "0.2s";
+        div.innerText = txt;
+        
+        if (isSelected) {
+            div.style.background = "var(--primary-light)";
+            div.style.color = "var(--primary)";
+            div.style.border = "1px solid var(--primary)";
+            selectedStatus = txt;
+            const ob = document.getElementById('overtimeBox');
+            if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
+        } else {
+            div.style.background = "var(--white)";
+            div.style.color = "var(--text-sub)";
+            div.style.border = "1px solid #dadce0";
+        }
+
+        div.onclick = function() {
+            const allBtns = document.getElementById('statusList').children;
+            for(let i=0; i<allBtns.length; i++) {
+                allBtns[i].style.background = "var(--white)";
+                allBtns[i].style.color = "var(--text-sub)";
+                allBtns[i].style.border = "1px solid #dadce0";
+            }
+            div.style.background = "var(--primary-light)";
+            div.style.color = "var(--primary)";
+            div.style.border = "1px solid var(--primary)";
+            
+            selectedStatus = txt;
+            const ob = document.getElementById('overtimeBox');
+            if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
+        };
+        document.getElementById('statusList').appendChild(div);
+    }
+
     async function fetchBackendData() {
         try {
-            const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
-            const res = await fetch(cacheBusterUrl); 
+            const res = await fetch(API_URL + "?t=" + new Date().getTime()); 
             globalDB = await res.json();
             
             updateAnnualLeaveUI();
@@ -393,9 +511,7 @@
                 usedLeave = globalDB.leave.filter(r => r[2] === currentUser && r[4] === "特休" && r[8] === "已生效").length;
             }
             const remain = totalLeave - usedLeave;
-            
             const formattedRemain = parseFloat(Number(remain).toFixed(3));
-            
             document.getElementById('cardAnnualLeave').innerText = formattedRemain + " 天";
         } else {
             document.getElementById('cardAnnualLeave').innerText = "-";
@@ -420,7 +536,6 @@
             sel.innerHTML = "<option value=''>資料讀取中...</option>";
             return;
         }
-        
         const pending = globalDB.leave.filter(r => r[2] === currentUser && r[9] === "待補件");
         if (pending.length === 0) { 
             sel.innerHTML = "<option value=''>✅ 您目前沒有需要補件的假單</option>"; 
@@ -627,8 +742,22 @@
         }
     }
 
+    // ==========================================
+    // 🚀 功能：送出打卡 (整合智能狀態與加班事由)
+    // ==========================================
     async function submitAttendance() {
         const type = document.querySelector('input[name="attType"]:checked').value;
+        
+        // 抓取加班事由
+        const overtimeReason = document.getElementById('overtimeReason') ? document.getElementById('overtimeReason').value : "";
+        if ((selectedStatus.includes("加班") || selectedStatus.includes("值班")) && !overtimeReason.trim()) {
+            return Swal.fire('提示', '因為您選擇了加班/值班，請務必在上方黃色框填寫事由！', 'warning');
+        }
+
+        let finalStatus = selectedStatus;
+        if (isHolidayToday()) { 
+            finalStatus = `【${document.getElementById('holidayType').value}】 ` + selectedStatus; 
+        }
         
         Swal.fire({
             title: `確認${type}打卡？`,
@@ -642,18 +771,13 @@
             if (result.isConfirmed) {
                 showLoading("資料傳送中...");
                 
-                const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
-                let statusMsg = "正常";
-                if (type === "上班" && time > 450) statusMsg = "遲到"; 
-                if (type === "下班" && time < 1010) statusMsg = "早退"; 
-                
                 try {
                     const response = await fetch(API_URL + "?t=" + new Date().getTime(), { 
                         method: 'POST', 
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ 
                             action: "write", sheetName: "attendance", name: currentUser, 
-                            type: type, status: statusMsg, reason: "", lat: userLat || "", lon: userLon || "" 
+                            type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" 
                         }) 
                     });
                     
@@ -673,14 +797,6 @@
                     Swal.fire('網路錯誤', '無法連線到資料庫：' + e.message, 'error'); 
                 } 
             }
-        });
-    }
-
-    function getBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = error => reject(error);
         });
     }
 
