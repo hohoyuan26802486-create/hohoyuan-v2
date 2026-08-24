@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專屬考勤 App</title>
+    <title>禾禾園 - 專屬考勤 App (主管戰情版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -61,7 +61,7 @@
         @keyframes pulse { 0% { transform: scale(0.7); opacity: 0.8; } 100% { transform: scale(1.1); opacity: 0; } }
 
         .toggle-group { display: flex; background: white; border-radius: 30px; padding: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 0 auto;}
-        .toggle-group label { padding: 10px 30px; border-radius: 25px; font-size: 15px; font-weight: bold; color: var(--text-sub); cursor: pointer; transition: 0.3s; }
+        .toggle-group label { padding: 10px 25px; border-radius: 25px; font-size: 14px; font-weight: bold; color: var(--text-sub); cursor: pointer; transition: 0.3s; }
         .toggle-group input { display: none; }
         .toggle-group input:checked + label { background: var(--primary-light); color: var(--primary); }
         .gps-status { margin-top: 20px; font-size: 13px; font-weight: bold; color: #0f9d58; text-align: center;}
@@ -86,7 +86,7 @@
         .history-card.error { border-left-color: var(--danger); }
         .hist-title { font-size: 15px; font-weight: bold; color: var(--text-main); margin-bottom: 4px;}
         .hist-sub { font-size: 12px; color: var(--text-sub); }
-        .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); }
+        .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); text-align: center;}
 
         /* ================= 底部導覽列 ================= */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 12px 0 25px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
@@ -231,13 +231,18 @@
             </div>
         </div>
 
-        <!-- 視圖 4：個人紀錄 (History) -->
+        <!-- 視圖 4：個人紀錄與部屬假單 (History) -->
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
-                <label for="histAtt" style="flex:1; text-align:center;">本月出勤</label>
+                <label for="histAtt" style="flex:1; text-align:center; padding: 10px 5px;">本月出勤</label>
+                
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
-                <label for="histLeave" style="flex:1; text-align:center;">請假紀錄</label>
+                <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
+
+                <!-- 主管專屬按鈕：預設隱藏，登入後若為主管則顯示 -->
+                <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
+                <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
             
             <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;">
@@ -266,6 +271,9 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
+    // 👑 主管名單 (擁有查看「部屬假單」的權限)
+    const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達"];
+
     let currentUser = "";
     let userLat = null, userLon = null;
     let globalDB = null;
@@ -275,6 +283,7 @@
         const savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
             currentUser = savedUser;
+            checkManagerUI(); // 檢查是否解鎖主管介面
             showMainScreen();
             fetchBackendData(); 
             checkTodayAttendance(); 
@@ -294,12 +303,26 @@
     }
     function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
 
+    // 主管介面解鎖機制
+    function checkManagerUI() {
+        if (MANAGERS.includes(currentUser)) {
+            document.getElementById('lblHistTeam').style.display = 'block'; // 顯示部屬假單按鈕
+        } else {
+            document.getElementById('lblHistTeam').style.display = 'none';
+            // 防呆：如果一般員工不小心切到了部屬假單，把它切回本月出勤
+            if (document.getElementById('histTeam').checked) {
+                document.getElementById('histAtt').checked = true;
+            }
+        }
+    }
+
     function doLogin() {
         const nameInput = document.getElementById('loginName').value.trim();
         if (!nameInput) return Swal.fire('提示', '請輸入姓名！', 'warning');
         
         currentUser = nameInput;
         localStorage.setItem('hohoyuan_user', currentUser);
+        checkManagerUI(); // 登入瞬間檢查權限
         showMainScreen();
         fetchBackendData();
         checkTodayAttendance(); 
@@ -348,6 +371,11 @@
             updateAnnualLeaveUI();
             populateAgentDropdown();
             loadPendingProofs();
+            
+            // 如果剛好停在紀錄頁面，抓完資料順便幫它重整一下畫面
+            if(document.getElementById('viewHistory').classList.contains('active')) {
+                renderHistory();
+            }
         } catch (e) { 
             console.error("資料載入失敗:", e);
         }
@@ -399,14 +427,12 @@
     }
 
     // ==========================================
-    // 📡 抓取今日與本月出勤 (修復版)
+    // 📡 抓取今日與本月出勤
     // ==========================================
     async function checkTodayAttendance() {
         try {
             const now = new Date();
             const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            
-            // 抓出「今天」的年、月、日，用來精準對比
             const todayY = now.getFullYear();
             const todayM = now.getMonth();
             const todayD = now.getDate();
@@ -428,19 +454,10 @@
             for (let i = 1; i < currentMonthAttData.length; i++) {
                 let rowName = String(currentMonthAttData[i][1]).trim();
                 let rowType = String(currentMonthAttData[i][3]).trim();
-                
-                // 將後台傳來的日期轉成 Date 物件
                 let rowDate = new Date(currentMonthAttData[i][0]);
                 
-                // 如果名字對了，且「年、月、日」跟今天一模一樣
-                if (rowName === currentUser && 
-                    !isNaN(rowDate.getTime()) && 
-                    rowDate.getFullYear() === todayY && 
-                    rowDate.getMonth() === todayM && 
-                    rowDate.getDate() === todayD) {
-                    
+                if (rowName === currentUser && !isNaN(rowDate.getTime()) && rowDate.getFullYear() === todayY && rowDate.getMonth() === todayM && rowDate.getDate() === todayD) {
                     let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
-                    
                     if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
                     if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
                 }
@@ -458,7 +475,6 @@
             if(document.getElementById('viewHistory').classList.contains('active')) {
                 renderHistory();
             }
-
         } catch (e) {
             console.error("無法獲取今日出勤:", e);
             document.getElementById('cardAttStatus').innerText = "無法載入";
@@ -466,7 +482,7 @@
     }
 
     // ==========================================
-    // 📊 渲染個人專屬歷史紀錄
+    // 📊 渲染個人專屬歷史紀錄 & 部屬假單
     // ==========================================
     function renderHistory() {
         const type = document.querySelector('input[name="historyType"]:checked').value;
@@ -507,7 +523,7 @@
                 `;
             });
             
-        } else {
+        } else if (type === 'leave') {
             if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
                 container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>您目前沒有任何請假紀錄喔！</div>";
                 return;
@@ -538,19 +554,81 @@
                 else if(status === "已生效") statusColor = "#28a745";
 
                 container.innerHTML += `
-                    <div class="history-card leave">
+                    <div class="history-card leave" style="border-left-color:${statusColor};">
                         <div>
                             <div class="hist-title">${typeStr}</div>
                             <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
                             <div class="hist-sub">📝 ${reason}</div>
                         </div>
-                        <div class="hist-status" style="color:${statusColor};">${status}</div>
+                        <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
+                    </div>
+                `;
+            });
+            
+        } else if (type === 'team') {
+            // 🚀 主管專屬：查看部屬假單
+            if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
+                container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單。</div>";
+                return;
+            }
+            
+            // 找出登入主管自己的部門
+            let myDept = "";
+            let empRecord = globalDB.employees.find(r => r[0] === currentUser);
+            if (empRecord) myDept = empRecord[1];
+
+            let teamLeaves = globalDB.leave.slice(1).filter(r => {
+                let isSameDept = (r[3] === myDept);
+                let isBoss = (currentUser === "蔡政達"); // 👑 老闆權限：看全公司
+                let isNotMe = (r[2] !== currentUser); // 不顯示自己的假單
+                
+                return (isSameDept || isBoss) && isNotMe;
+            });
+            
+            // 排序：有「待」字的待辦事項優先置頂，其次依時間新到舊排序
+            teamLeaves.sort((a,b) => {
+                let aPending = String(a[8]).includes('待') ? -1 : 1;
+                let bPending = String(b[8]).includes('待') ? -1 : 1;
+                if(aPending !== bPending) return aPending - bPending;
+                return new Date(b[5]).getTime() - new Date(a[5]).getTime();
+            });
+
+            if (teamLeaves.length === 0) {
+                 container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單。</div>";
+                 return;
+            }
+
+            teamLeaves.forEach(r => {
+                let empName = r[2];
+                let empDept = r[3];
+                let typeStr = r[4]; 
+                let sDate = new Date(r[5]);
+                let eDate = new Date(r[6]);
+                
+                let sStr = isNaN(sDate.getTime()) ? r[5] : `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
+                let eStr = isNaN(eDate.getTime()) ? r[6] : `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
+                
+                let status = r[8];
+                let reason = r[7];
+                
+                let statusColor = "#1a73e8"; 
+                if(status.includes("退回") || status.includes("撤銷")) statusColor = "#d93025";
+                else if(status.includes("待")) statusColor = "#f4b400";
+                else if(status === "已生效") statusColor = "#28a745";
+
+                container.innerHTML += `
+                    <div class="history-card leave" style="border-left-color:${statusColor};">
+                        <div>
+                            <div class="hist-title">${empName} <small style="color:gray;">(${empDept})</small> - ${typeStr}</div>
+                            <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
+                            <div class="hist-sub">📝 ${reason}</div>
+                        </div>
+                        <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
                     </div>
                 `;
             });
         }
     }
-
 
     // ==========================================
     // 🚀 功能：打卡、請假、補件送出
