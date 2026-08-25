@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- 🚀 讓網頁變成全螢幕原生 App 的魔法標籤 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="禾禾園">
     <meta name="theme-color" content="#f4f7f6">
-    <!-- ========================================== -->
 
     <title>禾禾園 - 專屬考勤 App</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -121,7 +119,6 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">處理中...</div></div>
 
-    <!-- 登入畫面 -->
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
@@ -132,7 +129,6 @@
         <button class="btn-login" onclick="doLogin()">登入專屬系統</button>
     </div>
 
-    <!-- App 主畫面 (包含頂部狀態) -->
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
@@ -145,7 +141,6 @@
             </div>
         </div>
 
-        <!-- 視圖 1：打卡 (Home) -->
         <div id="viewHome" class="view-section active">
             <div class="info-cards">
                 <div class="card">
@@ -198,7 +193,6 @@
             </div>
         </div>
 
-        <!-- 視圖 2：請假 (Leave) -->
         <div id="viewLeave" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">送出新假單</h3>
             <div class="app-form">
@@ -246,7 +240,6 @@
             </div>
         </div>
 
-        <!-- 視圖 3：補件 (Proof) -->
         <div id="viewProof" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">假單缺件上傳</h3>
             <div class="app-form">
@@ -264,7 +257,6 @@
             </div>
         </div>
 
-        <!-- 視圖 4：個人紀錄與部屬假單 (History) -->
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
@@ -273,7 +265,6 @@
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
 
-                <!-- 主管專屬按鈕：預設隱藏，登入後若為主管則顯示 -->
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
                 <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
@@ -283,7 +274,6 @@
             </div>
         </div>
 
-        <!-- 底部導航 -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="switchNav('viewHome', this)">
                 <div class="nav-icon">📍</div>打卡
@@ -304,8 +294,9 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
-    // 👑 主管名單
-    const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜"];
+    // 👑 主管名單與高層Boss名單更新
+    const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜", "楊盟吉"];
+    const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; // 可以看到全公司的人
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
@@ -345,7 +336,7 @@
     }
 
     function checkManagerUI() {
-        if (MANAGERS.includes(currentUser)) {
+        if (MANAGERS.includes(currentUser) || TOP_BOSSES.includes(currentUser)) {
             document.getElementById('lblHistTeam').style.display = 'block'; 
         } else {
             document.getElementById('lblHistTeam').style.display = 'none';
@@ -488,7 +479,8 @@
 
     async function fetchBackendData() {
         try {
-            const res = await fetch(API_URL + "?t=" + new Date().getTime()); 
+            const cacheBusterUrl = API_URL + "?t=" + new Date().getTime();
+            const res = await fetch(cacheBusterUrl); 
             globalDB = await res.json();
             
             updateAnnualLeaveUI();
@@ -687,7 +679,6 @@
             });
             
         } else if (type === 'team') {
-            
             let myDept = "";
             let empRecord = globalDB.employees.find(r => r[0] === currentUser);
             if (empRecord) myDept = empRecord[1];
@@ -700,13 +691,12 @@
             
             let todayLeaveList = [];
 
-            // (1) 從假單找出今天休假的部屬
             if (globalDB.leave && globalDB.leave.length > 1) {
                 for (let i=1; i<globalDB.leave.length; i++) {
                     let r = globalDB.leave[i];
                     if (r[8] === "已生效") {
                         let isSameDept = (r[3] === myDept);
-                        let isBoss = (currentUser === "蔡政達");
+                        let isBoss = TOP_BOSSES.includes(currentUser); // 高階主管權限
                         if (isSameDept || isBoss) {
                             let sDate = new Date(r[5]); let eDate = new Date(r[6]);
                             if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
@@ -721,15 +711,13 @@
                 }
             }
 
-            // (2) 從排班表找出今天排休的部屬
             if (globalDB.schedule && globalDB.schedule.length > 1) {
                 for (let i=1; i<globalDB.schedule.length; i++) {
                     let r = globalDB.schedule[i];
                     if (r[0] === todayMonthStr && r[2 + dayNum] === "排休") {
                         let isSameDept = (r[2] === myDept);
-                        let isBoss = (currentUser === "蔡政達");
+                        let isBoss = TOP_BOSSES.includes(currentUser); // 高階主管權限
                         if (isSameDept || isBoss) {
-                            // 避免跟假單重複顯示
                             if (!todayLeaveList.some(item => item.includes(r[1]))) {
                                 todayLeaveList.push(`• ${r[1]} (${r[2]}) - 排休`);
                             }
@@ -738,7 +726,6 @@
                 }
             }
 
-            // 畫出「今日休假名單」的專屬置頂卡片
             let todayHTML = `
                 <div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;">
                     <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">
@@ -753,7 +740,6 @@
             container.innerHTML = todayHTML;
             // --- 結束：頂部「今日休假人員」區塊 ---
 
-
             if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
                 container.innerHTML += "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>";
                 return;
@@ -761,7 +747,7 @@
 
             let teamLeaves = globalDB.leave.slice(1).filter(r => {
                 let isSameDept = (r[3] === myDept);
-                let isBoss = (currentUser === "蔡政達"); 
+                let isBoss = TOP_BOSSES.includes(currentUser); // 高階主管權限
                 let isNotMe = (r[2] !== currentUser); 
                 return (isSameDept || isBoss) && isNotMe;
             });
@@ -803,12 +789,12 @@
                     let canApprove = false;
 
                     if (status === "待主管審核") {
-                        if (currentUser === "蔡政達") {
+                        if (TOP_BOSSES.includes(currentUser)) {
                             canApprove = true; nextStatus = "待人事核銷"; 
                         } else {
                             canApprove = true; nextStatus = "待副總審核"; 
                         }
-                    } else if (status === "待副總審核" && currentUser === "蔡政達") {
+                    } else if (status === "待副總審核" && TOP_BOSSES.includes(currentUser)) {
                         canApprove = true; nextStatus = "待人事核銷";
                     }
 
