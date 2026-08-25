@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
+    <!-- 🚀 讓網頁變成全螢幕原生 App 的魔法標籤 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -119,6 +120,7 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">處理中...</div></div>
 
+    <!-- 登入畫面 -->
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
@@ -129,6 +131,7 @@
         <button class="btn-login" onclick="doLogin()">登入專屬系統</button>
     </div>
 
+    <!-- App 主畫面 (包含頂部狀態) -->
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
@@ -141,6 +144,7 @@
             </div>
         </div>
 
+        <!-- 視圖 1：打卡 (Home) -->
         <div id="viewHome" class="view-section active">
             <div class="info-cards">
                 <div class="card">
@@ -148,10 +152,11 @@
                     <div class="card-title">今日出勤</div>
                     <div class="card-value" id="cardAttStatus" style="font-size: 15px;">同步中...</div>
                 </div>
+                <!-- 🚀 升級為特休狀況明細卡片 -->
                 <div class="card">
                     <div class="card-icon">🏖️</div>
-                    <div class="card-title">特休餘額</div>
-                    <div class="card-value" id="cardAnnualLeave" style="color:var(--primary);">同步中...</div>
+                    <div class="card-title" id="cardAnnualLeaveTitle">特休狀況明細</div>
+                    <div class="card-value" id="cardAnnualLeave" style="font-size:13px; font-weight:normal; color:var(--text-sub);">同步中...</div>
                 </div>
             </div>
 
@@ -193,6 +198,7 @@
             </div>
         </div>
 
+        <!-- 視圖 2：請假 (Leave) -->
         <div id="viewLeave" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">送出新假單</h3>
             <div class="app-form">
@@ -240,6 +246,7 @@
             </div>
         </div>
 
+        <!-- 視圖 3：補件 (Proof) -->
         <div id="viewProof" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">假單缺件上傳</h3>
             <div class="app-form">
@@ -257,6 +264,7 @@
             </div>
         </div>
 
+        <!-- 視圖 4：個人紀錄與部屬假單 (History) -->
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
@@ -265,6 +273,7 @@
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
 
+                <!-- 主管專屬按鈕：預設隱藏，登入後若為主管則顯示 -->
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
                 <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
@@ -274,6 +283,7 @@
             </div>
         </div>
 
+        <!-- 底部導航 -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="switchNav('viewHome', this)">
                 <div class="nav-icon">📍</div>打卡
@@ -296,7 +306,7 @@
     
     // 👑 主管名單與高層Boss名單更新
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜", "楊盟吉"];
-    const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; // 可以看到全公司的人
+    const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
@@ -495,18 +505,53 @@
         }
     }
 
+    // 🚀 核心升級：精準呈現特休「總計/已休/剩餘」明細
     function updateAnnualLeaveUI() {
         if (!globalDB || !globalDB.employees) return;
         const emp = globalDB.employees.find(r => r[0] === currentUser);
+        
         if (emp) {
-            const totalLeave = Number(emp[5]) || 0; 
-            let usedLeave = 0;
+            // 後台員工資料庫裡的 emp[5] 其實是「扣除後的剩餘特休天數」
+            const remain = Number(emp[5]) || 0; 
+            
+            // 精算目前「已生效」的特休時數總和 (把小時換算成天)
+            let usedLeaveDays = 0;
             if (globalDB.leave) {
-                usedLeave = globalDB.leave.filter(r => r[2] === currentUser && r[4] === "特休" && r[8] === "已生效").length;
+                globalDB.leave.forEach(r => {
+                    if (r[2] === currentUser && r[4] === "特休" && r[8] === "已生效") {
+                        let sDate = new Date(r[5]);
+                        let eDate = new Date(r[6]);
+                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
+                            let rawHours = (eDate.getTime() - sDate.getTime()) / 3600000;
+                            if (rawHours > 16) { 
+                                // 跨天的特休 (超過16小時直接算天數)
+                                usedLeaveDays += Math.ceil(rawHours / 24); 
+                            } else { 
+                                // 單日內的請假 (扣除1小時午休)
+                                let actHours = rawHours >= 5 ? rawHours - 1 : rawHours; 
+                                usedLeaveDays += Math.min(8, actHours) / 8; 
+                            }
+                        }
+                    }
+                });
             }
-            const remain = totalLeave - usedLeave;
-            const formattedRemain = parseFloat(Number(remain).toFixed(3));
-            document.getElementById('cardAnnualLeave').innerText = formattedRemain + " 天";
+            
+            // 將數字統一四捨五入到小數點第三位 (解決無限小數問題)
+            const formattedRemain = parseFloat(remain.toFixed(3));
+            const formattedUsed = parseFloat(usedLeaveDays.toFixed(3));
+            const formattedTotal = parseFloat((formattedRemain + formattedUsed).toFixed(3));
+
+            // 將原本只有一個數字的區塊，升級成「三行明細報表」
+            document.getElementById('cardAnnualLeave').innerHTML = `
+                <div style="font-size:12px; color:var(--text-main); font-weight:normal; display:flex; flex-direction:column; gap:6px; margin-top:5px;">
+                    <div style="display:flex; justify-content:space-between;"><span>可休總數</span><b>${formattedTotal} 天</b></div>
+                    <div style="display:flex; justify-content:space-between;"><span>已休天數</span><b style="color:var(--danger);">${formattedUsed} 天</b></div>
+                    <div style="display:flex; justify-content:space-between; border-top:1px dashed #ccc; padding-top:6px;">
+                        <span style="color:var(--primary); font-weight:bold;">剩餘額度</span>
+                        <b style="color:var(--primary); font-size:16px;">${formattedRemain} 天</b>
+                    </div>
+                </div>
+            `;
         } else {
             document.getElementById('cardAnnualLeave').innerText = "-";
         }
@@ -683,7 +728,6 @@
             let empRecord = globalDB.employees.find(r => r[0] === currentUser);
             if (empRecord) myDept = empRecord[1];
 
-            // --- 🚀 新增：頂部「今日休假人員」區塊 ---
             let today = new Date();
             let todayStrYMD = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
             let todayMonthStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
@@ -696,7 +740,7 @@
                     let r = globalDB.leave[i];
                     if (r[8] === "已生效") {
                         let isSameDept = (r[3] === myDept);
-                        let isBoss = TOP_BOSSES.includes(currentUser); // 高階主管權限
+                        let isBoss = TOP_BOSSES.includes(currentUser); 
                         if (isSameDept || isBoss) {
                             let sDate = new Date(r[5]); let eDate = new Date(r[6]);
                             if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
@@ -716,7 +760,7 @@
                     let r = globalDB.schedule[i];
                     if (r[0] === todayMonthStr && r[2 + dayNum] === "排休") {
                         let isSameDept = (r[2] === myDept);
-                        let isBoss = TOP_BOSSES.includes(currentUser); // 高階主管權限
+                        let isBoss = TOP_BOSSES.includes(currentUser); 
                         if (isSameDept || isBoss) {
                             if (!todayLeaveList.some(item => item.includes(r[1]))) {
                                 todayLeaveList.push(`• ${r[1]} (${r[2]}) - 排休`);
@@ -738,7 +782,6 @@
                 <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin-bottom: 10px;">⏳ 待辦假單與歷史紀錄</div>
             `;
             container.innerHTML = todayHTML;
-            // --- 結束：頂部「今日休假人員」區塊 ---
 
             if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
                 container.innerHTML += "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>";
@@ -747,7 +790,7 @@
 
             let teamLeaves = globalDB.leave.slice(1).filter(r => {
                 let isSameDept = (r[3] === myDept);
-                let isBoss = TOP_BOSSES.includes(currentUser); // 高階主管權限
+                let isBoss = TOP_BOSSES.includes(currentUser); 
                 let isNotMe = (r[2] !== currentUser); 
                 return (isSameDept || isBoss) && isNotMe;
             });
