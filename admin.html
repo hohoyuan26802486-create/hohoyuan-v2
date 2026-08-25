@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V42.0 (無痕淨化版)</title>
+    <title>禾禾園 - 專業管理後台 V43.0 (高階權限版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -249,6 +249,7 @@
         const role = document.getElementById('adminRole').value;
         if (role === '財務部' || role === '副總') return "cfo888"; 
         if (role === '人事部') return "hr123"; 
+        if (role === '總經理') return "gm888"; // 🚀 總經理使用高階金鑰
         return "";
     }
 
@@ -300,8 +301,9 @@
         const roleSelect = document.getElementById('adminRole');
         const currentRole = roleSelect.value;
 
+        // 🚀 將總經理加入後台登入選單
         let roleHtml = depts.map(d => `<option value="${d}主管">${d}主管</option>`).join('');
-        roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option>';
+        roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option><option value="總經理">總經理</option>';
         roleSelect.innerHTML = roleHtml;
 
         if (roleHtml.includes(`"${currentRole}"`)) { 
@@ -319,7 +321,7 @@
         const schedSelect = document.getElementById('schedDept');
         const attSelect = document.getElementById('attDept');
         
-        if (!role.includes('主管') || role.includes('人事') || role.includes('財務') || role === '副總') {
+        if (!role.includes('主管') || role.includes('人事') || role.includes('財務') || role === '副總' || role === '總經理') {
             schedSelect.innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
             attSelect.innerHTML = '<option value="">全部門</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
             schedSelect.disabled = false; 
@@ -339,6 +341,7 @@
         if (r === '人事部') { expectedPwd = db.pwdHR || "hr123"; needAuth = true; }
         else if (r === '財務部') { expectedPwd = db.pwdCFO || "cfo123"; needAuth = true; }
         else if (r === '副總') { expectedPwd = db.pwdVP || "vp123"; needAuth = true; }
+        else if (r === '總經理') { expectedPwd = db.pwdGM || "gm123"; needAuth = true; } // 🚀 新增總經理密碼驗證
 
         if (needAuth) {
             const inputPwd = prompt(`【${r}】安全驗證，請輸入密碼：`);
@@ -355,9 +358,14 @@
             }
         }
         document.getElementById('btnChangePwd').style.display = needAuth ? 'inline-block' : 'none';
-        document.getElementById('tab-hr').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
-        document.getElementById('tab-dept').style.display = (r === '人事部' || r === '財務部' || r === '副總') ? 'inline-block' : 'none';
-        document.getElementById('tab-salary').style.display = (r === '財務部' || r === '副總') ? 'inline-block' : 'none';
+        
+        // 🚀 總經理解鎖高階權限頁籤
+        const isHighLevel = (r === '人事部' || r === '財務部' || r === '副總' || r === '總經理');
+        const isSuperLevel = (r === '財務部' || r === '副總' || r === '總經理');
+
+        document.getElementById('tab-hr').style.display = isHighLevel ? 'inline-block' : 'none';
+        document.getElementById('tab-dept').style.display = isHighLevel ? 'inline-block' : 'none';
+        document.getElementById('tab-salary').style.display = isSuperLevel ? 'inline-block' : 'none';
         
         switchNavTab('leaveBox'); 
         fetchData();
@@ -582,7 +590,7 @@
         const myDept = role.includes('主管') ? role.replace('主管', '') : '';
         if (db.employees) { 
             let emps = db.employees.filter(r => r[0] && r[0] !== '姓名'); 
-            if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總') {
+            if (myDept && !role.includes('人事') && !role.includes('財務') && role !== '副總' && role !== '總經理') {
                 emps = emps.filter(r => r[1] === myDept); 
             }
             emps.forEach(r => { 
@@ -675,7 +683,6 @@
             let isError = errorRecords.has(r[0]); 
             let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
             
-            // 🚀 核心 V42: 剝除所有外衣，直接將原始字串帶入刪除函數
             let safeName = String(r[1]).replace(/'/g, "\\'");
             let safeType = String(r[3]).replace(/'/g, "\\'");
             let safeTime = String(r[0]).replace(/'/g, "\\'");
@@ -709,7 +716,6 @@
             if (resultText === "Success") { 
                 alert("✅ 刪除成功！"); 
                 
-                // 🚀 V42 Optimistic UI 機制：一旦後台回報成功，網頁立刻把該行從畫面上抽走！不給殘影留活路！
                 let removed = false;
                 rawAttData = rawAttData.filter(r => {
                     if (!removed && String(r[1]).trim() === name && String(r[3]).trim() === typeStr && String(r[0]).trim() === timeStr) {
@@ -831,16 +837,17 @@
             let btnText = '✔️ 核准';
             let btnClass = 'btn-success';
 
-            if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部'))) { 
+            // 🚀 總經理的審核邏輯設定
+            if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部') || role === '總經理')) { 
                 canApprove = true; next = '待副總審核'; 
-            } else if (status === '待副總審核' && role === '副總') { 
+            } else if (status === '待副總審核' && (role === '副總' || role === '總經理')) { 
                 canApprove = true; next = '待人事核銷'; 
             } else if ((status === '待人事主管審核' || status === '待人事核銷') && role === '人事部') { 
                 canApprove = true; next = '已生效'; 
             }
             
             if (!canApprove) {
-                if (role === '副總' && status === '待主管審核') {
+                if ((role === '副總' || role === '總經理') && status === '待主管審核') {
                     canApprove = true; 
                     next = '待人事核銷';
                     btnText = '⚡ 越級核准';
@@ -860,7 +867,7 @@
             if(canApprove && currentLvTab === 'pending') {
                 actionBtn = `<div class="action-group" style="display:flex; gap:5px;"><button class="btn ${btnClass}" onclick="updLv('${id}','${next}')">${btnText}</button><button class="btn btn-edit" style="color:#d93025 !important;" onclick="rejectLeave('${id}')">❌ 退件</button><button class="btn btn-danger" onclick="deleteLeave('${id}')">🗑️ 刪除</button></div>`;
             } else {
-                if (role === '人事部' || role === '副總') {
+                if (role === '人事部' || role === '副總' || role === '總經理') {
                      actionBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteLeave('${id}')">🗑️ 刪除</button>`;
                 } else {
                      actionBtn = "-";
@@ -1147,7 +1154,7 @@
 
     async function changeAdminPassword() { 
         const r = document.getElementById('adminRole').value; 
-        if (!['人事部', '財務部', '副總'].includes(r)) return alert("⚠️ 無權限！"); 
+        if (!['人事部', '財務部', '副總', '總經理'].includes(r)) return alert("⚠️ 無權限！"); 
         const newPwd = prompt(`設定專屬新密碼：`); 
         if (!newPwd) return; 
         showLoading("同步中..."); 
