@@ -146,13 +146,16 @@
 
         <!-- 視圖 1：打卡 (Home) -->
         <div id="viewHome" class="view-section active">
+            
+            <!-- 🚀 新增：首頁智能警示中心 (漏打卡/待審核推播) -->
+            <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
+
             <div class="info-cards">
                 <div class="card">
                     <div class="card-icon">⏱️</div>
                     <div class="card-title">今日出勤</div>
                     <div class="card-value" id="cardAttStatus" style="font-size: 15px;">同步中...</div>
                 </div>
-                <!-- 🚀 升級為特休狀況明細卡片 -->
                 <div class="card">
                     <div class="card-icon">🏖️</div>
                     <div class="card-title" id="cardAnnualLeaveTitle">特休狀況明細</div>
@@ -304,7 +307,6 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
-    // 👑 主管名單與高層Boss名單更新
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜", "楊盟吉"];
     const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
@@ -315,6 +317,11 @@
     let globalDB = null;
     let currentMonthAttData = []; 
     let selectedStatus = ""; 
+    
+    // 🚀 新增狀態紀錄，供首頁警示使用
+    let todayHasIn = false;
+    let todayHasOut = false;
+    let monthlyMissingCount = 0;
 
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
@@ -399,6 +406,84 @@
         
         if(viewId === 'viewHistory') {
             renderHistory();
+        }
+    }
+
+    // 🚀 核心警示運算邏輯 (主管待審核 + 未打卡通知)
+    function renderHomeAlerts() {
+        let alertsHTML = "";
+        
+        // 1. 幹部審批推播 (計算待處理假單)
+        let pendingCount = 0;
+        if (globalDB && globalDB.leave && (MANAGERS.includes(currentUser) || TOP_BOSSES.includes(currentUser))) {
+            let myDept = "";
+            let empRecord = globalDB.employees ? globalDB.employees.find(r => r[0] === currentUser) : null;
+            if (empRecord) myDept = empRecord[1];
+
+            for (let i=1; i<globalDB.leave.length; i++) {
+                let r = globalDB.leave[i];
+                let status = r[8];
+                if (status && status.includes("待")) {
+                    let empDept = r[3];
+                    let isSameDept = (empDept === myDept);
+                    let isBoss = TOP_BOSSES.includes(currentUser);
+                    let isNotMe = (r[2] !== currentUser);
+
+                    if ((isSameDept || isBoss) && isNotMe) {
+                        if (status === "待主管審核") pendingCount++;
+                        else if (status === "待副總審核" && isBoss) pendingCount++;
+                    }
+                }
+            }
+        }
+
+        if (pendingCount > 0) {
+            alertsHTML += `
+            <div style="background: #fff8e1; padding: 12px 16px; border-radius: 12px; border: 1px solid #fde293; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.03);" onclick="switchNav('viewHistory', document.querySelectorAll('.nav-item')[3]); document.getElementById('histTeam').click();">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">🔔</span>
+                    <span style="font-size: 13px; font-weight: bold; color: #b06000;">您有 ${pendingCount} 筆部屬假單待審批！</span>
+                </div>
+                <span style="font-size: 12px; font-weight: bold; color: var(--primary); background: #ffe0b2; padding: 4px 8px; border-radius: 8px;">前往審核 ➔</span>
+            </div>`;
+        }
+
+        // 2. 本日漏打卡警示 (防呆)
+        let now = new Date();
+        let hour = now.getHours();
+        
+        if (!isHolidayToday()) {
+            if (hour >= 9 && !todayHasIn) {
+                alertsHTML += `
+                <div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px solid #fad2cf; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <span style="font-size: 18px;">⚠️</span>
+                    <span style="font-size: 13px; font-weight: bold; color: #d93025;">注意：您今日尚未打「上班卡」！</span>
+                </div>`;
+            } else if (hour >= 17 && todayHasIn && !todayHasOut) {
+                alertsHTML += `
+                <div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px solid #fad2cf; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                    <span style="font-size: 18px;">⚠️</span>
+                    <span style="font-size: 13px; font-weight: bold; color: #d93025;">注意：您今日尚未打「下班卡」！</span>
+                </div>`;
+            }
+        }
+
+        // 3. 本月漏打卡異常天數統計
+        if (monthlyMissingCount > 0) {
+            alertsHTML += `
+            <div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">📅</span>
+                    <span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ${monthlyMissingCount} 天漏打卡記錄</span>
+                </div>
+                <span style="font-size: 11px; color: #d93025; font-weight:bold;">洽人事補登</span>
+            </div>`;
+        }
+
+        let alertContainer = document.getElementById('homeAlerts');
+        if (alertContainer) {
+            alertContainer.innerHTML = alertsHTML;
+            alertContainer.style.display = alertsHTML ? "flex" : "none";
         }
     }
 
@@ -500,21 +585,20 @@
             if(document.getElementById('viewHistory').classList.contains('active')) {
                 renderHistory();
             }
+
+            renderHomeAlerts(); // 抓完資料後，更新主管待審核警示
+
         } catch (e) { 
             console.error("資料載入失敗:", e);
         }
     }
 
-    // 🚀 核心升級：精準呈現特休「總計/已休/剩餘」明細
     function updateAnnualLeaveUI() {
         if (!globalDB || !globalDB.employees) return;
         const emp = globalDB.employees.find(r => r[0] === currentUser);
         
         if (emp) {
-            // 後台員工資料庫裡的 emp[5] 其實是「扣除後的剩餘特休天數」
             const remain = Number(emp[5]) || 0; 
-            
-            // 精算目前「已生效」的特休時數總和 (把小時換算成天)
             let usedLeaveDays = 0;
             if (globalDB.leave) {
                 globalDB.leave.forEach(r => {
@@ -524,10 +608,8 @@
                         if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
                             let rawHours = (eDate.getTime() - sDate.getTime()) / 3600000;
                             if (rawHours > 16) { 
-                                // 跨天的特休 (超過16小時直接算天數)
                                 usedLeaveDays += Math.ceil(rawHours / 24); 
                             } else { 
-                                // 單日內的請假 (扣除1小時午休)
                                 let actHours = rawHours >= 5 ? rawHours - 1 : rawHours; 
                                 usedLeaveDays += Math.min(8, actHours) / 8; 
                             }
@@ -536,12 +618,10 @@
                 });
             }
             
-            // 將數字統一四捨五入到小數點第三位 (解決無限小數問題)
             const formattedRemain = parseFloat(remain.toFixed(3));
             const formattedUsed = parseFloat(usedLeaveDays.toFixed(3));
             const formattedTotal = parseFloat((formattedRemain + formattedUsed).toFixed(3));
 
-            // 將原本只有一個數字的區塊，升級成「三行明細報表」
             document.getElementById('cardAnnualLeave').innerHTML = `
                 <div style="font-size:12px; color:var(--text-main); font-weight:normal; display:flex; flex-direction:column; gap:6px; margin-top:5px;">
                     <div style="display:flex; justify-content:space-between;"><span>可休總數</span><b>${formattedTotal} 天</b></div>
@@ -607,17 +687,44 @@
             let inTime = "";
             let outTime = "";
 
+            // 🚀 記錄每天的打卡狀態 (判斷漏打卡)
+            let dailyPunches = {};
+            let todayDayStr = todayY + '/' + String(todayM+1).padStart(2,'0') + '/' + String(todayD).padStart(2,'0');
+
             for (let i = 1; i < currentMonthAttData.length; i++) {
                 let rowName = String(currentMonthAttData[i][1]).trim();
                 let rowType = String(currentMonthAttData[i][3]).trim();
                 let rowDate = new Date(currentMonthAttData[i][0]);
                 
-                if (rowName === currentUser && !isNaN(rowDate.getTime()) && rowDate.getFullYear() === todayY && rowDate.getMonth() === todayM && rowDate.getDate() === todayD) {
-                    let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
-                    if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
-                    if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
+                if (rowName === currentUser && !isNaN(rowDate.getTime())) {
+                    let dStr = rowDate.getFullYear() + '/' + String(rowDate.getMonth()+1).padStart(2,'0') + '/' + String(rowDate.getDate()).padStart(2,'0');
+                    
+                    if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
+                    if (rowType.includes("上班")) dailyPunches[dStr].in = true;
+                    if (rowType.includes("下班")) dailyPunches[dStr].out = true;
+
+                    if (dStr === todayDayStr) {
+                        let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
+                        if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
+                        if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
+                    }
                 }
             }
+
+            // 精算本月「只有上班沒下班」或「只有下班沒上班」的天數
+            let mCount = 0;
+            for (let d in dailyPunches) {
+                if (d !== todayDayStr) {
+                    if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
+                        mCount++;
+                    }
+                }
+            }
+            
+            // 更新全域變數
+            monthlyMissingCount = mCount;
+            todayHasIn = hasIn;
+            todayHasOut = hasOut;
 
             const statusCard = document.getElementById('cardAttStatus');
             if (hasIn && hasOut) {
@@ -631,6 +738,9 @@
             if(document.getElementById('viewHistory').classList.contains('active')) {
                 renderHistory();
             }
+
+            // 更新首頁警示
+            renderHomeAlerts();
 
         } catch (e) {
             console.error("無法獲取今日出勤:", e);
