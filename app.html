@@ -96,11 +96,8 @@
         .hist-sub { font-size: 12px; color: var(--text-sub); line-height:1.4;}
         .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); text-align: center;}
         
-        /* 行動簽核按鈕 */
+        /* 行動簽核按鈕區 */
         .action-btns { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eee; display: flex; gap: 10px; }
-        .action-btns button { flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;}
-        .btn-approve { background: var(--primary-light); color: var(--primary); }
-        .btn-reject { background: #fce8e6; color: var(--danger); }
 
         /* ================= 底部導覽列 ================= */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 12px 0 25px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
@@ -119,7 +116,6 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">處理中...</div></div>
 
-    <!-- 登入畫面 -->
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
@@ -130,7 +126,6 @@
         <button class="btn-login" onclick="doLogin()">登入專屬系統</button>
     </div>
 
-    <!-- App 主畫面 (包含頂部狀態) -->
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
@@ -143,10 +138,8 @@
             </div>
         </div>
 
-        <!-- 視圖 1：打卡 (Home) -->
         <div id="viewHome" class="view-section active">
             
-            <!-- 首頁智能警示中心 (包含具體日期漏卡/待審核推播) -->
             <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
 
             <div class="info-cards">
@@ -200,7 +193,6 @@
             </div>
         </div>
 
-        <!-- 視圖 2：請假 (Leave) -->
         <div id="viewLeave" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">送出新假單</h3>
             <div class="app-form">
@@ -248,7 +240,6 @@
             </div>
         </div>
 
-        <!-- 視圖 3：補件 (Proof) -->
         <div id="viewProof" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">假單缺件上傳</h3>
             <div class="app-form">
@@ -266,7 +257,6 @@
             </div>
         </div>
 
-        <!-- 視圖 4：個人紀錄與部屬假單 (History) -->
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
@@ -275,17 +265,14 @@
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
 
-                <!-- 主管專屬按鈕：預設隱藏，登入後若為主管則顯示 -->
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
                 <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
             
             <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;">
-                <!-- 紀錄卡片會在這裡生成 -->
             </div>
         </div>
 
-        <!-- 底部導航 -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="switchNav('viewHome', this)">
                 <div class="nav-icon">📍</div>打卡
@@ -306,10 +293,9 @@
 <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
-    // 👑 權限身分名單
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜", "楊盟吉"];
     const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
-    const HR_MANAGERS = ["姜道凌"]; // 🚀 人事專屬核銷權限
+    const HR_MANAGERS = ["姜道凌"]; 
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
@@ -410,7 +396,6 @@
         }
     }
 
-    // 🚀 核心警示運算邏輯 (主管待審核 + 具體日期漏打卡通知 + 人事核銷警示)
     function renderHomeAlerts() {
         let alertsHTML = "";
         
@@ -723,7 +708,6 @@
             let mCount = 0;
             let missingDates = [];
             
-            // 🚀 自動按日期先後排序 (由小到大)
             let sortedDays = Object.keys(dailyPunches).sort();
 
             for (let d of sortedDays) {
@@ -956,24 +940,37 @@
                 if (status.includes("待")) {
                     let nextStatus = "已生效"; 
                     let canApprove = false;
+                    let btnText = "✔️ 核准";
+                    let btnStyle = "background: var(--primary-light); color: var(--primary);";
+                    let rejectStyle = "background: #fce8e6; color: var(--danger);";
 
                     if (status === "待主管審核") {
-                        if (isBoss) {
-                            canApprove = true; nextStatus = "待人事核銷"; 
-                        } else if (isSameDept) { 
+                        if (isSameDept) { 
                             canApprove = true; nextStatus = "待副總審核"; 
+                        } else if (isBoss) {
+                            canApprove = true; nextStatus = "待人事核銷"; 
+                            btnText = "⚡ 越權核准";
+                            btnStyle = "background: #fff8e1; color: #b06000;";
                         }
-                    } else if (status === "待副總審核" && isBoss) {
-                        canApprove = true; nextStatus = "待人事核銷";
-                    } else if ((status === "待人事主管審核" || status === "待人事核銷") && (isHR || isBoss)) {
-                        canApprove = true; nextStatus = "已生效";
+                    } else if (status === "待副總審核") {
+                        if (isBoss) {
+                            canApprove = true; nextStatus = "待人事核銷";
+                        }
+                    } else if (status === "待人事主管審核" || status === "待人事核銷") {
+                        if (isHR) {
+                            canApprove = true; nextStatus = "已生效";
+                        } else if (isBoss) {
+                            canApprove = true; nextStatus = "已生效";
+                            btnText = "⚡ 強制生效";
+                            btnStyle = "background: #fce8e6; color: var(--danger); border: 1px solid #fad2cf;";
+                        }
                     }
 
                     if (canApprove) {
                         actionBtnsHTML = `
                             <div class="action-btns">
-                                <button class="btn-approve" onclick="mobileApproveLeave('${leaveId}', '${nextStatus}')">✔️ 核准</button>
-                                <button class="btn-reject" onclick="mobileApproveLeave('${leaveId}', '已退回')">❌ 退回</button>
+                                <button style="${btnStyle} flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave('${leaveId}', '${nextStatus}')">${btnText}</button>
+                                <button style="${rejectStyle} flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave('${leaveId}', '已退回')">❌ 退回</button>
                             </div>
                         `;
                     }
