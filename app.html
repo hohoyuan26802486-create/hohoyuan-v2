@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- 🚀 讓網頁變成全螢幕原生 App 的魔法標籤 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -147,7 +146,7 @@
         <!-- 視圖 1：打卡 (Home) -->
         <div id="viewHome" class="view-section active">
             
-            <!-- 🚀 新增：首頁智能警示中心 (漏打卡/待審核推播) -->
+            <!-- 首頁智能警示中心 (包含具體日期漏卡/待審核推播) -->
             <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
 
             <div class="info-cards">
@@ -318,10 +317,11 @@
     let currentMonthAttData = []; 
     let selectedStatus = ""; 
     
-    // 🚀 新增狀態紀錄，供首頁警示使用
+    // 🚀 新增狀態紀錄，供首頁警示與防呆使用
     let todayHasIn = false;
     let todayHasOut = false;
     let monthlyMissingCount = 0;
+    let monthlyMissingDates = []; // 紀錄具體漏卡的日期明細
 
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
@@ -409,7 +409,7 @@
         }
     }
 
-    // 🚀 核心警示運算邏輯 (主管待審核 + 未打卡通知)
+    // 🚀 核心警示運算邏輯 (主管待審核 + 具體日期漏打卡通知)
     function renderHomeAlerts() {
         let alertsHTML = "";
         
@@ -448,7 +448,7 @@
             </div>`;
         }
 
-        // 2. 本日漏打卡警示 (防呆)
+        // 2. 本日漏打卡即時警示 (防呆)
         let now = new Date();
         let hour = now.getHours();
         
@@ -468,15 +468,21 @@
             }
         }
 
-        // 3. 本月漏打卡異常天數統計
+        // 3. 本月漏打卡異常天數統計 (顯示具體日期)
         if (monthlyMissingCount > 0) {
+            let datesStr = monthlyMissingDates.join(', ');
             alertsHTML += `
-            <div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 18px;">📅</span>
-                    <span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ${monthlyMissingCount} 天漏打卡記錄</span>
+            <div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">📅</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ${monthlyMissingCount} 筆異常 (漏打卡)</span>
+                    </div>
+                    <span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;">洽人事補登</span>
                 </div>
-                <span style="font-size: 11px; color: #d93025; font-weight:bold;">洽人事補登</span>
+                <div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;">
+                    <strong>缺卡明細：</strong> ${datesStr}
+                </div>
             </div>`;
         }
 
@@ -687,7 +693,7 @@
             let inTime = "";
             let outTime = "";
 
-            // 🚀 記錄每天的打卡狀態 (判斷漏打卡)
+            // 🚀 記錄每天的打卡狀態 (精準判斷漏打卡與日期)
             let dailyPunches = {};
             let todayDayStr = todayY + '/' + String(todayM+1).padStart(2,'0') + '/' + String(todayD).padStart(2,'0');
 
@@ -711,18 +717,23 @@
                 }
             }
 
-            // 精算本月「只有上班沒下班」或「只有下班沒上班」的天數
+            // 精算本月「只有上班沒下班」或「只有下班沒上班」的天數與明細
             let mCount = 0;
+            let missingDates = [];
             for (let d in dailyPunches) {
                 if (d !== todayDayStr) {
                     if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
                         mCount++;
+                        let parts = d.split('/');
+                        let typeMissing = !dailyPunches[d].in ? '缺上班' : '缺下班';
+                        missingDates.push(`${parts[1]}/${parts[2]} (${typeMissing})`);
                     }
                 }
             }
             
             // 更新全域變數
             monthlyMissingCount = mCount;
+            monthlyMissingDates = missingDates;
             todayHasIn = hasIn;
             todayHasOut = hasOut;
 
@@ -1022,6 +1033,39 @@
             return Swal.fire('提示', '因為您選擇了加班/值班，請務必在上方黃色框填寫事由！', 'warning');
         }
 
+        // --- 🚀 防呆 1: 重複打卡警告 ---
+        if (type === "上班" && todayHasIn) {
+            const confirmDup = await Swal.fire({
+                title: '已經有上班紀錄囉！',
+                text: '系統發現您今天已經打過上班卡了。確定要再打一次嗎？',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '是的，我要再打',
+                cancelButtonText: '取消',
+                confirmButtonColor: '#f4b400'
+            });
+            if (!confirmDup.isConfirmed) return;
+        }
+        if (type === "下班" && todayHasOut) {
+            const confirmDup = await Swal.fire({
+                title: '已經有下班紀錄囉！',
+                text: '系統發現您今天已經打過下班卡了。確定要再打一次嗎？',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '是的，我要再打',
+                cancelButtonText: '取消',
+                confirmButtonColor: '#f4b400'
+            });
+            if (!confirmDup.isConfirmed) return;
+        }
+
+        // --- 🚀 防呆 2: 連續點擊冷卻 (防狂按) ---
+        let lastTime = localStorage.getItem('last_punch_' + currentUser + '_' + type);
+        let nowMs = new Date().getTime();
+        if (lastTime && (nowMs - parseInt(lastTime)) < 30000) { // 30秒防連點
+            return Swal.fire('操作太頻繁', '資料已經送出囉！請稍等 30 秒後再試。', 'warning');
+        }
+
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { 
             finalStatus = `【${document.getElementById('holidayType').value}】 ` + selectedStatus; 
@@ -1037,6 +1081,10 @@
             confirmButtonColor: 'var(--primary)'
         }).then(async (result) => {
             if (result.isConfirmed) {
+                
+                // 鎖定點擊時間 (防連按)
+                localStorage.setItem('last_punch_' + currentUser + '_' + type, new Date().getTime().toString());
+
                 showLoading("資料傳送中...");
                 
                 const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
