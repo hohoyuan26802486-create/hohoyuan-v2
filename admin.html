@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V44.0 (智慧防呆補登版)</title>
+    <title>禾禾園 - 專業管理後台 V45.0 (智慧星期顯示版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -119,17 +119,13 @@
         </div>
     </div>
     
-    <!-- 🚀 補登漏打卡面板 (加入智慧防呆警示) -->
     <div id="punchPanel" class="punch-panel" style="display:none;">
         <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 補登漏打卡紀錄</div>
-        <!-- 加入 onchange 事件，一選人或時間就自動掃描假單 -->
         <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;" onchange="checkEmpLeaveStatus()"></select></div>
         <div><label style="font-weight:bold; font-size:12px;">打卡時間：</label><br><input type="datetime-local" id="punchTime" style="padding:4px; border-radius:4px; border:1px solid #ccc;" onchange="checkEmpLeaveStatus()"></div>
         <div><label style="font-weight:bold; font-size:12px;">上下班：</label><br><select id="punchType" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="上班">上班</option><option value="下班">下班</option></select></div>
         <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="punchReason" placeholder="例如：忘記帶手機" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><button class="btn btn-success" onclick="submitManualPunch()" style="height:32px;">💾 確認補登</button></div>
-        
-        <!-- 🚀 假單/排班 智慧防呆警示框 -->
         <div id="punchLeaveWarning" style="width: 100%; color: #d93025; font-size: 13px; display: none; background: #fce8e6; padding: 8px 10px; border-radius: 6px; border: 1px dashed #d93025; margin-top: 5px;"></div>
     </div>
     
@@ -256,20 +252,34 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    function getCurrentKey() {
-        const role = document.getElementById('adminRole').value;
-        if (role === '財務部' || role === '副總') return "cfo888"; 
-        if (role === '人事部') return "hr123"; 
-        if (role === '總經理') return "gm888";
-        return "";
+    // 🚀 核心升級：智慧日期轉換引擎 (自動加上星期幾)
+    function formatTimeWithDay(timeStr) {
+        if (!timeStr) return "";
+        const d = new Date(timeStr);
+        if (isNaN(d.getTime())) return String(timeStr); // 如果格式爛掉就原樣輸出
+        
+        const days = ['日', '一', '二', '三', '四', '五', '六'];
+        const pad = (n) => n.toString().padStart(2, '0');
+        
+        // 格式化為：08/28 (三) 17:43
+        return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} (${days[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    // (保留原本的 formatShortTime 備用，但假單跟打卡都會改用新的 formatTimeWithDay)
     function formatShortTime(timeStr) {
         if (!timeStr) return ""; 
         const d = new Date(timeStr); 
         if (isNaN(d.getTime())) return String(timeStr);
         const pad = (n) => n.toString().padStart(2, '0');
         return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function getCurrentKey() {
+        const role = document.getElementById('adminRole').value;
+        if (role === '財務部' || role === '副總') return "cfo888"; 
+        if (role === '人事部') return "hr123"; 
+        if (role === '總經理') return "gm888";
+        return "";
     }
 
     function getShiftColor(val) { 
@@ -609,10 +619,9 @@
                 retroSelect.innerHTML += opt; 
             }); 
         }
-        checkEmpLeaveStatus(); // 載入選單時順便檢查狀態
+        checkEmpLeaveStatus(); 
     }
 
-    // 🚀 新增：請假與排休智慧防呆檢查功能
     function checkEmpLeaveStatus() {
         const empName = document.getElementById('punchEmp').value;
         const punchTime = document.getElementById('punchTime').value;
@@ -635,7 +644,6 @@
 
         let warningMsg = "";
 
-        // 1. 檢查是否有已生效的請假單
         if (db.leave && db.leave.length > 1) {
             const headers = db.leave[0];
             const cName = headers.indexOf("姓名") !== -1 ? headers.indexOf("姓名") : 2;
@@ -653,8 +661,8 @@
                         let sDay = `${sDate.getFullYear()}${String(sDate.getMonth()+1).padStart(2,'0')}${String(sDate.getDate()).padStart(2,'0')}`;
                         let eDay = `${eDate.getFullYear()}${String(eDate.getMonth()+1).padStart(2,'0')}${String(eDate.getDate()).padStart(2,'0')}`;
                         if (tDayStr >= sDay && tDayStr <= eDay) {
-                            let formatS = `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
-                            let formatE = `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
+                            let formatS = formatTimeWithDay(r[cStart]);
+                            let formatE = formatTimeWithDay(r[cEnd]);
                             warningMsg = `⚠️ <b>系統防呆提醒：</b><br>該員工本日已有【${r[cType]}】紀錄 (${formatS} ~ ${formatE})，請確認是否還需要補登打卡？`;
                             break;
                         }
@@ -663,7 +671,6 @@
             }
         }
 
-        // 2. 檢查排班表是否為排休 (若無請假單)
         if (!warningMsg && db.schedule && db.schedule.length > 1) {
             let sched = db.schedule.find(s => s[0] === monthStr && s[1] === empName);
             if (sched) {
@@ -756,8 +763,9 @@
         
         let htmlStr = '';
         records.forEach(r => {
-            let dObj = new Date(r[0]); 
-            let timeStr = isNaN(dObj.getTime()) ? r[0] : dObj.toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+            // 🚀 套用最新日期引擎，出勤紀錄自動顯示星期幾
+            let timeStr = formatTimeWithDay(r[0]);
+            
             let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; 
             let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
             let isError = errorRecords.has(r[0]); 
@@ -770,7 +778,7 @@
             let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${safeTime}', '${safeName}', '${safeType}')">🗑️ 刪除</button>`;
             
             htmlStr += `<tr>
-                <td>${timeStr}</td>
+                <td style="font-weight:bold; color:#444;">${timeStr}</td>
                 <td><b>${r[1]}</b></td>
                 <td>${r[2]}</td>
                 <td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td>
@@ -823,7 +831,6 @@
         if (!empName || !punchTime) return alert("⚠️ 姓名與補登時間為必填欄位！"); 
         const formattedTime = punchTime.replace('T', ' ').replace('-', '/').replace('-', '/'); 
         
-        // 如果有紅字警告，強制再次確認
         const warningBox = document.getElementById('punchLeaveWarning');
         if (warningBox.style.display === 'block') {
             if (!confirm(`系統已經發出防呆警告（可能為排休或請假）。\n\n您確定還要執意補登嗎？`)) return; 
@@ -841,7 +848,7 @@
                 alert("✅ 打卡補登成功！"); 
                 document.getElementById('punchTime').value = ""; 
                 document.getElementById('punchReason').value = ""; 
-                warningBox.style.display = 'none'; // 隱藏警告
+                warningBox.style.display = 'none'; 
                 if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords(); 
             } 
         } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
@@ -914,8 +921,11 @@
             let empName = r[cName] || "未知";
             let empDept = String(r[cDept] || ""); 
             let lType = r[cType] || "";
-            let lStart = r[cStart];
-            let lEnd = r[cEnd];
+            
+            // 🚀 套用最新日期引擎，假單紀錄自動顯示星期幾
+            let lStart = formatTimeWithDay(r[cStart]);
+            let lEnd = formatTimeWithDay(r[cEnd]);
+            
             let reason = r[cReason] || "";
             let status = String(r[cStatus] || ""); 
             let agent = r[cAgent] || "";
@@ -925,7 +935,6 @@
             let btnText = '✔️ 核准';
             let btnClass = 'btn-success';
 
-            // 🚀 權限審核邏輯
             if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部') || role === '總經理')) { 
                 canApprove = true; next = '待副總審核'; 
             } else if (status === '待副總審核' && (role === '副總' || role === '總經理')) { 
@@ -948,8 +957,17 @@
                 }
             }
             
-            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${agent}</div>` : ''; 
-            let proof = proofUrl.includes('http') ? `<a href="${proofUrl}" target="_blank" class="proof-btn">📎 查看</a>` : (proofUrl === "待補件" ? "⚠️ 待補件" : "無"); 
+            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold; margin-top:4px;">🤝 代理人：${agent}</div>` : ''; 
+            
+            // 防破圖：過濾掉 Base64 讓它不顯示連結，只顯示已上傳
+            let proofHtml = "無";
+            if (proofUrl.includes('http')) {
+                 proofHtml = `<a href="${proofUrl}" target="_blank" style="color:#1a73e8; text-decoration:none; font-weight:bold;">📎 查看附件</a>`;
+            } else if (proofUrl.startsWith('data:image')) {
+                 proofHtml = `<span style="color:#0f9d58; font-weight:bold;">🖼️ 影像已儲存</span>`;
+            } else if (proofUrl === "待補件") {
+                 proofHtml = `<span style="color:#d93025; font-weight:bold;">⚠️ 待補件</span>`;
+            }
             
             let actionBtn = '';
             if(canApprove && currentLvTab === 'pending') {
@@ -963,10 +981,10 @@
             }
 
             htmlStr += `<tr>
-                <td><div class="main-info">${empName} <small>(${empDept})</small></div>${agentText}${reason ? `<div class="sub-info">📝 事由：${reason}</div>` : ''}</td>
-                <td><div style="font-size:13px;">${formatShortTime(lStart)}<br>~<br>${formatShortTime(lEnd)}</div></td>
-                <td><b>${lType}</b></td>
-                <td>${proof}</td>
+                <td><div style="font-size:15px; font-weight:bold;">${empName} <small style="color:#777; font-weight:normal;">(${empDept})</small></div>${agentText}${reason ? `<div style="color:#555; margin-top:4px; font-size:13px;">📝 事由：${reason}</div>` : ''}</td>
+                <td><div style="font-size:13px; font-weight:bold; color:#444;">${lStart}<br><span style="color:#aaa;">～</span><br>${lEnd}</div></td>
+                <td><span style="background:#f1f3f4; padding:4px 8px; border-radius:6px; font-weight:bold;">${lType}</span></td>
+                <td>${proofHtml}</td>
                 <td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td>
                 <td>${actionBtn}</td>
             </tr>`;
@@ -1359,7 +1377,6 @@
         XLSX.writeFile(wb, `禾禾園_${m}_薪資結算表.xlsx`); 
     }
 
-    // 啟動系統！
     fetchData();
 </script>
 </body>
