@@ -747,6 +747,90 @@
         }
     }
 
+    // 🚀 核心升級：共用的假單卡片產生器 (視覺分群、按鈕防呆)
+    function generateLeaveCardHTML(r, isTeamView, myDept) {
+        let leaveId = r[0]; 
+        let empName = r[2];
+        let empDept = r[3];
+        let typeStr = r[4]; 
+        let sDate = new Date(r[5]);
+        let eDate = new Date(r[6]);
+        
+        let sStr = isNaN(sDate.getTime()) ? r[5] : `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
+        let eStr = isNaN(eDate.getTime()) ? r[6] : `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
+        
+        let status = r[8];
+        let reason = r[7];
+        
+        let statusColor = "#1a73e8"; 
+        if(status.includes("退回") || status.includes("撤銷")) statusColor = "#d93025";
+        else if(status.includes("待")) statusColor = "#f4b400";
+        else if(status === "已生效") statusColor = "#28a745";
+
+        let actionBtnsHTML = '';
+        
+        if (isTeamView) {
+            let isSameDept = (empDept === myDept);
+            let isHR = HR_MANAGERS.includes(currentUser);
+            let isBoss = TOP_BOSSES.includes(currentUser);
+
+            if (status.includes("待")) {
+                let nextStatus = "已生效"; 
+                let canApprove = false;
+                let btnText = "✔️ 核准";
+                let btnStyle = "background: var(--primary-light); color: var(--primary);";
+                let rejectStyle = "background: #fce8e6; color: var(--danger);";
+
+                if (status === "待主管審核") {
+                    if (isSameDept) { 
+                        canApprove = true; nextStatus = "待副總審核"; 
+                    } else if (isBoss) {
+                        canApprove = true; nextStatus = "待人事核銷"; 
+                        btnText = "⚡ 越權核准";
+                        btnStyle = "background: #fff8e1; color: #b06000;";
+                    }
+                } else if (status === "待副總審核") {
+                    if (isBoss) {
+                        canApprove = true; nextStatus = "待人事核銷";
+                    }
+                } else if (status === "待人事主管審核" || status === "待人事核銷") {
+                    if (isHR) {
+                        canApprove = true; nextStatus = "已生效";
+                    } else if (isBoss) {
+                        canApprove = true; nextStatus = "已生效";
+                        btnText = "⚡ 強制生效";
+                        btnStyle = "background: #fce8e6; color: var(--danger); border: 1px solid #fad2cf;";
+                    }
+                }
+
+                if (canApprove) {
+                    actionBtnsHTML = `
+                        <div class="action-btns">
+                            <button style="${btnStyle} flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave('${leaveId}', '${nextStatus}')">${btnText}</button>
+                            <button style="${rejectStyle} flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave('${leaveId}', '已退回')">❌ 退回</button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        let titleHTML = isTeamView ? `${empName} <small style="color:gray;">(${empDept})</small> - ${typeStr}` : typeStr;
+
+        return `
+            <div class="history-card leave" style="border-left-color:${statusColor};">
+                <div class="hist-content">
+                    <div>
+                        <div class="hist-title">${titleHTML}</div>
+                        <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
+                        <div class="hist-sub">📝 ${reason}</div>
+                    </div>
+                    <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
+                </div>
+                ${actionBtnsHTML}
+            </div>
+        `;
+    }
+
     function renderHistory() {
         const type = document.querySelector('input[name="historyType"]:checked').value;
         const container = document.getElementById('historyContent');
@@ -795,42 +879,25 @@
             }
             
             let myLeaves = globalDB.leave.slice(1).filter(r => String(r[2]).trim() === currentUser);
-            myLeaves.sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
-
             if (myLeaves.length === 0) {
                  container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>您目前沒有任何請假紀錄喔！</div>";
                  return;
             }
 
-            myLeaves.forEach(r => {
-                let typeStr = r[4]; 
-                let sDate = new Date(r[5]);
-                let eDate = new Date(r[6]);
-                
-                let sStr = isNaN(sDate.getTime()) ? r[5] : `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
-                let eStr = isNaN(eDate.getTime()) ? r[6] : `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
-                
-                let status = r[8];
-                let reason = r[7];
-                
-                let statusColor = "#1a73e8"; 
-                if(status.includes("退回") || status.includes("撤銷")) statusColor = "#d93025";
-                else if(status.includes("待")) statusColor = "#f4b400";
-                else if(status === "已生效") statusColor = "#28a745";
+            // 🚀 分群與排序：待處理清單 + 歷史紀錄 (日期由新到舊)
+            let pendingMy = myLeaves.filter(r => String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
+            let historyMy = myLeaves.filter(r => !String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
 
-                container.innerHTML += `
-                    <div class="history-card leave" style="border-left-color:${statusColor};">
-                        <div class="hist-content">
-                            <div>
-                                <div class="hist-title">${typeStr}</div>
-                                <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
-                                <div class="hist-sub">📝 ${reason}</div>
-                            </div>
-                            <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
-                        </div>
-                    </div>
-                `;
-            });
+            let htmlStr = '';
+            if (pendingMy.length > 0) {
+                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: #b06000; margin: 5px 0 10px 0; border-bottom: 1px dashed #fde293; padding-bottom: 5px;">⏳ 待處理進度</div>`;
+                pendingMy.forEach(r => { htmlStr += generateLeaveCardHTML(r, false, ""); });
+            }
+            if (historyMy.length > 0) {
+                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin: 15px 0 10px 0; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">✅ 歷史紀錄</div>`;
+                historyMy.forEach(r => { htmlStr += generateLeaveCardHTML(r, false, ""); });
+            }
+            container.innerHTML = htmlStr;
             
         } else if (type === 'team') {
             let myDept = "";
@@ -850,7 +917,6 @@
                 for (let i=1; i<globalDB.leave.length; i++) {
                     let r = globalDB.leave[i];
                     let status = r[8] || "";
-                    // 🚀 升級：把「待審核」的也納入今日休假人員
                     if (status === "已生效" || status.includes("待")) {
                         let isSameDept = (r[3] === myDept);
                         if (isSameDept || isBoss || isHR) {
@@ -891,108 +957,34 @@
                         ${todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>"}
                     </div>
                 </div>
-                <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin-bottom: 10px;">⏳ 待辦假單與歷史紀錄</div>
             `;
-            container.innerHTML = todayHTML;
-
-            if (!globalDB || !globalDB.leave || globalDB.leave.length <= 1) {
-                container.innerHTML += "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>";
-                return;
-            }
 
             let teamLeaves = globalDB.leave.slice(1).filter(r => {
                 let isSameDept = (r[3] === myDept);
                 let isNotMe = (r[2] !== currentUser); 
                 return (isSameDept || isBoss || isHR) && isNotMe;
             });
-            
-            teamLeaves.sort((a,b) => {
-                let aPending = String(a[8]).includes('待') ? -1 : 1;
-                let bPending = String(b[8]).includes('待') ? -1 : 1;
-                if(aPending !== bPending) return aPending - bPending;
-                return new Date(b[5]).getTime() - new Date(a[5]).getTime();
-            });
 
             if (teamLeaves.length === 0) {
-                 container.innerHTML += "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>";
+                 container.innerHTML = todayHTML + "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>";
                  return;
             }
 
-            teamLeaves.forEach(r => {
-                let leaveId = r[0]; 
-                let empName = r[2];
-                let empDept = r[3];
-                let typeStr = r[4]; 
-                let sDate = new Date(r[5]);
-                let eDate = new Date(r[6]);
-                
-                let sStr = isNaN(sDate.getTime()) ? r[5] : `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
-                let eStr = isNaN(eDate.getTime()) ? r[6] : `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
-                
-                let status = r[8];
-                let reason = r[7];
-                
-                let statusColor = "#1a73e8"; 
-                if(status.includes("退回") || status.includes("撤銷")) statusColor = "#d93025";
-                else if(status.includes("待")) statusColor = "#f4b400";
-                else if(status === "已生效") statusColor = "#28a745";
+            // 🚀 分群與排序：待處理清單 + 歷史紀錄 (日期由新到舊)
+            let pendingTeam = teamLeaves.filter(r => String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
+            let historyTeam = teamLeaves.filter(r => !String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
 
-                let actionBtnsHTML = '';
-                let isSameDept = (empDept === myDept);
-
-                if (status.includes("待")) {
-                    let nextStatus = "已生效"; 
-                    let canApprove = false;
-                    let btnText = "✔️ 核准";
-                    let btnStyle = "background: var(--primary-light); color: var(--primary);";
-                    let rejectStyle = "background: #fce8e6; color: var(--danger);";
-
-                    if (status === "待主管審核") {
-                        if (isSameDept) { 
-                            canApprove = true; nextStatus = "待副總審核"; 
-                        } else if (isBoss) {
-                            canApprove = true; nextStatus = "待人事核銷"; 
-                            btnText = "⚡ 越權核准";
-                            btnStyle = "background: #fff8e1; color: #b06000;";
-                        }
-                    } else if (status === "待副總審核") {
-                        if (isBoss) {
-                            canApprove = true; nextStatus = "待人事核銷";
-                        }
-                    } else if (status === "待人事主管審核" || status === "待人事核銷") {
-                        if (isHR) {
-                            canApprove = true; nextStatus = "已生效";
-                        } else if (isBoss) {
-                            canApprove = true; nextStatus = "已生效";
-                            btnText = "⚡ 強制生效";
-                            btnStyle = "background: #fce8e6; color: var(--danger); border: 1px solid #fad2cf;";
-                        }
-                    }
-
-                    if (canApprove) {
-                        actionBtnsHTML = `
-                            <div class="action-btns">
-                                <button style="${btnStyle} flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave('${leaveId}', '${nextStatus}')">${btnText}</button>
-                                <button style="${rejectStyle} flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave('${leaveId}', '已退回')">❌ 退回</button>
-                            </div>
-                        `;
-                    }
-                }
-
-                container.innerHTML += `
-                    <div class="history-card leave" style="border-left-color:${statusColor};">
-                        <div class="hist-content">
-                            <div>
-                                <div class="hist-title">${empName} <small style="color:gray;">(${empDept})</small> - ${typeStr}</div>
-                                <div class="hist-sub" style="margin-bottom:3px;">${sStr} ~ ${eStr}</div>
-                                <div class="hist-sub">📝 ${reason}</div>
-                            </div>
-                            <div class="hist-status" style="color:${statusColor}; border: 1px solid ${statusColor}33; background: #fff;">${status}</div>
-                        </div>
-                        ${actionBtnsHTML}
-                    </div>
-                `;
-            });
+            let htmlStr = todayHTML;
+            if (pendingTeam.length > 0) {
+                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: #b06000; margin: 10px 0 10px 0; border-bottom: 1px dashed #fde293; padding-bottom: 5px;">⏳ 待審核假單</div>`;
+                pendingTeam.forEach(r => { htmlStr += generateLeaveCardHTML(r, true, myDept); });
+            }
+            if (historyTeam.length > 0) {
+                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin: 15px 0 10px 0; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">✅ 已結案紀錄</div>`;
+                historyTeam.forEach(r => { htmlStr += generateLeaveCardHTML(r, true, myDept); });
+            }
+            
+            container.innerHTML = htmlStr;
         }
     }
 
