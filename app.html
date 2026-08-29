@@ -96,7 +96,7 @@
         .hist-sub { font-size: 12px; color: var(--text-sub); line-height:1.4;}
         .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); text-align: center;}
         
-        /* 行動簽核按鈕 */
+        /* 行動簽核按鈕區 */
         .action-btns { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eee; display: flex; gap: 10px; }
 
         /* ================= 底部導覽列 ================= */
@@ -747,7 +747,7 @@
         }
     }
 
-    // 🚀 核心升級：共用的假單卡片產生器 (視覺分群、按鈕防呆)
+    // 🚀 核心升級：共用的假單卡片產生器 (視覺防呆、無按鈕處理)
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         let leaveId = r[0]; 
         let empName = r[2];
@@ -884,7 +884,6 @@
                  return;
             }
 
-            // 🚀 分群與排序：待處理清單 + 歷史紀錄 (日期由新到舊)
             let pendingMy = myLeaves.filter(r => String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
             let historyMy = myLeaves.filter(r => !String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
 
@@ -904,6 +903,9 @@
             let empRecord = globalDB.employees.find(r => r[0] === currentUser);
             if (empRecord) myDept = empRecord[1];
 
+            let todayTime = new Date();
+            todayTime.setHours(0,0,0,0);
+            
             let today = new Date();
             let todayStrYMD = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
             let todayMonthStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
@@ -970,17 +972,45 @@
                  return;
             }
 
-            // 🚀 分群與排序：待處理清單 + 歷史紀錄 (日期由新到舊)
+            // 🚀 核心升級：自動分群邏輯
             let pendingTeam = teamLeaves.filter(r => String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
-            let historyTeam = teamLeaves.filter(r => !String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
+            
+            let nonPendingTeam = teamLeaves.filter(r => !String(r[8]).includes('待'));
+
+            // 未來休假預告 (已生效 且 開始日期在明天以後)
+            let upcomingTeam = nonPendingTeam.filter(r => String(r[8]) === '已生效' && new Date(r[5]).getTime() > todayTime.getTime());
+            upcomingTeam.sort((a,b) => new Date(a[5]).getTime() - new Date(b[5]).getTime()); // 由近到遠
+
+            // 歷史結案紀錄 (過去已經請完的，或被退回/撤銷的)
+            let historyTeam = nonPendingTeam.filter(r => !(String(r[8]) === '已生效' && new Date(r[5]).getTime() > todayTime.getTime()));
+            historyTeam.sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime()); // 由新到舊
 
             let htmlStr = todayHTML;
+
+            // 1. 待處理清單
             if (pendingTeam.length > 0) {
                 htmlStr += `<div style="font-size: 13px; font-weight: bold; color: #b06000; margin: 10px 0 10px 0; border-bottom: 1px dashed #fde293; padding-bottom: 5px;">⏳ 待審核假單</div>`;
                 pendingTeam.forEach(r => { htmlStr += generateLeaveCardHTML(r, true, myDept); });
             }
+
+            // 2. 📅 未來已核准休假預告 (按月份自動分群)
+            if (upcomingTeam.length > 0) {
+                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: #0f9d58; margin: 15px 0 10px 0; border-bottom: 1px dashed #b7e1cd; padding-bottom: 5px;">📅 未來已核准休假預告</div>`;
+                let currentMonthStr = "";
+                upcomingTeam.forEach(r => {
+                    let sDate = new Date(r[5]);
+                    let mStr = `${sDate.getFullYear()}年${sDate.getMonth() + 1}月`;
+                    if (mStr !== currentMonthStr) {
+                        htmlStr += `<div style="background: #e6f4ea; color: #0f9d58; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; margin: 10px 0 5px 0; display: inline-block;">📍 ${mStr}</div>`;
+                        currentMonthStr = mStr;
+                    }
+                    htmlStr += generateLeaveCardHTML(r, true, myDept);
+                });
+            }
+
+            // 3. 歷史紀錄
             if (historyTeam.length > 0) {
-                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin: 15px 0 10px 0; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">✅ 已結案紀錄</div>`;
+                htmlStr += `<div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin: 15px 0 10px 0; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">✅ 歷史結案紀錄</div>`;
                 historyTeam.forEach(r => { htmlStr += generateLeaveCardHTML(r, true, myDept); });
             }
             
