@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V45.2 (強制破除快取版)</title>
+    <title>禾禾園 - 專業管理後台 V45.3 (CORS 免疫暢通版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -253,7 +253,7 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 核心升級：智慧日期轉換引擎 (自動加上星期幾)
+    // 📅 日期轉換引擎 (自動加上星期幾)
     function formatTimeWithDay(timeStr) {
         if (!timeStr) return "";
         const d = new Date(timeStr);
@@ -381,13 +381,9 @@
         fetchData();
     }
 
-    // 🚀 安全升級：統一所有的 fetch 加上 Headers 確保不被 CORS 阻擋
+    // 🚀 CORS 免疫處理：完全拔除所有 Headers 偽裝，強制瀏覽器視為 Simple Request
     const getFetchOptions = (bodyData) => ({
         method: 'POST',
-        headers: {
-            "Accept": "application/json",
-            "Content-Type": "text/plain;charset=utf-8"
-        },
         body: JSON.stringify(bodyData)
     });
 
@@ -477,14 +473,7 @@
                     }
                     
                     if (totalAmt > 0 || deliveryBonus > 0 || agentBonus > 0 || targetBonus > 0) {
-                        perfData.push({ 
-                            name: cleanName, 
-                            delivery: deliveryAmt, 
-                            transfer: transferAmt, 
-                            deliveryBonus: deliveryBonus, 
-                            targetBonus: targetBonus, 
-                            agentBonus: agentBonus 
-                        });
+                        perfData.push({ name: cleanName, delivery: deliveryAmt, transfer: transferAmt, deliveryBonus: deliveryBonus, targetBonus: targetBonus, agentBonus: agentBonus });
                     }
                 }
 
@@ -515,9 +504,7 @@
             }
         } catch (e) { 
             alert("網路連線異常，匯入失敗: " + e.message); 
-        } finally { 
-            hideLoading(); 
-        }
+        } finally { hideLoading(); }
     }
 
     function renderDeptTable() {
@@ -616,16 +603,10 @@
         const punchTime = document.getElementById('punchTime').value;
         const warningBox = document.getElementById('punchLeaveWarning');
 
-        if (!empName || !punchTime || !db) {
-            warningBox.style.display = 'none';
-            return;
-        }
+        if (!empName || !punchTime || !db) { warningBox.style.display = 'none'; return; }
 
         const punchDate = new Date(punchTime);
-        if (isNaN(punchDate.getTime())) {
-            warningBox.style.display = 'none';
-            return;
-        }
+        if (isNaN(punchDate.getTime())) { warningBox.style.display = 'none'; return; }
 
         const tDayStr = `${punchDate.getFullYear()}${String(punchDate.getMonth()+1).padStart(2,'0')}${String(punchDate.getDate()).padStart(2,'0')}`;
         const monthStr = `${punchDate.getFullYear()}-${String(punchDate.getMonth()+1).padStart(2,'0')}`;
@@ -774,7 +755,6 @@
         tbody.innerHTML = htmlStr;
     }
 
-    // 🚀 安全刪除功能 (包含強制作為文字傳送的防擋機制)
     async function delAtt(timeStr, name, typeStr) {
         if(!confirm(`確定要刪除 [${name}] 的打卡紀錄嗎？`)) return; 
         const month = document.getElementById('attMonth').value; 
@@ -800,7 +780,7 @@
                 alert("❌ 刪除失敗：" + resultText);
             }
         } catch(e) { 
-            alert("❌ 網路或快取錯誤: " + e.message + "\n\n(提示：請按 Ctrl + F5 強制重新整理網頁！)"); 
+            alert("❌ 網路異常或阻擋: " + e.message + "\n\n(提示：請重新整理網頁！)"); 
         } finally { hideLoading(); }
     }
 
@@ -932,7 +912,7 @@
                 }
             }
             
-            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold; margin-top:4px;">🤝 代理人：${agent}</div>` : ''; 
+            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${agent}</div>` : ''; 
             
             let proofHtml = "無";
             if (proofUrl.includes('http')) {
