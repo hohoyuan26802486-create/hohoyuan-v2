@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V45.3 (CORS 免疫暢通版)</title>
+    <title>禾禾園 - 專業管理後台 V46.0 (出勤休假聯合顯示版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -141,7 +141,7 @@
     </div>
     
     <div class="table-responsive">
-        <table style="background:white;"><thead style="background:#f8f9fa;"><tr><th>打卡時間</th><th>姓名</th><th>部門</th><th>卡別</th><th>系統狀態</th><th>定位紀錄</th><th>管理操作</th></tr></thead><tbody id="attendanceBody"></tbody></table>
+        <table style="background:white;"><thead style="background:#f8f9fa;"><tr><th>打卡/請假時間</th><th>姓名</th><th>部門</th><th>卡別</th><th>系統狀態</th><th>定位紀錄</th><th>管理操作</th></tr></thead><tbody id="attendanceBody"></tbody></table>
     </div>
 </div>
 
@@ -381,7 +381,6 @@
         fetchData();
     }
 
-    // 🚀 CORS 免疫處理：完全拔除所有 Headers 偽裝，強制瀏覽器視為 Simple Request
     const getFetchOptions = (bodyData) => ({
         method: 'POST',
         body: JSON.stringify(bodyData)
@@ -603,10 +602,16 @@
         const punchTime = document.getElementById('punchTime').value;
         const warningBox = document.getElementById('punchLeaveWarning');
 
-        if (!empName || !punchTime || !db) { warningBox.style.display = 'none'; return; }
+        if (!empName || !punchTime || !db) {
+            warningBox.style.display = 'none';
+            return;
+        }
 
         const punchDate = new Date(punchTime);
-        if (isNaN(punchDate.getTime())) { warningBox.style.display = 'none'; return; }
+        if (isNaN(punchDate.getTime())) {
+            warningBox.style.display = 'none';
+            return;
+        }
 
         const tDayStr = `${punchDate.getFullYear()}${String(punchDate.getMonth()+1).padStart(2,'0')}${String(punchDate.getDate()).padStart(2,'0')}`;
         const monthStr = `${punchDate.getFullYear()}-${String(punchDate.getMonth()+1).padStart(2,'0')}`;
@@ -687,23 +692,22 @@
         } finally { hideLoading(); } 
     }
 
+    // 🚀 核心升級：出勤與休假聯合顯示引擎
     function renderAttendanceTable() {
         const tbody = document.getElementById('attendanceBody'); 
-        if (!rawAttData || rawAttData.length <= 1) { 
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡紀錄</td></tr>'; 
-            return; 
-        }
-        
         const filterDept = document.getElementById('attDept').value; 
         const filterEmp = document.getElementById('attEmp').value;
-        let records = rawAttData.slice(1); 
+        const targetMonth = document.getElementById('attMonth').value;
+
+        // 1. 處理一般的打卡紀錄
+        let records = (rawAttData && rawAttData.length > 1) ? rawAttData.slice(1) : []; 
         if (filterDept) records = records.filter(r => r[2] === filterDept); 
         if (filterEmp) records = records.filter(r => r[1] === filterEmp);
         
-        records.sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
         let errorRecords = new Set(); 
         let empPunchState = {}; 
         
+        records.sort((a,b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
         records.forEach(r => {
             let empName = r[1]; 
             let type = r[3]; 
@@ -726,31 +730,99 @@
             } 
         }
 
-        records.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+        let combinedRecords = [];
+        
+        // 將打卡紀錄放入混合陣列
+        records.forEach(r => {
+            combinedRecords.push({ type: 'att', time: new Date(r[0]).getTime(), originalData: r });
+        });
+
+        // 2. 處理已生效的假單，將其化為「休假紀錄」插入
+        if (db.leave && db.leave.length > 1) {
+            const headers = db.leave[0];
+            const cName = headers.indexOf("姓名") !== -1 ? headers.indexOf("姓名") : 2;
+            const cDept = headers.indexOf("部門") !== -1 ? headers.indexOf("部門") : 3;
+            const cType = headers.indexOf("假別") !== -1 ? headers.indexOf("假別") : 4;
+            const cStart = headers.indexOf("請假時間開始") !== -1 ? headers.indexOf("請假時間開始") : 5;
+            const cEnd = headers.indexOf("請假時間結束") !== -1 ? headers.indexOf("請假時間結束") : 6;
+            const cReason = headers.indexOf("理由") !== -1 ? headers.indexOf("理由") : 7;
+            const cStatus = headers.indexOf("狀態") !== -1 ? headers.indexOf("狀態") : 8;
+
+            for (let i = 1; i < db.leave.length; i++) {
+                let r = db.leave[i];
+                if (r[cStatus] === "已生效") {
+                    if (filterDept && String(r[cDept] || "") !== filterDept) continue;
+                    if (filterEmp && String(r[cName] || "") !== filterEmp) continue;
+
+                    let sDate = new Date(r[cStart]);
+                    let eDate = new Date(r[cEnd]);
+                    if (isNaN(sDate.getTime())) continue;
+
+                    let sMonth = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, '0')}`;
+                    let eMonth = !isNaN(eDate.getTime()) ? `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}` : sMonth;
+
+                    // 只要假單涵蓋到查詢的月份，就放進去
+                    if (sMonth === targetMonth || eMonth === targetMonth) {
+                        combinedRecords.push({
+                            type: 'leave',
+                            time: sDate.getTime(), // 依請假起始時間排序
+                            leaveInfo: { name: r[cName], dept: r[cDept], lType: r[cType], start: r[cStart], end: r[cEnd], reason: r[cReason] }
+                        });
+                    }
+                }
+            }
+        }
+
+        if (combinedRecords.length === 0) { 
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#aaa;">此月份尚無任何打卡或休假紀錄</td></tr>'; 
+            return; 
+        }
+
+        // 依據時間由新到舊排序
+        combinedRecords.sort((a,b) => b.time - a.time);
         
         let htmlStr = '';
-        records.forEach(r => {
-            let timeStr = formatTimeWithDay(r[0]);
-            let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; 
-            let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
-            let isError = errorRecords.has(r[0]); 
-            let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
-            
-            let safeName = String(r[1]).replace(/'/g, "\\'");
-            let safeType = String(r[3]).replace(/'/g, "\\'");
-            let safeTime = String(r[0]).replace(/'/g, "\\'");
-            
-            let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${safeTime}', '${safeName}', '${safeType}')">🗑️ 刪除</button>`;
-            
-            htmlStr += `<tr>
-                <td style="font-weight:bold; color:#444;">${timeStr}</td>
-                <td><b>${r[1]}</b></td>
-                <td>${r[2]}</td>
-                <td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td>
-                <td>${r[4]}</td>
-                <td>${loc}</td>
-                <td>${delBtn}</td>
-            </tr>`;
+        combinedRecords.forEach(item => {
+            if (item.type === 'att') {
+                let r = item.originalData;
+                let timeStr = formatTimeWithDay(r[0]);
+                let typeColor = String(r[3]).includes('上班') ? '#1a73e8' : '#e67c73'; 
+                let loc = r[6] && String(r[6]).includes('http') ? `<a href="${r[6]}" target="_blank" style="color:#1a73e8; text-decoration:none;">📍 查看地圖</a>` : r[6];
+                let isError = errorRecords.has(r[0]); 
+                let warningHtml = isError ? `<div style="color:#d93025; font-size:12px; font-weight:bold; margin-top:5px;">⚠️ 缺漏卡異常</div>` : "";
+                
+                let safeName = String(r[1]).replace(/'/g, "\\'");
+                let safeType = String(r[3]).replace(/'/g, "\\'");
+                let safeTime = String(r[0]).replace(/'/g, "\\'");
+                
+                let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${safeTime}', '${safeName}', '${safeType}')">🗑️ 刪除</button>`;
+                
+                htmlStr += `<tr>
+                    <td style="font-weight:bold; color:#444;">${timeStr}</td>
+                    <td><b>${r[1]}</b></td>
+                    <td>${r[2]}</td>
+                    <td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td>
+                    <td>${r[4]}</td>
+                    <td>${loc}</td>
+                    <td>${delBtn}</td>
+                </tr>`;
+            } else if (item.type === 'leave') {
+                let info = item.leaveInfo;
+                let sStr = formatTimeWithDay(info.start);
+                let eStr = formatTimeWithDay(info.end);
+                let timeDisplay = sStr === eStr ? sStr : `${sStr}<br><span style="color:#aaa;">～</span><br>${eStr}`;
+                
+                // 休假紀錄使用明顯的橘黃底色區隔
+                htmlStr += `<tr style="background-color: #fffde7; border-left: 4px solid #f4b400;">
+                    <td style="font-weight:bold; color:#b06000;">${timeDisplay}</td>
+                    <td><b>${info.name}</b></td>
+                    <td>${info.dept}</td>
+                    <td><span style="background:#f4b400; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">🏖️ 休假</span></td>
+                    <td style="color:#b06000; font-weight:bold;">【${info.lType}】${info.reason || ''}</td>
+                    <td style="color:#aaa; font-size: 12px;">免打卡</td>
+                    <td style="color:#aaa; font-size: 12px;">(請至假單區管理)</td>
+                </tr>`;
+            }
         });
         tbody.innerHTML = htmlStr;
     }
@@ -912,7 +984,7 @@
                 }
             }
             
-            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${agent}</div>` : ''; 
+            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold; margin-top:4px;">🤝 代理人：${agent}</div>` : ''; 
             
             let proofHtml = "無";
             if (proofUrl.includes('http')) {
