@@ -116,21 +116,23 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">處理中...</div></div>
 
+    <!-- 登入畫面 -->
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
             <p>專屬智能考勤 App</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
-        <input type="password" id="loginPwd" class="login-input" placeholder="密碼 (測試版隨意輸入)">
+        <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
         <button class="btn-login" onclick="doLogin()">登入專屬系統</button>
     </div>
 
+    <!-- App 主畫面 -->
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
                 <div class="app-title">HOHO YUAN</div>
-                <div class="avatar" onclick="doLogout()" title="登出">👤</div>
+                <div class="avatar" onclick="showUserMenu()" title="設定">👤</div>
             </div>
             <div class="greeting">
                 <h2>Hello, <span id="displayUserName">員工</span></h2>
@@ -350,17 +352,37 @@
         }
     }
 
-    function doLogin() {
+    // 🚀 升級：安全連線登入驗證
+    async function doLogin() {
         const nameInput = document.getElementById('loginName').value.trim();
-        if (!nameInput) return Swal.fire('提示', '請輸入姓名！', 'warning');
+        const pwdInput = document.getElementById('loginPwd').value.trim();
+        if (!nameInput || !pwdInput) return Swal.fire('提示', '請輸入姓名與密碼！', 'warning');
         
-        currentUser = nameInput;
-        localStorage.setItem('hohoyuan_user', currentUser);
-        checkManagerUI(); 
-        showMainScreen();
-        fetchBackendData();
-        checkTodayAttendance(); 
-        Swal.fire({ title: '登入成功', text: `歡迎，${currentUser}！`, icon: 'success', timer: 1500, showConfirmButton: false });
+        showLoading("安全驗證中...");
+        try {
+            const res = await fetch(API_URL + "?t=" + new Date().getTime(), {
+                method: 'POST',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "loginVerify", name: nameInput, pwd: pwdInput })
+            });
+            const text = await res.text();
+            hideLoading();
+
+            if (text === "Success") {
+                currentUser = nameInput;
+                localStorage.setItem('hohoyuan_user', currentUser);
+                checkManagerUI(); 
+                showMainScreen();
+                fetchBackendData();
+                checkTodayAttendance(); 
+                Swal.fire({ title: '登入成功', text: `歡迎，${currentUser}！`, icon: 'success', timer: 1500, showConfirmButton: false });
+            } else {
+                Swal.fire('登入失敗', text, 'error');
+            }
+        } catch (e) {
+            hideLoading();
+            Swal.fire('網路錯誤', '無法連線到資料庫：' + e.message, 'error');
+        }
     }
 
     function showMainScreen() {
@@ -370,19 +392,62 @@
         handleTypeChange(); 
     }
 
-    function doLogout() {
+    // 🚀 新增：個人專屬選單 (修改密碼 & 登出)
+    function showUserMenu() {
         Swal.fire({
-            title: '登出系統',
-            text: "確定要登出並解除此設備的綁定嗎？",
-            icon: 'warning',
+            title: `嗨！${currentUser}`,
+            text: '請選擇您要執行的操作',
+            icon: 'info',
+            showDenyButton: true,
             showCancelButton: true,
-            confirmButtonText: '登出'
+            confirmButtonText: '🔑 修改密碼',
+            denyButtonText: '🚪 登出系統',
+            cancelButtonText: '取消',
+            confirmButtonColor: 'var(--primary)',
+            denyButtonColor: 'var(--danger)'
         }).then((result) => {
             if (result.isConfirmed) {
-                localStorage.removeItem('hohoyuan_user');
-                location.reload();
+                changeMyPassword();
+            } else if (result.isDenied) {
+                doLogout();
             }
         });
+    }
+
+    async function changeMyPassword() {
+        const { value: newPwd } = await Swal.fire({
+            title: '修改登入密碼',
+            input: 'password',
+            inputLabel: '請輸入您的新密碼',
+            inputPlaceholder: '至少 4 個字元',
+            showCancelButton: true,
+            inputValidator: (value) => {
+                if (!value || value.length < 4) {
+                    return '密碼太短囉，為了安全請輸入 4 個字以上！'
+                }
+            }
+        });
+        if (newPwd) {
+            showLoading("密碼更新中...");
+            try {
+                const res = await fetch(API_URL + "?t=" + new Date().getTime(), {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "changeEmpPassword", name: currentUser, newPwd: newPwd })
+                });
+                const text = await res.text();
+                hideLoading();
+                if (text === "Success") Swal.fire('成功', '密碼已更新！下次登入請使用新密碼。', 'success');
+                else Swal.fire('失敗', text, 'error');
+            } catch(e) {
+                hideLoading();
+                Swal.fire('錯誤', '網路異常: ' + e.message, 'error');
+            }
+        }
+    }
+
+    function doLogout() {
+        localStorage.removeItem('hohoyuan_user');
+        location.reload();
     }
 
     function switchNav(viewId, element) {
@@ -747,7 +812,6 @@
         }
     }
 
-    // 🚀 核心升級：共用的假單卡片產生器 (視覺防呆、無按鈕處理)
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         let leaveId = r[0]; 
         let empName = r[2];
@@ -972,28 +1036,23 @@
                  return;
             }
 
-            // 🚀 核心升級：自動分群邏輯
             let pendingTeam = teamLeaves.filter(r => String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
             
             let nonPendingTeam = teamLeaves.filter(r => !String(r[8]).includes('待'));
 
-            // 未來休假預告 (已生效 且 開始日期在明天以後)
             let upcomingTeam = nonPendingTeam.filter(r => String(r[8]) === '已生效' && new Date(r[5]).getTime() > todayTime.getTime());
-            upcomingTeam.sort((a,b) => new Date(a[5]).getTime() - new Date(b[5]).getTime()); // 由近到遠
+            upcomingTeam.sort((a,b) => new Date(a[5]).getTime() - new Date(b[5]).getTime()); 
 
-            // 歷史結案紀錄 (過去已經請完的，或被退回/撤銷的)
             let historyTeam = nonPendingTeam.filter(r => !(String(r[8]) === '已生效' && new Date(r[5]).getTime() > todayTime.getTime()));
-            historyTeam.sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime()); // 由新到舊
+            historyTeam.sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime()); 
 
             let htmlStr = todayHTML;
 
-            // 1. 待處理清單
             if (pendingTeam.length > 0) {
                 htmlStr += `<div style="font-size: 13px; font-weight: bold; color: #b06000; margin: 10px 0 10px 0; border-bottom: 1px dashed #fde293; padding-bottom: 5px;">⏳ 待審核假單</div>`;
                 pendingTeam.forEach(r => { htmlStr += generateLeaveCardHTML(r, true, myDept); });
             }
 
-            // 2. 📅 未來已核准休假預告 (按月份自動分群)
             if (upcomingTeam.length > 0) {
                 htmlStr += `<div style="font-size: 13px; font-weight: bold; color: #0f9d58; margin: 15px 0 10px 0; border-bottom: 1px dashed #b7e1cd; padding-bottom: 5px;">📅 未來已核准休假預告</div>`;
                 let currentMonthStr = "";
@@ -1008,7 +1067,6 @@
                 });
             }
 
-            // 3. 歷史紀錄
             if (historyTeam.length > 0) {
                 htmlStr += `<div style="font-size: 13px; font-weight: bold; color: var(--text-sub); margin: 15px 0 10px 0; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">✅ 歷史結案紀錄</div>`;
                 historyTeam.forEach(r => { htmlStr += generateLeaveCardHTML(r, true, myDept); });
