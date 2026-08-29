@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V45.1 (安全通行證防擋版)</title>
+    <title>禾禾園 - 專業管理後台 V45.2 (強制破除快取版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -257,7 +257,7 @@
     function formatTimeWithDay(timeStr) {
         if (!timeStr) return "";
         const d = new Date(timeStr);
-        if (isNaN(d.getTime())) return String(timeStr); // 如果格式爛掉就原樣輸出
+        if (isNaN(d.getTime())) return String(timeStr); 
         
         const days = ['日', '一', '二', '三', '四', '五', '六'];
         const pad = (n) => n.toString().padStart(2, '0');
@@ -384,7 +384,10 @@
     // 🚀 安全升級：統一所有的 fetch 加上 Headers 確保不被 CORS 阻擋
     const getFetchOptions = (bodyData) => ({
         method: 'POST',
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "text/plain;charset=utf-8"
+        },
         body: JSON.stringify(bodyData)
     });
 
@@ -771,10 +774,11 @@
         tbody.innerHTML = htmlStr;
     }
 
+    // 🚀 安全刪除功能 (包含強制作為文字傳送的防擋機制)
     async function delAtt(timeStr, name, typeStr) {
         if(!confirm(`確定要刪除 [${name}] 的打卡紀錄嗎？`)) return; 
         const month = document.getElementById('attMonth').value; 
-        showLoading("刪除紀錄中...");
+        showLoading("🚀 安全刪除同步中...");
         try { 
             const res = await fetch(CONFIG_URL + "?t=" + new Date().getTime(), getFetchOptions({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, type: typeStr, month: month })); 
             const resultText = await res.text();
@@ -795,7 +799,9 @@
             } else {
                 alert("❌ 刪除失敗：" + resultText);
             }
-        } catch(e) { alert("❌ 錯誤: " + e.message + "\n(請確認瀏覽器未阻擋跨網域請求)"); } finally { hideLoading(); }
+        } catch(e) { 
+            alert("❌ 網路或快取錯誤: " + e.message + "\n\n(提示：請按 Ctrl + F5 強制重新整理網頁！)"); 
+        } finally { hideLoading(); }
     }
 
     async function submitManualPunch() {
@@ -926,7 +932,7 @@
                 }
             }
             
-            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold;">🤝 代理人：${agent}</div>` : ''; 
+            let agentText = agent && agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold; margin-top:4px;">🤝 代理人：${agent}</div>` : ''; 
             
             let proofHtml = "無";
             if (proofUrl.includes('http')) {
