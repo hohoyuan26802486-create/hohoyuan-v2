@@ -28,7 +28,6 @@
         
         .app-container { width: 100%; max-width: 480px; height: 100%; background: var(--bg); position: relative; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;}
         
-        /* ================= 登入畫面 ================= */
         #loginScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 30px; background: white; z-index: 100; position: absolute; width: 100%; transition: 0.3s;}
         .logo-area { text-align: center; margin-bottom: 40px; }
         .logo-area h1 { color: var(--primary); font-size: 28px; margin: 0; font-weight: 800; letter-spacing: 2px;}
@@ -37,20 +36,18 @@
         .login-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
         .btn-login { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
 
-        /* ================= 主畫面共用頭部 ================= */
         #mainScreen { display: none; flex-direction: column; height: 100%; padding-bottom: 70px; }
         .header-bg { background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%); padding: 30px 20px 20px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;}
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
         .app-title { font-weight: 900; color: var(--primary); font-size: 18px; letter-spacing: 1px;}
-        .avatar { width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; }
+        /* 🚀 升級：加上 overflow hidden 讓照片變成完美圓形 */
+        .avatar { width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; cursor: pointer; overflow: hidden;}
         .greeting h2 { font-size: 28px; color: var(--text-main); margin: 0 0 5px 0; font-weight: 800;}
         .greeting p { font-size: 14px; color: var(--text-sub); margin: 0; font-weight: 500;}
 
-        /* 切換視圖容器 */
         .view-section { display: none; flex: 1; flex-direction: column; padding: 20px; overflow-y: auto;}
         .view-section.active { display: flex; }
 
-        /* ================= 打卡視圖 (Home) ================= */
         .info-cards { display: flex; gap: 15px; margin-top: -10px; margin-bottom: 20px;}
         .card { flex: 1; background: var(--white); padding: 15px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.06); display: flex; flex-direction: column; justify-content: space-between; }
         .card-icon { width: 32px; height: 32px; background: var(--primary-light); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 16px; margin-bottom: 10px; color: var(--primary); }
@@ -73,7 +70,6 @@
         .toggle-group input:checked + label { background: var(--primary-light); color: var(--primary); }
         .gps-status { margin-top: 15px; font-size: 13px; font-weight: bold; color: #0f9d58; text-align: center;}
 
-        /* ================= 表單視圖 (請假/補件) ================= */
         .app-form { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.03); margin-bottom: 20px; width: 100%;}
         .form-group { margin-bottom: 18px; }
         .form-group label { display: block; font-size: 13px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;}
@@ -87,7 +83,6 @@
         .warning-box input { margin-top: 3px; transform: scale(1.2); }
         .warning-box p { margin: 0; font-size: 12px; color: #b06000; font-weight: 600; line-height: 1.4;}
 
-        /* ================= 個人紀錄視圖 ================= */
         .history-card { background: white; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; border-left: 4px solid var(--primary); margin-bottom: 10px;}
         .history-card.leave { border-left-color: var(--warning); }
         .history-card.error { border-left-color: var(--danger); }
@@ -96,10 +91,8 @@
         .hist-sub { font-size: 12px; color: var(--text-sub); line-height:1.4;}
         .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); text-align: center;}
         
-        /* 行動簽核按鈕區 */
         .action-btns { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eee; display: flex; gap: 10px; }
 
-        /* ================= 底部導覽列 ================= */
         .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 12px 0 25px 0; box-shadow: 0 -2px 15px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50;}
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #9aa0a6; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; padding: 5px 10px; width: 25%;}
         .nav-icon { font-size: 22px; margin-bottom: 4px; transition: 0.2s;}
@@ -116,6 +109,9 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--primary);">處理中...</div></div>
 
+    <!-- 🚀 隱藏的檔案上傳區塊 -->
+    <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
@@ -130,7 +126,7 @@
         <div class="header-bg">
             <div class="header-top">
                 <div class="app-title">HOHO YUAN</div>
-                <div class="avatar" onclick="showUserMenu()" title="設定">👤</div>
+                <div class="avatar" id="userAvatarBtn" onclick="showUserMenu()" title="設定">👤</div>
             </div>
             <div class="greeting">
                 <h2>Hello, <span id="displayUserName">員工</span></h2>
@@ -139,7 +135,6 @@
         </div>
 
         <div id="viewHome" class="view-section active">
-            
             <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
 
             <div class="info-cards">
@@ -269,8 +264,7 @@
                 <label for="histTeam" id="lblHistTeam" style="flex:1; text-align:center; padding: 10px 5px; display:none;">部屬假單</label>
             </div>
             
-            <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;">
-            </div>
+            <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;"></div>
         </div>
 
         <div class="bottom-nav">
@@ -299,12 +293,11 @@
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
-    // 🚀 GPS 測距防弊引擎設定
-    const COMPANY_LAT_1 = 24.956650267283113; // 禾禾園
+    const COMPANY_LAT_1 = 24.956650267283113; 
     const COMPANY_LON_1 = 121.3938601653661;
-    const COMPANY_LAT_2 = 24.956830628733815; // 統力食品
+    const COMPANY_LAT_2 = 24.956830628733815; 
     const COMPANY_LON_2 = 121.39535070338536;
-    const ALLOWED_RADIUS = 1000; // 允許半徑 (1000 公尺)
+    const ALLOWED_RADIUS = 1000; 
 
     let currentUser = "";
     let userLat = null, userLon = null;
@@ -317,9 +310,8 @@
     let monthlyMissingCount = 0;
     let monthlyMissingDates = [];
 
-    // Haversine 公式：計算兩點經緯度之間的距離 (公尺)
     function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // 地球半徑(公尺)
+        const R = 6371e3; 
         const p1 = lat1 * Math.PI/180;
         const p2 = lat2 * Math.PI/180;
         const dp = (lat2-lat1) * Math.PI/180;
@@ -384,9 +376,16 @@
             const text = await res.text();
             hideLoading();
 
-            if (text === "Success") {
+            if (text.startsWith("Success")) {
                 currentUser = nameInput;
                 localStorage.setItem('hohoyuan_user', currentUser);
+                
+                // 🚀 抓取後台傳來的頭像連結並儲存
+                const parts = text.split('|');
+                if (parts[1]) {
+                    localStorage.setItem('hohoyuan_avatar_' + currentUser, parts[1]);
+                }
+                
                 checkManagerUI(); 
                 showMainScreen();
                 fetchBackendData();
@@ -401,13 +400,26 @@
         }
     }
 
+    // 🚀 更新大頭照畫面
+    function loadAvatar() {
+        const savedAvatar = localStorage.getItem('hohoyuan_avatar_' + currentUser);
+        const avatarDiv = document.getElementById('userAvatarBtn');
+        if (savedAvatar && savedAvatar !== "undefined" && savedAvatar.trim() !== "") {
+            avatarDiv.innerHTML = `<img src="${savedAvatar}" style="width:100%; height:100%; object-fit:cover;">`;
+        } else {
+            avatarDiv.innerHTML = `👤`;
+        }
+    }
+
     function showMainScreen() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainScreen').style.display = 'flex';
         document.getElementById('displayUserName').innerText = currentUser;
+        loadAvatar(); // 載入頭像
         handleTypeChange(); 
     }
 
+    // 🚀 升級：專屬個人選單 (加入更換大頭照按鈕)
     function showUserMenu() {
         Swal.fire({
             title: `嗨！${currentUser}`,
@@ -415,18 +427,91 @@
             icon: 'info',
             showDenyButton: true,
             showCancelButton: true,
-            confirmButtonText: '🔑 修改密碼',
-            denyButtonText: '🚪 登出系統',
-            cancelButtonText: '取消',
+            confirmButtonText: '📸 更換頭像',
+            denyButtonText: '🔑 修改密碼',
+            cancelButtonText: '🚪 登出系統',
             confirmButtonColor: 'var(--primary)',
-            denyButtonColor: 'var(--danger)'
+            denyButtonColor: '#f4b400',
+            cancelButtonColor: 'var(--danger)'
         }).then((result) => {
             if (result.isConfirmed) {
-                changeMyPassword();
+                // 點擊更換頭像，呼叫隱藏的檔案上傳區塊
+                document.getElementById('avatarUpload').click();
             } else if (result.isDenied) {
+                changeMyPassword();
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
                 doLogout();
             }
         });
+    }
+
+    // 🚀 核心升級：前端背景極致壓縮技術
+    document.getElementById('avatarUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 強制將最大尺寸壓縮至 200x200，保證檔案極小 (約 10KB~20KB)
+                const MAX_SIZE = 200; 
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 轉為 JPEG 格式，品質 0.8
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                const base64Data = dataUrl.split(',')[1];
+
+                uploadAvatarToBackend(base64Data);
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    });
+
+    async function uploadAvatarToBackend(base64Data) {
+        showLoading("頭像壓縮與上傳中...");
+        try {
+            const res = await fetch(API_URL + "?t=" + new Date().getTime(), {
+                method: 'POST',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "updateAvatar", name: currentUser, imageFile: base64Data })
+            });
+            const text = await res.text();
+            hideLoading();
+            
+            if (text.startsWith("Success")) {
+                const newUrl = text.split('|')[1];
+                localStorage.setItem('hohoyuan_avatar_' + currentUser, newUrl);
+                loadAvatar(); // 立即更新畫面上的頭像
+                Swal.fire('成功', '大頭照已成功更換！', 'success');
+            } else {
+                Swal.fire('失敗', text, 'error');
+            }
+        } catch(e) {
+            hideLoading();
+            Swal.fire('錯誤', '網路連線異常：' + e.message, 'error');
+        }
     }
 
     async function changeMyPassword() {
@@ -1127,7 +1212,6 @@
         });
     }
 
-    // 🚀 核心升級：GPS 距離測算與外勤阻擋機制
     async function submitAttendance() {
         const type = document.querySelector('input[name="attType"]:checked').value;
         let finalStatus = selectedStatus;
@@ -1140,7 +1224,6 @@
             return Swal.fire('提示', '因為您選擇了加班/值班，請務必在上方黃色框填寫事由！', 'warning');
         }
 
-        // --- 防呆：重複打卡 ---
         if (type === "上班" && todayHasIn) {
             const confirmDup = await Swal.fire({ title: '已經有上班紀錄囉！', text: '系統發現您今天已經打過上班卡了。確定要再打一次嗎？', icon: 'warning', showCancelButton: true, confirmButtonText: '是的，我要再打', cancelButtonText: '取消', confirmButtonColor: '#f4b400' });
             if (!confirmDup.isConfirmed) return;
@@ -1150,21 +1233,18 @@
             if (!confirmDup.isConfirmed) return;
         }
 
-        // --- 防呆：連續點擊 ---
         let lastTime = localStorage.getItem('last_punch_' + currentUser + '_' + type);
         let nowMs = new Date().getTime();
         if (lastTime && (nowMs - parseInt(lastTime)) < 30000) { 
             return Swal.fire('操作太頻繁', '資料已經送出囉！請稍等 30 秒後再試。', 'warning');
         }
 
-        // 🚀 核心：計算 GPS 距離是否在 1 公里內
         let isOutOfBounds = false;
         if (userLat && userLon) {
             let dist1 = getDistance(COMPANY_LAT_1, COMPANY_LON_1, userLat, userLon);
             let dist2 = getDistance(COMPANY_LAT_2, COMPANY_LON_2, userLat, userLon);
             let minDist = Math.min(dist1, dist2);
 
-            // 如果離兩家公司都超過設定半徑 (1000公尺)，就是異地打卡
             if (minDist > ALLOWED_RADIUS) {
                 isOutOfBounds = true;
             }
@@ -1172,7 +1252,6 @@
 
         let finalReason = overtimeReason;
 
-        // 如果在範圍外，強制彈出輸入框
         if (isOutOfBounds) {
             const { value: outReason, isDismissed } = await Swal.fire({
                 title: '🚨 異地外勤打卡',
@@ -1195,7 +1274,6 @@
             finalStatus = "【外勤/遠端打卡】" + finalStatus;
             finalReason = outReason + (finalReason ? " (" + finalReason + ")" : "");
         } else {
-            // 如果在公司範圍內，走正常確認流程
             const confirmPunch = await Swal.fire({
                 title: `確認${type}打卡？`,
                 text: `現在時間：${new Date().toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'})}`,
