@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -159,10 +158,16 @@
                 
                 <div id="holidayTypeBox" class="warning-box" style="display:none; flex-direction:column; align-items:center; width:100%; margin-top: 15px; margin-bottom: 0;">
                     <p style="margin-bottom:8px;">🚨 本日為假日/週末，請選擇出勤屬性：</p>
-                    <select id="holidayType" class="form-control" style="padding: 8px; border-color: var(--primary);">
+                    <select id="holidayType" class="form-control" style="padding: 8px; border-color: var(--primary);" onchange="handleHolidayTypeChange()">
                         <option value="假日值班 (算加班費)">假日值班 (算加班費)</option>
                         <option value="假日值班 (擇日補休)">假日值班 (擇日補休)</option>
                     </select>
+                    
+                    <!-- 🚀 新增：預計補休日期選擇器 -->
+                    <div id="compLeaveDateBox" style="display:none; width: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 8px; border: 1px dashed #1a73e8;">
+                        <p style="margin:0 0 8px 0; color: #1a73e8; font-size:12px; font-weight:bold;">📅 預計補休日期：<br><span style="font-weight:normal; color:#555;">(若已知請選擇，系統將自動生成假單)</span></p>
+                        <input type="date" id="compLeaveDate" class="form-control" style="padding: 8px; border-color: #1a73e8;">
+                    </div>
                 </div>
 
                 <div id="statusArea" style="width: 100%; margin-top: 20px;">
@@ -320,6 +325,17 @@
         return R * c;
     }
 
+    function formatTimeWithDay(timeStr) {
+        if (!timeStr) return "";
+        const d = new Date(timeStr);
+        if (isNaN(d.getTime())) return String(timeStr); 
+        
+        const days = ['日', '一', '二', '三', '四', '五', '六'];
+        const pad = (n) => n.toString().padStart(2, '0');
+        
+        return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} (${days[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
@@ -398,12 +414,10 @@
         }
     }
 
-    // 🚀 核心升級：防破圖載入機制
     function loadAvatar() {
         const savedAvatar = localStorage.getItem('hohoyuan_avatar_' + currentUser);
         const avatarDiv = document.getElementById('userAvatarBtn');
         
-        // 嚴格判斷是否有真實的 base64 圖片碼
         if (savedAvatar && savedAvatar !== "undefined" && savedAvatar.trim() !== "" && (savedAvatar.startsWith("http") || savedAvatar.startsWith("data:image"))) {
             avatarDiv.innerHTML = `<img src="${savedAvatar}" style="width:100%; height:100%; object-fit:cover;">`;
         } else {
@@ -621,12 +635,27 @@
         }
     }
 
+    // 🚀 新增：處理假日值班下拉選單的顯示邏輯
+    function handleHolidayTypeChange() {
+        const type = document.getElementById('holidayType').value;
+        const compBox = document.getElementById('compLeaveDateBox');
+        if (type === '假日值班 (擇日補休)') {
+            compBox.style.display = 'block';
+        } else {
+            compBox.style.display = 'none';
+            document.getElementById('compLeaveDate').value = '';
+        }
+    }
+
     function handleTypeChange() {
         try {
             if(!currentUser) return;
             const isFlexWorker = FLEX_WORKERS.includes(currentUser);
             const holidayBox = document.getElementById('holidayTypeBox');
-            if(holidayBox) holidayBox.style.display = isHolidayToday() ? "flex" : "none";
+            if(holidayBox) {
+                holidayBox.style.display = isHolidayToday() ? "flex" : "none";
+                handleHolidayTypeChange(); // 確保重新整理顯示狀態
+            }
 
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return;
@@ -989,8 +1018,7 @@
             }
 
             myAtts.forEach(r => {
-                let dObj = new Date(r[0]);
-                let timeStr = isNaN(dObj.getTime()) ? r[0] : `${dObj.getMonth()+1}/${dObj.getDate()} ${String(dObj.getHours()).padStart(2,'0')}:${String(dObj.getMinutes()).padStart(2,'0')}`;
+                let timeStr = formatTimeWithDay(r[0]);
                 let typeStr = r[3];
                 let status = r[4];
                 
@@ -1259,6 +1287,12 @@
             });
             if (!confirmPunch.isConfirmed) return;
         }
+
+        // 🚀 抓取預計補休日期
+        let compLeaveDate = "";
+        if (isHolidayToday() && document.getElementById('holidayType').value === '假日值班 (擇日補休)') {
+            compLeaveDate = document.getElementById('compLeaveDate').value;
+        }
         
         localStorage.setItem('last_punch_' + currentUser + '_' + type, new Date().getTime().toString());
         showLoading("資料傳送中...");
@@ -1274,7 +1308,8 @@
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify({ 
                     action: "write", sheetName: "attendance", name: currentUser, 
-                    type: type, status: finalStatus, reason: finalReason, lat: userLat || "", lon: userLon || "" 
+                    type: type, status: finalStatus, reason: finalReason, lat: userLat || "", lon: userLon || "",
+                    compLeaveDate: compLeaveDate // 傳送預計補休日期給後台大腦
                 }) 
             });
             
@@ -1283,7 +1318,11 @@
             
             if (resultText === "Success") {
                 await checkTodayAttendance();
-                Swal.fire('打卡成功', '您的出勤紀錄已送達系統！', 'success');
+                if (compLeaveDate && type === "上班") {
+                    Swal.fire('打卡成功', '出勤已紀錄，並已自動為您送出補休假單供主管審核！', 'success');
+                } else {
+                    Swal.fire('打卡成功', '您的出勤紀錄已送達系統！', 'success');
+                }
             } else if (resultText === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您剛剛已經打過卡了喔！', 'warning');
             } else {
