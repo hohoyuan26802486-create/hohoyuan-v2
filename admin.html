@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V43.0 (高階權限版)</title>
+    <title>禾禾園 - 專業管理後台 V44.0 (智慧防呆補登版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -69,6 +69,7 @@
     </div>
 </div>
 
+<!-- ================= 假單審核中心 ================= -->
 <div id="leaveBox" class="container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
         <h1 style="margin:0; border-left-color:var(--primary);">📝 假單審核中心</h1>
@@ -89,6 +90,7 @@
     </div>
 </div>
 
+<!-- ================= 員工排班管理 ================= -->
 <div id="scheduleBox" class="container" style="display:none; background-color: #f4f8fb; border: 1px solid #bbdefb;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">📅 員工排班管理</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -104,6 +106,7 @@
     </div>
 </div>
 
+<!-- ================= 出勤紀錄與補登 ================= -->
 <div id="attendanceBox" class="container" style="display:none; background-color: #fcfdfe; border: 1px solid #d2e3fc;">
     <h1 style="margin-top:0; border-left-color: #1a73e8;">🕒 員工出勤紀錄與手動補登</h1>
     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -115,13 +118,19 @@
             <button class="btn btn-warning" onclick="togglePunchPanel()">➕ 展開補登面板</button>
         </div>
     </div>
+    
+    <!-- 🚀 補登漏打卡面板 (加入智慧防呆警示) -->
     <div id="punchPanel" class="punch-panel" style="display:none;">
         <div style="width:100%; border-bottom: 1px dashed #ccc; padding-bottom: 5px; margin-bottom: 5px; color: #1a73e8; font-weight: bold;">📝 補登漏打卡紀錄</div>
-        <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;"></select></div>
-        <div><label style="font-weight:bold; font-size:12px;">打卡時間：</label><br><input type="datetime-local" id="punchTime" style="padding:4px; border-radius:4px; border:1px solid #ccc;"></div>
+        <!-- 加入 onchange 事件，一選人或時間就自動掃描假單 -->
+        <div><label style="font-weight:bold; font-size:12px;">員工：</label><br><select id="punchEmp" style="padding:6px; border-radius:4px; border:1px solid #ccc;" onchange="checkEmpLeaveStatus()"></select></div>
+        <div><label style="font-weight:bold; font-size:12px;">打卡時間：</label><br><input type="datetime-local" id="punchTime" style="padding:4px; border-radius:4px; border:1px solid #ccc;" onchange="checkEmpLeaveStatus()"></div>
         <div><label style="font-weight:bold; font-size:12px;">上下班：</label><br><select id="punchType" style="padding:6px; border-radius:4px; border:1px solid #ccc;"><option value="上班">上班</option><option value="下班">下班</option></select></div>
         <div style="flex:1; min-width:150px;"><label style="font-weight:bold; font-size:12px;">補登事由：</label><br><input type="text" id="punchReason" placeholder="例如：忘記帶手機" style="width:100%; padding:5px; border-radius:4px; border:1px solid #ccc;"></div>
         <div><button class="btn btn-success" onclick="submitManualPunch()" style="height:32px;">💾 確認補登</button></div>
+        
+        <!-- 🚀 假單/排班 智慧防呆警示框 -->
+        <div id="punchLeaveWarning" style="width: 100%; color: #d93025; font-size: 13px; display: none; background: #fce8e6; padding: 8px 10px; border-radius: 6px; border: 1px dashed #d93025; margin-top: 5px;"></div>
     </div>
     
     <div id="retroLeavePanel" class="punch-panel" style="display:none; background: #fce8e6; border: 1px solid #fad2cf; margin-top:15px;">
@@ -139,6 +148,7 @@
     </div>
 </div>
 
+<!-- ================= 部門編制管理 ================= -->
 <div id="deptBox" class="container" style="display:none; background-color: #f7faff; border: 1px solid #bcd6ff;">
     <h1 style="color:#1a73e8; border-left-color:#1a73e8;">🏢 公司部門編制動態設定</h1>
     <div class="punch-panel" style="background:#fff; border: 1px solid #dadce0;">
@@ -154,6 +164,7 @@
     </div>
 </div>
 
+<!-- ================= 員工人事維護 ================= -->
 <div id="hrBox" class="container" style="display:none;">
     <h1>👥 員工人事維護與薪資調整</h1>
     <div style="background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #cce0ff;">
@@ -198,6 +209,7 @@
     </div>
 </div>
 
+<!-- ================= 薪資結算 ================= -->
 <div id="salaryBox" class="container" style="display:none; background-color: #fffaf0; border: 2px solid #ffc107;">
     <h1>💰 月底薪資結算與報表匯出</h1>
     <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -228,7 +240,6 @@
         document.body.innerHTML = `
             <div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">
                 🚨 網頁程式碼發生嚴重錯誤！<br><br>
-                這通常是因為您在 GitHub 複製貼上時漏掉了括號，或是混到了後端的 Code.gs 代碼。<br><br>
                 <span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span><br><br>
                 👉 請重新複製我給您的整段 HTML 代碼，並「完全覆蓋」 GitHub 裡的內容！
             </div>
@@ -249,7 +260,7 @@
         const role = document.getElementById('adminRole').value;
         if (role === '財務部' || role === '副總') return "cfo888"; 
         if (role === '人事部') return "hr123"; 
-        if (role === '總經理') return "gm888"; // 🚀 總經理使用高階金鑰
+        if (role === '總經理') return "gm888";
         return "";
     }
 
@@ -301,7 +312,6 @@
         const roleSelect = document.getElementById('adminRole');
         const currentRole = roleSelect.value;
 
-        // 🚀 將總經理加入後台登入選單
         let roleHtml = depts.map(d => `<option value="${d}主管">${d}主管</option>`).join('');
         roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option><option value="總經理">總經理</option>';
         roleSelect.innerHTML = roleHtml;
@@ -341,7 +351,7 @@
         if (r === '人事部') { expectedPwd = db.pwdHR || "hr123"; needAuth = true; }
         else if (r === '財務部') { expectedPwd = db.pwdCFO || "cfo123"; needAuth = true; }
         else if (r === '副總') { expectedPwd = db.pwdVP || "vp123"; needAuth = true; }
-        else if (r === '總經理') { expectedPwd = db.pwdGM || "gm123"; needAuth = true; } // 🚀 新增總經理密碼驗證
+        else if (r === '總經理') { expectedPwd = db.pwdGM || "gm123"; needAuth = true; } 
 
         if (needAuth) {
             const inputPwd = prompt(`【${r}】安全驗證，請輸入密碼：`);
@@ -359,7 +369,6 @@
         }
         document.getElementById('btnChangePwd').style.display = needAuth ? 'inline-block' : 'none';
         
-        // 🚀 總經理解鎖高階權限頁籤
         const isHighLevel = (r === '人事部' || r === '財務部' || r === '副總' || r === '總經理');
         const isSuperLevel = (r === '財務部' || r === '副總' || r === '總經理');
 
@@ -600,6 +609,77 @@
                 retroSelect.innerHTML += opt; 
             }); 
         }
+        checkEmpLeaveStatus(); // 載入選單時順便檢查狀態
+    }
+
+    // 🚀 新增：請假與排休智慧防呆檢查功能
+    function checkEmpLeaveStatus() {
+        const empName = document.getElementById('punchEmp').value;
+        const punchTime = document.getElementById('punchTime').value;
+        const warningBox = document.getElementById('punchLeaveWarning');
+
+        if (!empName || !punchTime || !db) {
+            warningBox.style.display = 'none';
+            return;
+        }
+
+        const punchDate = new Date(punchTime);
+        if (isNaN(punchDate.getTime())) {
+            warningBox.style.display = 'none';
+            return;
+        }
+
+        const tDayStr = `${punchDate.getFullYear()}${String(punchDate.getMonth()+1).padStart(2,'0')}${String(punchDate.getDate()).padStart(2,'0')}`;
+        const monthStr = `${punchDate.getFullYear()}-${String(punchDate.getMonth()+1).padStart(2,'0')}`;
+        const dayNum = punchDate.getDate();
+
+        let warningMsg = "";
+
+        // 1. 檢查是否有已生效的請假單
+        if (db.leave && db.leave.length > 1) {
+            const headers = db.leave[0];
+            const cName = headers.indexOf("姓名") !== -1 ? headers.indexOf("姓名") : 2;
+            const cType = headers.indexOf("假別") !== -1 ? headers.indexOf("假別") : 4;
+            const cStart = headers.indexOf("請假時間開始") !== -1 ? headers.indexOf("請假時間開始") : 5;
+            const cEnd = headers.indexOf("請假時間結束") !== -1 ? headers.indexOf("請假時間結束") : 6;
+            const cStatus = headers.indexOf("狀態") !== -1 ? headers.indexOf("狀態") : 8;
+
+            for (let i = 1; i < db.leave.length; i++) {
+                let r = db.leave[i];
+                if (r[cName] === empName && r[cStatus] === "已生效") {
+                    let sDate = new Date(r[cStart]);
+                    let eDate = new Date(r[cEnd]);
+                    if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
+                        let sDay = `${sDate.getFullYear()}${String(sDate.getMonth()+1).padStart(2,'0')}${String(sDate.getDate()).padStart(2,'0')}`;
+                        let eDay = `${eDate.getFullYear()}${String(eDate.getMonth()+1).padStart(2,'0')}${String(eDate.getDate()).padStart(2,'0')}`;
+                        if (tDayStr >= sDay && tDayStr <= eDay) {
+                            let formatS = `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')}`;
+                            let formatE = `${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
+                            warningMsg = `⚠️ <b>系統防呆提醒：</b><br>該員工本日已有【${r[cType]}】紀錄 (${formatS} ~ ${formatE})，請確認是否還需要補登打卡？`;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. 檢查排班表是否為排休 (若無請假單)
+        if (!warningMsg && db.schedule && db.schedule.length > 1) {
+            let sched = db.schedule.find(s => s[0] === monthStr && s[1] === empName);
+            if (sched) {
+                let shift = sched[2 + dayNum];
+                if (shift === "排休") {
+                    warningMsg = `⚠️ <b>系統防呆提醒：</b><br>該員工本日在排班表上為【排休】，請確認是否需要補登打卡？`;
+                }
+            }
+        }
+
+        if (warningMsg) {
+            warningBox.innerHTML = warningMsg;
+            warningBox.style.display = 'block';
+        } else {
+            warningBox.style.display = 'none';
+        }
     }
 
     function togglePunchPanel() { 
@@ -742,7 +822,14 @@
         
         if (!empName || !punchTime) return alert("⚠️ 姓名與補登時間為必填欄位！"); 
         const formattedTime = punchTime.replace('T', ' ').replace('-', '/').replace('-', '/'); 
-        if (!confirm(`確定補登嗎？`)) return; 
+        
+        // 如果有紅字警告，強制再次確認
+        const warningBox = document.getElementById('punchLeaveWarning');
+        if (warningBox.style.display === 'block') {
+            if (!confirm(`系統已經發出防呆警告（可能為排休或請假）。\n\n您確定還要執意補登嗎？`)) return; 
+        } else {
+            if (!confirm(`確定補登嗎？`)) return; 
+        }
         
         showLoading("補登中...");
         try { 
@@ -754,6 +841,7 @@
                 alert("✅ 打卡補登成功！"); 
                 document.getElementById('punchTime').value = ""; 
                 document.getElementById('punchReason').value = ""; 
+                warningBox.style.display = 'none'; // 隱藏警告
                 if(document.getElementById('attMonth').value === punchTime.substring(0,7)) loadAttendanceRecords(); 
             } 
         } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
@@ -837,7 +925,7 @@
             let btnText = '✔️ 核准';
             let btnClass = 'btn-success';
 
-            // 🚀 總經理的審核邏輯設定
+            // 🚀 權限審核邏輯
             if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部') || role === '總經理')) { 
                 canApprove = true; next = '待副總審核'; 
             } else if (status === '待副總審核' && (role === '副總' || role === '總經理')) { 
