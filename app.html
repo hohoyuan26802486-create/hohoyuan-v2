@@ -96,7 +96,7 @@
         .hist-sub { font-size: 12px; color: var(--text-sub); line-height:1.4;}
         .hist-status { font-size: 12px; font-weight: bold; padding: 6px 10px; border-radius: 8px; background: var(--bg); text-align: center;}
         
-        /* 行動簽核按鈕區 */
+        /* 行動簽核按鈕 */
         .action-btns { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #eee; display: flex; gap: 10px; }
 
         /* ================= 底部導覽列 ================= */
@@ -849,7 +849,9 @@
             if (globalDB.leave && globalDB.leave.length > 1) {
                 for (let i=1; i<globalDB.leave.length; i++) {
                     let r = globalDB.leave[i];
-                    if (r[8] === "已生效") {
+                    let status = r[8] || "";
+                    // 🚀 升級：把「待審核」的也納入今日休假人員
+                    if (status === "已生效" || status.includes("待")) {
                         let isSameDept = (r[3] === myDept);
                         if (isSameDept || isBoss || isHR) {
                             let sDate = new Date(r[5]); let eDate = new Date(r[6]);
@@ -857,7 +859,8 @@
                                 let sStr = `${sDate.getFullYear()}${String(sDate.getMonth()+1).padStart(2,'0')}${String(sDate.getDate()).padStart(2,'0')}`;
                                 let eStr = `${eDate.getFullYear()}${String(eDate.getMonth()+1).padStart(2,'0')}${String(eDate.getDate()).padStart(2,'0')}`;
                                 if (todayStrYMD >= sStr && todayStrYMD <= eStr) {
-                                    todayLeaveList.push(`• ${r[2]} (${r[3]}) - ${r[4]}`);
+                                    let pendingTag = status.includes("待") ? ` <span style="color:#f4b400; font-size:11px; font-weight:bold;">(待審核)</span>` : "";
+                                    todayLeaveList.push(`• ${r[2]} (${r[3]}) - ${r[4]}${pendingTag}`);
                                 }
                             }
                         }
