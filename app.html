@@ -431,11 +431,9 @@
                     let isSameDept = (empDept === myDept);
                     let isNotMe = (r[2] !== currentUser);
 
-                    // 誰有權限審核這張單？
                     let hasPermission = false;
                     if (status === "待主管審核" && (isSameDept || isBoss)) hasPermission = true;
                     if (status === "待副總審核" && isBoss) hasPermission = true;
-                    // 🚀 如果是「待人事核銷」，大老闆與人事主管都會收到通知
                     if ((status === "待人事主管審核" || status === "待人事核銷") && (isHR || isBoss)) hasPermission = true;
 
                     if (hasPermission && isNotMe) {
@@ -724,7 +722,11 @@
 
             let mCount = 0;
             let missingDates = [];
-            for (let d in dailyPunches) {
+            
+            // 🚀 自動按日期先後排序 (由小到大)
+            let sortedDays = Object.keys(dailyPunches).sort();
+
+            for (let d of sortedDays) {
                 if (d !== todayDayStr) {
                     if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
                         mCount++;
@@ -914,7 +916,6 @@
             let teamLeaves = globalDB.leave.slice(1).filter(r => {
                 let isSameDept = (r[3] === myDept);
                 let isNotMe = (r[2] !== currentUser); 
-                // 🚀 人事主管與大老闆都可以看到全公司的紀錄
                 return (isSameDept || isBoss || isHR) && isNotMe;
             });
             
@@ -952,7 +953,6 @@
                 let actionBtnsHTML = '';
                 let isSameDept = (empDept === myDept);
 
-                // 🚀 權限發放邏輯修正：人事也具備核准按鈕
                 if (status.includes("待")) {
                     let nextStatus = "已生效"; 
                     let canApprove = false;
@@ -960,7 +960,7 @@
                     if (status === "待主管審核") {
                         if (isBoss) {
                             canApprove = true; nextStatus = "待人事核銷"; 
-                        } else if (isSameDept) { // 一般主管只能核准自己部門的
+                        } else if (isSameDept) { 
                             canApprove = true; nextStatus = "待副總審核"; 
                         }
                     } else if (status === "待副總審核" && isBoss) {
