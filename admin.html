@@ -253,14 +253,15 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 終極無敵純淨傳輸法：改用 x-www-form-urlencoded 完美繞過 CORS
+    // 🚀 終極無敵純淨傳輸法：使用 text/plain 與 redirect: 'follow' 徹底擊碎 CORS
     async function fetchPost(payload) {
         const res = await fetch(CONFIG_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'text/plain;charset=utf-8',
             },
-            body: 'data=' + encodeURIComponent(JSON.stringify(payload))
+            body: JSON.stringify(payload),
+            redirect: 'follow'
         });
         if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
         return await res.text();
