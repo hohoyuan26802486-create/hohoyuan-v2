@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V54.0 (表單直通版)</title>
+    <title>禾禾園 - 專業管理後台 V54.1 (純淨直通版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -179,12 +179,14 @@
             </select>
         </div>
         <div class="form-group"><label style="color:#d93025;">假日計薪身分</label><select id="dutyType" style="border-color:#d93025; background:#fff5f5;"><option value="一般員工">🟢 一般員工 (有加班費)</option><option value="責任制幹部">🔴 責任制幹部 (算值班/補休)</option></select></div>
+        
         <div class="form-group"><label style="color:#d93025;">在職狀態</label>
             <select id="empStatus" style="border-color:#d93025; background:#fff5f5;">
                 <option value="在職">🟢 在職中</option>
                 <option value="已離職">🔴 已離職</option>
             </select>
         </div>
+        
         <div class="form-group"><label>基本薪資 (月/日/時薪額度)</label><input type="number" id="empSalary" placeholder="請輸入對應額度"></div>
         <div class="form-group"><label>到職日期</label><input type="date" id="obDate"></div>
         <div class="form-group"><label style="color:#1a73e8;">剩餘特休天數</label><input type="number" step="0.5" id="annualLeave" placeholder="可手動校正天數"></div>
@@ -251,15 +253,13 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 終極無敵表單直通車：100% 迴避 CORS 與 OPTIONS 請求
+    // 🚀 終極無敵純淨傳輸法：完全拔除多餘參數，還原最標準的 fetch
     async function fetchPost(payload) {
         const res = await fetch(CONFIG_URL, {
             method: 'POST',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            body: "data=" + encodeURIComponent(JSON.stringify(payload))
+            body: JSON.stringify(payload)
         });
+        if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
         return await res.text();
     }
 
@@ -818,7 +818,7 @@
         document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
     }
     
-    // 🚀 終極無敵存檔機制：表單直通車
+    // 🚀 核心存檔邏輯
     async function saveEmployee() { 
         const p = { action: "saveEmployee", key: getCurrentKey() }; 
         p.name = document.getElementById('empName').value; p.empName = document.getElementById('empName').value; p.dept = document.getElementById('empDept').value; p.payType = document.getElementById('payType').value;
@@ -832,7 +832,7 @@
             const text = await fetchPost(p);
             if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
         } catch(e) { 
-            alert("🚨 連線被瀏覽器攔截：\n\n您這台電腦似乎安裝了超強的防護軟體或是被 Edge 瀏覽器的 Tracking Prevention 擋住了！\n\n👉 解決辦法：請嘗試使用 Google Chrome 瀏覽器，或是允許此網站跳出視窗再試一次！"); 
+            alert("🚨 連線異常：\n您的瀏覽器阻擋了與 Google 伺服器的傳輸！請嘗試重整網頁！"); 
         } finally { hideLoading(); } 
     }
 
