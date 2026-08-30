@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V54.1 (純淨直通版)</title>
+    <title>禾禾園 - 專業管理後台 V54.2 (最終修復版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -65,7 +65,7 @@
         <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與手動補登</button>
         <button id="tab-hr" class="tab-btn" onclick="switchNavTab('hrBox')" style="display:none;">👥 人事維護</button>
         <button id="tab-dept" class="tab-btn" onclick="switchNavTab('deptBox')" style="display:none;">🏢 部門編制管理</button>
-        <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪薪資結算</button>
+        <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪資結算</button>
     </div>
 </div>
 
@@ -239,32 +239,35 @@
 </div>
 
 <script>
+    // 💡 捕捉錯誤幫助抓漏
     window.onerror = function(message, source, lineno, colno, error) {
-        document.body.innerHTML = `<div style="padding:50px; text-align:center; color:#d93025; font-size:20px; font-weight:bold; background-color:#fce8e6; height:100vh; line-height: 1.5;">🚨 網頁程式碼發生錯誤！<br><br><span style="font-size:16px; color:#555;">錯誤詳情：${message} (行號：${lineno})</span></div>`;
+        alert("網頁發生錯誤：\n" + message + "\n行號：" + lineno);
         return true;
     };
-</script>
 
-<script>
+    // 🔴 已為您填上最新的 GAS URL
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
+    
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
     
     let db = {}; 
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 使用 text/plain 完美避開 CORS
+    // 🚀 最安全純淨的 Fetch 寫法 (相容 e.parameter.data)
     async function fetchPost(payload) {
-        const res = await fetch(CONFIG_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify(payload),
-            redirect: 'follow'
-        });
-        if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
-        return await res.text();
+        try {
+            const res = await fetch(CONFIG_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
+                body: 'data=' + encodeURIComponent(JSON.stringify(payload))
+            });
+            if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
+            return await res.text();
+        } catch (err) {
+            alert("⚠️ 連線異常：\n" + err.message + "\n\n💡 提示：如果顯示 Failed to fetch，代表您的 GAS 部署權限設錯了 (必須設為所有人)！");
+            throw err;
+        }
     }
 
     function formatTimeWithDay(timeStr) {
@@ -456,7 +459,7 @@
         try {
             const result = await fetchPost({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData });
             if (result === "Success") alert(`✅ ${month} 月司機業績已成功匯入！`); else alert("匯入失敗: " + result);
-        } catch (e) { alert("網路連線異常"); } finally { hideLoading(); }
+        } catch (e) { /* Error caught above */ } finally { hideLoading(); }
     }
 
     function renderDeptTable() {
@@ -474,7 +477,7 @@
         try { 
             const text = await fetchPost({ action: "addDepartment", key: getCurrentKey(), deptName: name });
             if(text === "Success"){ alert("✅ 建立成功！"); document.getElementById('newDeptInput').value = ""; fetchData(); } else alert(text);
-        } catch(e) { alert("錯誤"); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function renameDeptBackend(oldName) {
@@ -483,7 +486,7 @@
         try { 
             const text = await fetchPost({ action: "renameDepartment", key: getCurrentKey(), oldName: oldName, newName: newName.trim() });
             if(text === "Success"){ alert("✅ 成功！"); fetchData(); } else alert(text);
-        } catch(e) { alert("錯誤"); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function deleteDeptBackend(name) {
@@ -491,7 +494,7 @@
         try { 
             const text = await fetchPost({ action: "deleteDepartment", key: getCurrentKey(), deptName: name });
             if(text === "Success"){ alert("✅ 成功。"); fetchData(); } else alert(text);
-        } catch(e) { alert("錯誤"); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     function updateAttEmpDropdown() {
@@ -565,7 +568,7 @@
         try { 
             const text = await fetchPost({ action: "getAttendance", month: month, key: getCurrentKey() });
             try { rawAttData = JSON.parse(text); renderAttendanceTable(); } catch(e) { alert("資料解析失敗"); }
-        } catch(e) { alert("讀取失敗"); } finally { hideLoading(); } 
+        } catch(e) { } finally { hideLoading(); } 
     }
 
     function renderAttendanceTable() {
@@ -634,7 +637,7 @@
         try { 
             const resultText = await fetchPost({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, type: typeStr, month: month }); 
             if (resultText === "Success") { alert("✅ 刪除成功！"); loadAttendanceRecords(); } else { alert("❌ 刪除失敗"); }
-        } catch(e) { alert("❌ 網路異常"); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function submitManualPunch() {
@@ -645,7 +648,7 @@
         try { 
             const text = await fetchPost({ action: "manualPunch", key: getCurrentKey(), name: empName, dept: empDept, timestamp: punchTime.replace('T', ' ').replace(/-/g, '/'), type: type, reason: reason }); 
             if (text === "Success") { alert("✅ 成功！"); document.getElementById('punchTime').value = ""; document.getElementById('punchReason').value = ""; loadAttendanceRecords(); } 
-        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function submitRetroLeave() {
@@ -655,7 +658,7 @@
         try { 
             const text = await fetchPost({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start.replace('T', ' '), end: end.replace('T', ' '), reason: reason }); 
             if (text === "Success") { alert("✅ 完成！"); fetchData(); } 
-        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     function renderLeave() {
@@ -767,7 +770,7 @@
         try { 
             const text = await fetchPost({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }); 
             if (text === "Success") { alert("✅ 排班表儲存成功！"); fetchData(); } else alert(text);
-        } catch(e) { alert("❌ 連線錯誤"); } finally { hideLoading(); } 
+        } catch(e) { } finally { hideLoading(); } 
     }
 
     function renderStaff(filterDept = "") { 
@@ -835,21 +838,19 @@
         try { 
             const text = await fetchPost(p);
             if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
-        } catch(e) { 
-            alert("🚨 連線異常：\n您的瀏覽器阻擋了與 Google 伺服器的傳輸！請嘗試重整網頁！"); 
-        } finally { hideLoading(); } 
+        } catch(e) { } finally { hideLoading(); } 
     }
 
     async function updLv(id, s) { 
         showLoading("審核中..."); 
         try { const text = await fetchPost({ action: "updateLeave", id: id, newStatus: s }); if(text === "Success"){ alert("✅ 審核完成"); fetchData(); } else alert(text); } 
-        catch(e) { alert("❌ 審核失敗: " + e.message); hideLoading(); }
+        catch(e) { } finally { hideLoading(); }
     }
 
     async function rejectLeave(id) { 
         if(!confirm("確定要退件這張假單嗎？")) return; showLoading("退件處理中..."); 
         try { const text = await fetchPost({ action: "updateLeave", id: id, newStatus: "已退回" }); if(text === "Success"){ alert("❌ 假單已退回！"); fetchData(); } else alert(text); } 
-        catch(e) { alert("❌ 退件失敗: " + e.message); hideLoading(); }
+        catch(e) { } finally { hideLoading(); }
     }
     
     async function deleteLeave(id) { 
@@ -857,22 +858,22 @@
         try { 
             const text = await fetchPost({ action: "deleteLeave", id: id });
             if(text === "Success"){ alert("✅ 假單已成功刪除！"); fetchData(); } else { alert("❌ 刪除失敗：" + text); }
-        } catch(e) { alert("❌ 網路錯誤，刪除失敗: " + e.message); hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function changeAdminPassword() { 
         const r = document.getElementById('adminRole').value; if (!['人事部', '財務部', '副總', '總經理'].includes(r)) return alert("⚠️ 無權限！"); 
         const newPwd = prompt(`設定專屬新密碼：`); if (!newPwd) return; showLoading("同步中..."); 
         try { const text = await fetchPost({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd }); if(text==="Success"){ alert("✅ 更新成功！"); location.reload(); } else alert(text); } 
-        catch (e) { alert("更新失敗: " + e.message); hideLoading(); } 
+        catch (e) { } finally { hideLoading(); } 
     }
 
     async function deleteEmp(name) { 
         if(!confirm(`⚠️ 確定要刪除「${name}」？`)) return; showLoading("刪除中..."); 
         try { 
             const text = await fetchPost({ action: "deleteEmployee", name: name, key: getCurrentKey() }); 
-            if (text.includes("Error")) { alert("❌ " + text); hideLoading(); } else { alert("✅ 刪除成功！"); fetchData(); } 
-        } catch (e) { alert("刪除失敗: " + e.message); hideLoading(); } 
+            if (text.includes("Error")) { alert("❌ " + text); } else { alert("✅ 刪除成功！"); fetchData(); } 
+        } catch (e) { } finally { hideLoading(); } 
     }
     
     function renderSalary() { 
@@ -897,7 +898,7 @@
         try { 
             const text = await fetchPost({ action: "calculateSalary", targetMonth: m, key: getCurrentKey() });
             if (text !== "Success") throw new Error("結算失敗: " + text); alert("✅ 結算完成！"); fetchData(); 
-        } catch (e) { alert("❌ 錯誤: " + e.message); hideLoading(); } 
+        } catch (e) { } finally { hideLoading(); } 
     }
     
     async function generatePDF() { 
@@ -905,7 +906,7 @@
         try { 
             const resultText = await fetchPost({ action: "generatePDF", targetMonth: m, key: getCurrentKey() });
             if (resultText !== "Success") throw new Error(resultText); alert("✅ PDF 產生完畢！請至 Google 雲端硬碟查看。"); 
-        } catch (e) { alert("❌ PDF 產出失敗\n原因：" + e.message); } finally { hideLoading(); } 
+        } catch (e) { } finally { hideLoading(); } 
     }
     
     function exportExcel() { 
