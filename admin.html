@@ -253,15 +253,15 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 終極無敵純淨傳輸法：使用 text/plain 與 redirect: 'follow' 徹底擊碎 CORS
+    // 🚀 終極無敵純淨傳輸法 V3：改用原生 FormData (multipart/form-data)
+    // 瀏覽器對此格式最寬容，完全免疫 CORS 阻擋，並精準對接後台的 e.parameter.data
     async function fetchPost(payload) {
+        const formData = new FormData();
+        formData.append('data', JSON.stringify(payload));
+
         const res = await fetch(CONFIG_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify(payload),
-            redirect: 'follow'
+            body: formData
         });
         if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
         return await res.text();
