@@ -65,7 +65,7 @@
         <button id="tab-attendance" class="tab-btn" onclick="switchNavTab('attendanceBox')">🕒 出勤紀錄與手動補登</button>
         <button id="tab-hr" class="tab-btn" onclick="switchNavTab('hrBox')" style="display:none;">👥 人事維護</button>
         <button id="tab-dept" class="tab-btn" onclick="switchNavTab('deptBox')" style="display:none;">🏢 部門編制管理</button>
-        <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪資結算</button>
+        <button id="tab-salary" class="tab-btn" onclick="switchNavTab('salaryBox')" style="display:none;">💰 薪薪資結算</button>
     </div>
 </div>
 
@@ -253,11 +253,15 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 最標準純淨的 Fetch 寫法
+    // 🚀 使用 text/plain 完美避開 CORS
     async function fetchPost(payload) {
         const res = await fetch(CONFIG_URL, {
             method: 'POST',
-            body: JSON.stringify(payload)
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            },
+            body: JSON.stringify(payload),
+            redirect: 'follow'
         });
         if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
         return await res.text();
