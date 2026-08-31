@@ -245,7 +245,6 @@
         return true;
     };
 
-    // 🔴 寫入您提供的最新 GAS URL
     const CONFIG_URL = "https://script.google.com/macros/s/AKfycbwpBQWJQfEPSZlcglHakr4pV6QXWrhi5xTZQIKqNC-XjkgDzWbegRqy-B5ENm3zdGohDQ/exec";
     
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
@@ -254,18 +253,19 @@
     let currentLvTab = 'pending'; 
     let rawAttData = [];
 
-    // 🚀 最安全純淨的 Fetch 寫法 (相容 e.parameter.data)
+    // 🚀 終極純淨模式：使用 text/plain，完全繞過 Google 的特殊字元檢查！
     async function fetchPost(payload) {
         try {
             const res = await fetch(CONFIG_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-                body: 'data=' + encodeURIComponent(JSON.stringify(payload))
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload),
+                redirect: 'follow'
             });
             if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
             return await res.text();
         } catch (err) {
-            alert("⚠️ 連線異常：\n" + err.message + "\n\n💡 提示：如果顯示 Failed to fetch，代表您的 GAS 部署權限設錯了 (必須設為所有人)！");
+            alert("⚠️ 儲存異常：\n這通常是因為資料中含有「肉眼看不見的特殊字元或空白」導致伺服器無法解析。\n\n👉 建議作法：請將該員工（例如：林心評）的「姓名、身分證、住址」等欄位清空，用鍵盤重新手動輸入一次，不要用複製貼上的！\n\n錯誤細節：" + err.message);
             throw err;
         }
     }
@@ -459,7 +459,7 @@
         try {
             const result = await fetchPost({ action: "uploadDriverPerf", key: getCurrentKey(), month: month, perfData: perfData });
             if (result === "Success") alert(`✅ ${month} 月司機業績已成功匯入！`); else alert("匯入失敗: " + result);
-        } catch (e) { /* error caught by fetchPost */ } finally { hideLoading(); }
+        } catch (e) { /* Error caught above */ } finally { hideLoading(); }
     }
 
     function renderDeptTable() {
@@ -637,7 +637,7 @@
         try { 
             const resultText = await fetchPost({ action: "deleteAttendance", key: getCurrentKey(), timestamp: timeStr, name: name, type: typeStr, month: month }); 
             if (resultText === "Success") { alert("✅ 刪除成功！"); loadAttendanceRecords(); } else { alert("❌ 刪除失敗"); }
-        } catch(e) { alert("❌ 網路異常"); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function submitManualPunch() {
@@ -648,7 +648,7 @@
         try { 
             const text = await fetchPost({ action: "manualPunch", key: getCurrentKey(), name: empName, dept: empDept, timestamp: punchTime.replace('T', ' ').replace(/-/g, '/'), type: type, reason: reason }); 
             if (text === "Success") { alert("✅ 成功！"); document.getElementById('punchTime').value = ""; document.getElementById('punchReason').value = ""; loadAttendanceRecords(); } 
-        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     async function submitRetroLeave() {
@@ -658,7 +658,7 @@
         try { 
             const text = await fetchPost({ action: "manualLeave", key: getCurrentKey(), name: empName, dept: empDept, leaveType: leaveType, start: start.replace('T', ' '), end: end.replace('T', ' '), reason: reason }); 
             if (text === "Success") { alert("✅ 完成！"); fetchData(); } 
-        } catch(e) { alert("❌ 錯誤: " + e.message); } finally { hideLoading(); }
+        } catch(e) { } finally { hideLoading(); }
     }
 
     function renderLeave() {
@@ -770,7 +770,7 @@
         try { 
             const text = await fetchPost({ action: "saveSchedule", key: getCurrentKey(), month: month, scheduleData: scheduleData }); 
             if (text === "Success") { alert("✅ 排班表儲存成功！"); fetchData(); } else alert(text);
-        } catch(e) { alert("❌ 連線錯誤"); } finally { hideLoading(); } 
+        } catch(e) { } finally { hideLoading(); } 
     }
 
     function renderStaff(filterDept = "") { 
@@ -839,7 +839,7 @@
             const text = await fetchPost(p);
             if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
         } catch(e) { 
-            // 這裡交給上面的 fetchPost 捕捉錯誤，不重複彈窗
+            // 已在 fetchPost 攔截，不重複動作
         } finally { hideLoading(); } 
     }
 
