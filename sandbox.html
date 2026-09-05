@@ -158,7 +158,7 @@
                 </div>
                 <div class="card">
                     <div class="card-icon">🏖️</div>
-                    <div class="card-title" id="cardAnnualLeaveTitle">特休狀況明細</div>
+                    <div class="card-title" id="cardAnnualLeaveTitle">今年度休假統計</div>
                     <div class="card-value" id="cardAnnualLeave" style="font-size:13px; font-weight:normal; color:var(--text-sub);">同步中...</div>
                 </div>
             </div>
@@ -619,7 +619,6 @@
         if(viewId === 'viewHistory') {
             renderHistory();
         } else if (viewId === 'viewReport' && reportBlockCount === 0) {
-            // 初次進入報表時自動產生區塊
             addReportBlock();
             addErrorBlock();
         }
@@ -844,42 +843,62 @@
         const emp = globalDB.employees.find(r => r[0] === currentUser);
         
         if (emp) {
-            const remain = Number(emp[5]) || 0; 
-            let usedLeaveDays = 0;
+            const totalAnnualLeave = Number(emp[5]) || 0; 
+            
+            let stats = { "特休": 0, "事假": 0, "病假": 0 };
+            const currentYear = new Date().getFullYear();
+
             if (globalDB.leave) {
                 globalDB.leave.forEach(r => {
-                    if (r[2] === currentUser && r[4] === "特休" && r[8] === "已生效") {
+                    if (r[2] === currentUser && r[8] === "已生效") {
                         let sDate = new Date(r[5]);
                         let eDate = new Date(r[6]);
-                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
+                        
+                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime()) && sDate.getFullYear() === currentYear) {
                             let rawHours = (eDate.getTime() - sDate.getTime()) / 3600000;
+                            let days = 0;
                             if (rawHours > 16) { 
-                                usedLeaveDays += Math.ceil(rawHours / 24); 
+                                days = Math.ceil(rawHours / 24); 
                             } else { 
                                 let actHours = rawHours >= 5 ? rawHours - 1 : rawHours; 
-                                usedLeaveDays += Math.min(8, actHours) / 8; 
+                                days = Math.min(8, actHours) / 8; 
+                            }
+                            
+                            let lType = r[4];
+                            if (stats[lType] !== undefined) {
+                                stats[lType] += days;
                             }
                         }
                     }
                 });
             }
             
-            const formattedRemain = parseFloat(remain.toFixed(3));
-            const formattedUsed = parseFloat(usedLeaveDays.toFixed(3));
-            const formattedTotal = parseFloat((formattedRemain + formattedUsed).toFixed(3));
+            const remainAnnual = parseFloat((totalAnnualLeave - stats["特休"]).toFixed(2));
+            const usedAnnual = parseFloat(stats["特休"].toFixed(2));
+            const totalAnnual = parseFloat(totalAnnualLeave.toFixed(2));
+            const usedPersonal = parseFloat(stats["事假"].toFixed(2));
+            const usedSick = parseFloat(stats["病假"].toFixed(2));
 
             document.getElementById('cardAnnualLeave').innerHTML = `
                 <div style="font-size:12px; color:var(--text-main); font-weight:normal; display:flex; flex-direction:column; gap:6px; margin-top:5px;">
-                    <div style="display:flex; justify-content:space-between;"><span>可休總數</span><b>${formattedTotal} 天</b></div>
-                    <div style="display:flex; justify-content:space-between;"><span>已休天數</span><b style="color:var(--danger);">${formattedUsed} 天</b></div>
-                    <div style="display:flex; justify-content:space-between; border-top:1px dashed #ccc; padding-top:6px;">
-                        <span style="color:var(--primary); font-weight:bold;">剩餘額度</span>
-                        <b style="color:var(--primary); font-size:16px;">${formattedRemain} 天</b>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #ccc; padding-bottom:6px;">
+                        <span style="color:var(--primary); font-weight:bold;">特休剩餘</span>
+                        <b style="color:var(--primary); font-size:15px;">${Math.max(0, remainAnnual)} 天</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:2px;">
+                        <span style="color:#70757a;">特休已用</span><b>${usedAnnual} / ${totalAnnual} 天</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:#70757a;">事假已用</span><b style="color:#f4b400;">${usedPersonal} 天</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:#70757a;">病假已用</span><b style="color:#d93025;">${usedSick} 天</b>
                     </div>
                 </div>
             `;
+            
             const countSpan = document.getElementById('annualLeaveCount');
-            if(countSpan) countSpan.innerText = formattedRemain;
+            if(countSpan) countSpan.innerText = Math.max(0, remainAnnual);
         } else {
             document.getElementById('cardAnnualLeave').innerText = "-";
         }
