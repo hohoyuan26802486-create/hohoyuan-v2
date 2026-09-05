@@ -199,28 +199,6 @@
             </div>
         </div>
 
-        <!-- 📊 報表 (沙盒整合新區塊) -->
-        <div id="viewReport" class="view-section">
-            <h3 style="margin-top:0; color:var(--primary);">工作成果與回報</h3>
-            
-            <div class="report-tabs">
-                <div class="report-tab active" onclick="switchReportTab('dailyTab')">📝 每日報表</div>
-                <div class="report-tab" onclick="switchReportTab('errorTab')" style="color:var(--danger);">🚨 異常回報</div>
-            </div>
-
-            <div id="dailyTab" class="report-content active">
-                <div id="dynamicReports"></div>
-                <button type="button" class="btn-add" onclick="addReportBlock()">➕ 點此新增一筆工作內容</button>
-                <button class="btn-action" onclick="submitDailyReport()">📤 送出日報表</button>
-            </div>
-
-            <div id="errorTab" class="report-content">
-                <div id="dynamicErrors"></div>
-                <button type="button" class="btn-add" style="color: var(--danger); border-color: var(--danger); background: #fce8e6;" onclick="addErrorBlock()">➕ 點此新增一筆異常回報</button>
-                <button class="btn-action" style="background: var(--danger);" onclick="submitErrorReport()">🚨 送出異常建檔</button>
-            </div>
-        </div>
-
         <!-- 📝 請假區塊 -->
         <div id="viewLeave" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">送出新假單</h3>
@@ -289,6 +267,28 @@
             </div>
         </div>
 
+        <!-- 📊 報表 (沙盒整合新區塊) -->
+        <div id="viewReport" class="view-section">
+            <h3 style="margin-top:0; color:var(--primary);">工作成果與回報</h3>
+            
+            <div class="report-tabs">
+                <div class="report-tab active" onclick="switchReportTab('dailyTab')">📝 每日報表</div>
+                <div class="report-tab" onclick="switchReportTab('errorTab')" style="color:var(--danger);">🚨 異常回報</div>
+            </div>
+
+            <div id="dailyTab" class="report-content active">
+                <div id="dynamicReports"></div>
+                <button type="button" class="btn-add" onclick="addReportBlock()">➕ 點此新增一筆工作內容</button>
+                <button class="btn-action" onclick="submitDailyReport()">📤 送出日報表</button>
+            </div>
+
+            <div id="errorTab" class="report-content">
+                <div id="dynamicErrors"></div>
+                <button type="button" class="btn-add" style="color: var(--danger); border-color: var(--danger); background: #fce8e6;" onclick="addErrorBlock()">➕ 點此新增一筆異常回報</button>
+                <button class="btn-action" style="background: var(--danger);" onclick="submitErrorReport()">🚨 送出異常建檔</button>
+            </div>
+        </div>
+
         <!-- 📁 紀錄區塊 -->
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
@@ -304,7 +304,7 @@
             <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;"></div>
         </div>
 
-        <!-- ⬇️ 底部導覽列 -->
+        <!-- ⬇️ 底部導覽列 (已調換順序) -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="switchNav('viewHome', this)">
                 <div class="nav-icon">📍</div>打卡
@@ -312,11 +312,11 @@
             <div class="nav-item" onclick="switchNav('viewLeave', this)">
                 <div class="nav-icon">📝</div>請假
             </div>
-            <div class="nav-item" onclick="switchNav('viewReport', this)">
-                <div class="nav-icon">📊</div>報表
-            </div>
             <div class="nav-item" onclick="switchNav('viewProof', this)">
                 <div class="nav-icon">📎</div>補件
+            </div>
+            <div class="nav-item" onclick="switchNav('viewReport', this)">
+                <div class="nav-icon">📊</div>報表
             </div>
             <div class="nav-item" onclick="switchNav('viewHistory', this)">
                 <div class="nav-icon">📁</div>紀錄
@@ -329,10 +329,9 @@
     // ==========================================
     // 🔗 API 網址設定區
     // ==========================================
-    // 第一個：「打卡與薪資系統」大腦
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     
-    // 🚨 第二個：您提供的「報表系統」專屬 API 大腦
+    // 🚨 報表系統的新版大腦網址
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
 
     // ==========================================
@@ -659,7 +658,7 @@
 
         if (pendingCount > 0) {
             alertsHTML += `
-            <div style="background: #fff8e1; padding: 12px 16px; border-radius: 12px; border: 1px solid #fde293; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.03);" onclick="switchNav('viewHistory', document.querySelectorAll('.nav-item')[3]); document.getElementById('histTeam').click();">
+            <div style="background: #fff8e1; padding: 12px 16px; border-radius: 12px; border: 1px solid #fde293; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.03);" onclick="switchNav('viewHistory', document.querySelectorAll('.nav-item')[4]); document.getElementById('histTeam').click();">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 18px;">🔔</span>
                     <span style="font-size: 13px; font-weight: bold; color: #b06000;">您有 ${pendingCount} 筆部屬假單待審批！</span>
@@ -836,7 +835,7 @@
         const box = document.getElementById('annualLeaveBox');
         if(!box) return;
         if (type === '特休') {
-            box.style.display = 'block'; updateAnnualLeave();
+            box.style.display = 'block'; updateAnnualLeaveUI();
         } else { box.style.display = 'none'; }
     }
 
@@ -1298,23 +1297,28 @@
         
         showLoading("打卡資料傳送中...");
         try {
-            const text = await fetchApi(ATTENDANCE_API_URL, { action: "write", sheetName: "attendance", name: currentUser, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }); 
+            const response = await fetch(ATTENDANCE_API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({ action: "write", sheetName: "attendance", name: currentUser, type: type, status: finalStatus, reason: overtimeReason, lat: userLat || "", lon: userLon || "" }) 
+            });
+            const result = await response.text();
             
-            if (text === "Error_TooFast") {
+            if (result === "Error_TooFast") {
                 Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning');
-            } else if (text === "Error_MissingIn") {
+            } else if (result === "Error_MissingIn") {
                 Swal.fire({ icon: 'error', title: '未偵測到上班紀錄', text: '系統找不到您今天的上班打卡紀錄，已發送通知給幹部。請尋找主管會同人事進行補登作業！' });
-            } else if (text === "Error_MissingOut") {
+            } else if (result === "Error_MissingOut") {
                 Swal.fire({ icon: 'error', title: '前次下班未打卡', text: '系統發現您前一次出勤忘記打下班卡，已發送通知給幹部。請尋找主管會同人事進行補登作業！' });
-            } else if (text === "Duplicate") { 
+            } else if (result === "Duplicate") { 
                 Swal.fire('注意', `您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); 
-            } else if (text === "Success") {
+            } else if (result === "Success") {
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
             } else { 
-                Swal.fire('失敗', text, 'error'); 
+                Swal.fire('失敗', result, 'error'); 
             }
         } catch (e) { 
-            Swal.fire('連線異常', '系統傳輸失敗，請稍後再試！\n錯誤訊息：' + e.message, 'error'); 
+            Swal.fire('跨域連線遭阻擋', '請確認 Google Apps Script 權限是否設為「所有人」。\n真實錯誤訊息：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
     }
@@ -1347,8 +1351,12 @@
                 p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
             }
             
-            const text = await fetchApi(ATTENDANCE_API_URL, p); 
-            hideLoading();
+            const response = await fetch(ATTENDANCE_API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
             
             if (text === "Success") { 
                 Swal.fire('太棒了！', '假單 100% 成功送進資料庫！', 'success').then(() => location.reload()); 
@@ -1358,9 +1366,26 @@
                 Swal.fire('寫入失敗', text, 'error'); 
             }
         } catch(e) { 
-            Swal.fire('連線異常', '請確認權限是否設定正確。', 'error'); 
+            Swal.fire('致命連線阻擋', '請確認 Google 權限是否設為「所有人」。\n真實錯誤訊息：' + e.message, 'error'); 
         } 
         finally { hideLoading(); }
+    }
+
+    function loadPendingProofs() {
+        const sel = document.getElementById('prfSelect');
+        sel.innerHTML = "";
+        if (!globalDB || !globalDB.leave) {
+            sel.innerHTML = "<option value=''>資料讀取中...</option>";
+            return;
+        }
+        const pending = globalDB.leave.filter(r => r[2] === currentUser && r[9] === "待補件");
+        if (pending.length === 0) { 
+            sel.innerHTML = "<option value=''>✅ 您目前沒有需要補件的假單</option>"; 
+        } else { 
+            pending.forEach(r => { 
+                sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; 
+            }); 
+        }
     }
 
     async function submitProof() {
@@ -1371,8 +1396,13 @@
         showLoading("照片上傳中...");
         try {
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            const text = await fetchApi(ATTENDANCE_API_URL, p); 
-            hideLoading();
+            
+            const response = await fetch(ATTENDANCE_API_URL, { 
+                method: 'POST', 
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(p) 
+            }); 
+            const text = await response.text(); 
             
             if (text === "Success") { 
                 Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); 
@@ -1380,9 +1410,9 @@
                 Swal.fire('失敗', text, 'error'); 
             }
         } catch (e) { 
-            hideLoading();
             Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); 
         } 
+        finally { hideLoading(); }
     }
 
     // ==========================================
