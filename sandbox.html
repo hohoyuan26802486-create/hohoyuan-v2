@@ -191,7 +191,6 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
                 
-                <!-- 🚀 升級的加班/值班/外勤申請欄位 (動態隱藏時數) -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
                     <label id="lblOtHours" style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
                     <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
@@ -646,7 +645,7 @@
                     else addStatusBtn("遲到", true);
                     addStatusBtn("請假後上班", false); 
                     addStatusBtn("外出回廠上班", false);
-                    addStatusBtn("外勤/遠端打卡", false); // 🚀 加回外勤按鈕
+                    addStatusBtn("外勤/遠端打卡", false); 
                 }
             } else {
                 if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
@@ -657,14 +656,13 @@
                     } else { addStatusBtn("正常下班", true); }
                     addStatusBtn("值班(換補休)", false); 
                     addStatusBtn("外出暫時下班", false);
-                    addStatusBtn("外勤/遠端打卡", false); // 🚀 加回外勤按鈕
+                    addStatusBtn("外勤/遠端打卡", false); 
                 }
             }
             updateGPSUI();
         } catch(e) { console.error(e); }
     }
 
-    // 🚀 核心升級：動態切換事由框與時數框
     function toggleReasonBox(txt) {
         const ob = document.getElementById('overtimeBox');
         const lblOt = document.getElementById('lblOtHours');
@@ -704,7 +702,6 @@
         document.getElementById('statusList').appendChild(div);
     }
 
-    // 🚀 核心升級：強制限制下班也要檢查 GPS
     function updateGPSUI() {
         const box = document.getElementById('gpsStatus'); const btn = document.querySelector('.punch-btn');
         if(!box || !btn) return;
@@ -846,6 +843,7 @@
         } catch (e) { document.getElementById('cardAttStatus').innerText = "無法載入"; }
     }
 
+    // 🚀 核心升級：前端核決判斷 (支援 3 天升級與補登直通)
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         let leaveId = r[0]; let empName = r[2]; let empDept = r[3]; let typeStr = r[4]; 
         let sDate = new Date(r[5]); let eDate = new Date(r[6]);
@@ -868,12 +866,22 @@
                 let nextStatus = "已生效"; let canApprove = false;
                 let btnText = "✔️ 核准"; let btnStyle = "background: var(--primary-light); color: var(--primary);"; let rejectStyle = "background: #fce8e6; color: var(--danger);";
                 
-                let isSimpleApproval = (typeStr === "打卡補登" || typeStr === "加班申請");
+                let isSimpleApproval = (typeStr === "打卡補登" || typeStr === "加班申請" || typeStr === "補休");
+                
+                let msDiff = eDate.getTime() - sDate.getTime();
+                let leaveDays = Math.ceil(msDiff / 86400000); 
+                let isLongLeave = leaveDays >= 3;
 
                 if (status === "待主管審核") {
                     if (isSameDept) { 
                         canApprove = true; 
-                        nextStatus = isSimpleApproval ? "已生效" : "待副總審核"; 
+                        if (isSimpleApproval) {
+                            nextStatus = "已生效";
+                        } else if (isLongLeave) {
+                            nextStatus = "待副總審核";
+                        } else {
+                            nextStatus = "待人事核銷";
+                        }
                     } 
                     else if (isBoss) { 
                         canApprove = true; 
@@ -995,7 +1003,6 @@
         });
     }
 
-    // 🚀 核心升級：打卡與加班派單同步處理 + 外勤遠端說明判斷
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
