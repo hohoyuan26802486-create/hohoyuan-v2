@@ -191,11 +191,12 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
                 
+                <!-- 🚀 升級的加班/值班/外勤申請欄位 (動態隱藏時數) -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
-                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請加班時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
+                    <label id="lblOtHours" style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
                     <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
-                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請填寫事由 (必填)</label>
-                    <input type="text" id="overtimeReason" class="form-control" placeholder="例如：處理急件、庫存盤點..." style="border-color: #ffe69c; background:white;">
+                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請填妥事由 (必填)</label>
+                    <input type="text" id="overtimeReason" class="form-control" placeholder="例如：拜訪客戶、庫存盤點..." style="border-color: #ffe69c; background:white;">
                 </div>
 
                 <div class="punch-btn-wrapper">
@@ -643,7 +644,9 @@
                     if (time < 440) addStatusBtn("個人因素提早上班", true);
                     else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
                     else addStatusBtn("遲到", true);
-                    addStatusBtn("請假後上班", false); addStatusBtn("外出回廠上班", false);
+                    addStatusBtn("請假後上班", false); 
+                    addStatusBtn("外出回廠上班", false);
+                    addStatusBtn("外勤/遠端打卡", false); // 🚀 加回外勤按鈕
                 }
             } else {
                 if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
@@ -652,11 +655,33 @@
                         addStatusBtn("因個人因素延後下班", true); 
                         if (myDept !== "運輸部") { addStatusBtn("經主管核准加班", false); }
                     } else { addStatusBtn("正常下班", true); }
-                    addStatusBtn("值班(換補休)", false); addStatusBtn("外出暫時下班", false);
+                    addStatusBtn("值班(換補休)", false); 
+                    addStatusBtn("外出暫時下班", false);
+                    addStatusBtn("外勤/遠端打卡", false); // 🚀 加回外勤按鈕
                 }
             }
             updateGPSUI();
         } catch(e) { console.error(e); }
+    }
+
+    // 🚀 核心升級：動態切換事由框與時數框
+    function toggleReasonBox(txt) {
+        const ob = document.getElementById('overtimeBox');
+        const lblOt = document.getElementById('lblOtHours');
+        const inputOt = document.getElementById('overtimeHours');
+        if (!ob) return;
+        
+        if (txt.includes("加班") || txt.includes("值班")) {
+            ob.style.display = "block";
+            if (lblOt) lblOt.style.display = "block";
+            if (inputOt) inputOt.style.display = "block";
+        } else if (txt.includes("外勤") || txt.includes("遠端")) {
+            ob.style.display = "block";
+            if (lblOt) lblOt.style.display = "none";
+            if (inputOt) inputOt.style.display = "none";
+        } else {
+            ob.style.display = "none";
+        }
     }
 
     function addStatusBtn(txt, isSelected) {
@@ -666,30 +691,38 @@
         
         if (isSelected) {
             selectedStatus = txt;
-            const ob = document.getElementById('overtimeBox');
-            if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
+            toggleReasonBox(txt);
         }
 
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
-            div.classList.add('selected'); selectedStatus = txt;
-            const ob = document.getElementById('overtimeBox');
-            if(ob) ob.style.display = (txt.includes("加班") || txt.includes("值班")) ? "block" : "none";
+            div.classList.add('selected'); 
+            selectedStatus = txt;
+            toggleReasonBox(txt);
+            updateGPSUI();
         };
         document.getElementById('statusList').appendChild(div);
     }
 
+    // 🚀 核心升級：強制限制下班也要檢查 GPS
     function updateGPSUI() {
         const box = document.getElementById('gpsStatus'); const btn = document.querySelector('.punch-btn');
         if(!box || !btn) return;
-        const typeInput = document.querySelector('input[name="attType"]:checked'); const isTypeOut = typeInput && typeInput.value === "下班";
-
+        
         if (!isMobileDevice) { box.innerText = "❌ 必須使用手機打卡"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; }
         const isFlexWorker = FLEX_WORKERS.includes(currentUser); const isNoGpsWorker = NO_GPS_WORKERS.includes(currentUser); 
         if (isFlexWorker || isNoGpsWorker) { box.innerText = "✅ 免定位模式已啟動"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; return; }
         if (userLat === null || userLon === null) { box.innerText = "📍 獲取定位中... (請允許權限)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; } 
-        if (isTypeOut || isWithinRange) { box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; } 
-        else { box.innerText = "❌ 不在打卡範圍內"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; }
+        
+        const isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
+
+        if (isWithinRange) { 
+            box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
+        } else if (isRemote) {
+            box.innerText = "⚠️ 遠端打卡模式 (需填妥事由)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
+        } else { 
+            box.innerText = "❌ 不在打卡範圍內 (需選外勤/遠端)"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; 
+        }
     }
 
     async function fetchBackendData() {
@@ -835,7 +868,6 @@
                 let nextStatus = "已生效"; let canApprove = false;
                 let btnText = "✔️ 核准"; let btnStyle = "background: var(--primary-light); color: var(--primary);"; let rejectStyle = "background: #fce8e6; color: var(--danger);";
                 
-                // 🚀 審核特快車：打卡補登與加班申請，主管按下去就直接生效，不用等副總/人事！
                 let isSimpleApproval = (typeStr === "打卡補登" || typeStr === "加班申請");
 
                 if (status === "待主管審核") {
@@ -963,6 +995,7 @@
         });
     }
 
+    // 🚀 核心升級：打卡與加班派單同步處理 + 外勤遠端說明判斷
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
@@ -972,15 +1005,23 @@
         let finalReason = overtimeReasonInput ? overtimeReasonInput.value.trim() : "";
         let finalHours = overtimeHoursInput ? overtimeHoursInput.value.trim() : "";
         let isOvertime = selectedStatus.includes("加班") || selectedStatus.includes("值班");
+        let isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
 
-        if (isOvertime) {
-            if (!finalHours || !finalReason) {
-                return Swal.fire('提示', '申請加班或值班時，請務必填寫「申請時數」與「事由」！', 'warning');
+        if (isOvertime || isRemote) {
+            if (isOvertime) {
+                if (!finalHours || !finalReason) {
+                    return Swal.fire('提示', '申請加班或值班時，請務必填寫「申請時數」與「事由」！', 'warning');
+                }
+                if (parseFloat(finalHours) % 0.5 !== 0) {
+                    return Swal.fire('提示', '為配合結算，加班時數請以「0.5小時 (半小時)」為單位輸入喔！(例如：1 或 1.5)', 'warning');
+                }
+                finalReason = finalReason + " (申請 " + finalHours + " 小時)";
             }
-            if (parseFloat(finalHours) % 0.5 !== 0) {
-                return Swal.fire('提示', '為配合結算，加班時數請以「0.5小時 (半小時)」為單位輸入喔！(例如：1 或 1.5)', 'warning');
+            if (isRemote) {
+                if (!finalReason) {
+                    return Swal.fire('提示', '使用「外勤/遠端打卡」模式時，請務必填妥「事由」(如：拜訪某某客戶、跨廠區支援)！', 'warning');
+                }
             }
-            finalReason = finalReason + " (申請 " + finalHours + " 小時)";
         }
 
         let finalStatus = selectedStatus;
