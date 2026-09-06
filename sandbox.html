@@ -191,7 +191,6 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
                 
-                <!-- 🚀 升級的加班/值班申請欄位 (0.5小時防呆) -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
                     <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請加班時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
                     <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
@@ -828,16 +827,29 @@
 
         let actionBtnsHTML = '';
         if (isTeamView) {
-            let isSameDept = (empDept === myDept); let isHR = HR_MANAGERS.includes(currentUser); let isBoss = TOP_BOSSES.includes(currentUser);
+            let isSameDept = (empDept === myDept); 
+            let isHR = HR_MANAGERS.includes(currentUser); 
+            let isBoss = TOP_BOSSES.includes(currentUser);
 
             if (status.includes("待")) {
                 let nextStatus = "已生效"; let canApprove = false;
                 let btnText = "✔️ 核准"; let btnStyle = "background: var(--primary-light); color: var(--primary);"; let rejectStyle = "background: #fce8e6; color: var(--danger);";
+                
+                // 🚀 審核特快車：打卡補登與加班申請，主管按下去就直接生效，不用等副總/人事！
+                let isSimpleApproval = (typeStr === "打卡補登" || typeStr === "加班申請");
 
                 if (status === "待主管審核") {
-                    if (isSameDept) { canApprove = true; nextStatus = "待副總審核"; } 
-                    else if (isBoss) { canApprove = true; nextStatus = "待人事核銷"; btnText = "⚡ 越權核准"; btnStyle = "background: #fff8e1; color: #b06000;"; }
-                } else if (status === "待副總審核") { if (isBoss) { canApprove = true; nextStatus = "待人事核銷"; }
+                    if (isSameDept) { 
+                        canApprove = true; 
+                        nextStatus = isSimpleApproval ? "已生效" : "待副總審核"; 
+                    } 
+                    else if (isBoss) { 
+                        canApprove = true; 
+                        nextStatus = isSimpleApproval ? "已生效" : "待人事核銷"; 
+                        btnText = "⚡ 越權核准"; btnStyle = "background: #fff8e1; color: #b06000;"; 
+                    }
+                } else if (status === "待副總審核") { 
+                    if (isBoss) { canApprove = true; nextStatus = "待人事核銷"; }
                 } else if (status === "待人事主管審核" || status === "待人事核銷") {
                     if (isHR) { canApprove = true; nextStatus = "已生效"; } 
                     else if (isBoss) { canApprove = true; nextStatus = "已生效"; btnText = "⚡ 強制生效"; btnStyle = "background: #fce8e6; color: var(--danger); border: 1px solid #fad2cf;"; }
@@ -951,7 +963,6 @@
         });
     }
 
-    // 🚀 核心升級：打卡與加班派單同步處理
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
@@ -990,7 +1001,6 @@
             else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
                 
-                // 🚀 如果有加班，自動派發一張申請單到假單中心
                 if (isOvertime) {
                     const nowStr = new Date().toISOString().slice(0, 16); 
                     const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: nowStr, end: nowStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
@@ -1028,9 +1038,6 @@
         } catch(e) { hideLoading(); Swal.fire('致命連線阻擋', e.message, 'error'); } 
     }
 
-    // ==========================================
-    // 📎 雙功能補件邏輯
-    // ==========================================
     function switchProofTab(tabId) {
         document.querySelectorAll('#viewProof .report-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('#viewProof .report-content').forEach(c => c.classList.remove('active'));
@@ -1068,9 +1075,6 @@
         } catch(e) { hideLoading(); Swal.fire('錯誤', e.message, 'error'); }
     }
 
-    // ==========================================
-    // 📊 報表系統邏輯
-    // ==========================================
     function switchReportTab(tabId) {
         document.querySelectorAll('#viewReport .report-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('#viewReport .report-content').forEach(c => c.classList.remove('active'));
