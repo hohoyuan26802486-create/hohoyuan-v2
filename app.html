@@ -132,7 +132,7 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>專屬智能考勤 App</p>
+            <p>專屬智能考勤 App (正式版)</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
@@ -652,9 +652,16 @@
                 if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
                 else {
                     if (time >= 1010) { 
-                        addStatusBtn("因個人因素延後下班", true); 
-                        if (myDept !== "運輸部") { addStatusBtn("經主管核准加班", false); }
-                    } else { addStatusBtn("正常下班", true); }
+                        if (myDept === "運輸部") {
+                            addStatusBtn("正常下班", true); 
+                            addStatusBtn("因個人因素延後下班", false); 
+                        } else {
+                            addStatusBtn("因個人因素延後下班", true); 
+                            addStatusBtn("經主管核准加班", false); 
+                        }
+                    } else { 
+                        addStatusBtn("正常下班", true); 
+                    }
                     addStatusBtn("值班(換補休)", false); 
                     addStatusBtn("外出暫時下班", false);
                     addStatusBtn("外勤/遠端打卡", false); 
@@ -1151,7 +1158,7 @@
     }
 
     function addReportBlock() {
-        if (!globalDB || !globalDB.employees) return;
+        if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成");
         const empRecord = globalDB.employees.find(r => r[0] === currentUser); if (!empRecord) return;
         
         const myDept = empRecord[1]; const isManager = (MANAGERS.includes(currentUser) || TOP_BOSSES.includes(currentUser));
