@@ -653,7 +653,7 @@
                 else {
                     if (time >= 1010) { 
                         if (myDept === "運輸部") {
-                            addStatusBtn("正常下班", true); 
+                            addStatusBtn("勤務結束下班 (含保障加班)", true); 
                             addStatusBtn("因個人因素延後下班", false); 
                         } else {
                             addStatusBtn("因個人因素延後下班", true); 
@@ -677,7 +677,7 @@
         const inputOt = document.getElementById('overtimeHours');
         if (!ob) return;
         
-        if (txt.includes("加班") || txt.includes("值班")) {
+        if ((txt.includes("加班") || txt.includes("值班")) && txt !== "勤務結束下班 (含保障加班)") {
             ob.style.display = "block";
             if (lblOt) lblOt.style.display = "block";
             if (inputOt) inputOt.style.display = "block";
@@ -1018,7 +1018,7 @@
         
         let finalReason = overtimeReasonInput ? overtimeReasonInput.value.trim() : "";
         let finalHours = overtimeHoursInput ? overtimeHoursInput.value.trim() : "";
-        let isOvertime = selectedStatus.includes("加班") || selectedStatus.includes("值班");
+        let isOvertime = (selectedStatus.includes("加班") || selectedStatus.includes("值班")) && selectedStatus !== "勤務結束下班 (含保障加班)";
         let isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
 
         if (isOvertime || isRemote) {
