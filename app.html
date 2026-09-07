@@ -132,7 +132,7 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>專屬智能考勤 App (正式版)</p>
+            <p>專屬智能考勤 App</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
@@ -191,6 +191,7 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
                 
+                <!-- 🚀 升級的加班/值班/外勤申請欄位 (動態隱藏時數) -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
                     <label id="lblOtHours" style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
                     <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
@@ -1021,6 +1022,27 @@
                 if (parseFloat(finalHours) % 0.5 !== 0) {
                     return Swal.fire('提示', '為配合結算，加班時數請以「0.5小時 (半小時)」為單位輸入喔！(例如：1 或 1.5)', 'warning');
                 }
+
+                if (type === "下班") {
+                    let otHrs = parseFloat(finalHours);
+                    let now = new Date();
+                    let expectedEndTime = new Date();
+                    expectedEndTime.setHours(16, 30, 0, 0);
+                    expectedEndTime.setTime(expectedEndTime.getTime() + otHrs * 3600000);
+                    let bufferMins = 15;
+                    let limitTime = new Date(expectedEndTime.getTime() + bufferMins * 60000);
+                    
+                    if (now.getTime() > limitTime.getTime()) {
+                        let expTimeStr = `${String(expectedEndTime.getHours()).padStart(2, '0')}:${String(expectedEndTime.getMinutes()).padStart(2, '0')}`;
+                        let nowTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        return Swal.fire(
+                            '⚠️ 時數不符', 
+                            `您現在的時間 (${nowTimeStr}) 已超過您申請的加班時數上限 (${expTimeStr})！\n\n系統已攔截。請直接更改上方的「申請時數」(例如增加 0.5) 以符合真實現況，再重新打卡。`, 
+                            'error'
+                        );
+                    }
+                }
+
                 finalReason = finalReason + " (申請 " + finalHours + " 小時)";
             }
             if (isRemote) {
