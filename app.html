@@ -191,7 +191,7 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
                 
-                <!-- 🚀 升級的加班/值班/外勤申請欄位 (動態隱藏時數) -->
+                <!-- 加班/值班/外勤申請欄位 -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
                     <label id="lblOtHours" style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
                     <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
@@ -1029,7 +1029,6 @@
                 if (parseFloat(finalHours) % 0.5 !== 0) {
                     return Swal.fire('提示', '為配合結算，加班時數請以「0.5小時 (半小時)」為單位輸入喔！(例如：1 或 1.5)', 'warning');
                 }
-
                 finalReason = finalReason + " (申請 " + finalHours + " 小時)";
             }
             if (isRemote) {
@@ -1058,8 +1057,12 @@
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
                 
                 if (isOvertime) {
-                    const nowStr = new Date().toISOString().slice(0, 16); 
-                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: nowStr, end: nowStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
+                    // 🚀 終極修正：手動組裝台灣本地時間，杜絕時區差 8 小時的問題！
+                    let n = new Date();
+                    let pad = (num) => String(num).padStart(2, '0');
+                    let localTimeStr = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`;
+                    
+                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
                     await fetchApi(ATTENDANCE_API_URL, otPayload);
                 }
 
@@ -1133,7 +1136,6 @@
         }
         
         if (pType === "下班" && hourSelected < 12 && hourSelected > 4) { 
-            // 假設下班不會是早上 5 點到 11 點
             return Swal.fire(
                 '時段錯誤 ⚠️', 
                 `您選擇的下班時間是 上午 ${pTime}！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！`, 
@@ -1196,7 +1198,7 @@
 
     function addErrorBlock() {
         errBlockCount++; const container = document.getElementById('dynamicErrors');
-        const blockHtml = `<div class="report-block card-danger err-block" id="err-block-${errBlockCount}"><div class="block-header"><span class="block-title" style="color: var(--danger);">🚨 異常項目 #${errBlockCount}</span>${errBlockCount > 1 ? `<span class="remove-btn" onclick="removeErrBlock(${errBlockCount})">❌ 刪除</span>` : ''}</div><label class="rpt-label">🏢 受影響客戶：</label><input type="text" class="rpt-input err-client" placeholder="例: 海底捞、大三元..."><label class="rpt-label">⚠️ 錯誤類型 (核心原因)：</label><select class="rpt-select err-type"><option value="數量錯誤 (少給/多給)">數量錯誤 (少給/多給)</option><option value="品項撿錯 (A拿成B)">品項撿錯 (A拿成B)</option><option value="漏撿 (完全沒拿到)">漏撿 (完全沒拿到)</option><option value="司機搬錯車/送錯點">司機搬錯車/送錯點</option><option value="對點員未確實核對">對點員未確實核對</option><option value="其他">其他</option></select><label class="rpt-label">📝 狀況詳情：</label><textarea class="rpt-textarea err-details" placeholder="例：客戶要10包青花椒，現場點交只剩8包，且有一包拿成大紅袍。"></textarea><label class="rpt-label">👉 追究責任歸屬：</label><div style="font-size:11px; color:#999;">請填寫應負責的同仁姓名 (可複填)</div><input type="text" class="rpt-input err-responsible" placeholder="例：揀貨員(王小明)、對點員(陳大山)"><label class="rpt-label">💸 造成損失與浪費時間評估：</label><textarea class="rpt-textarea err-loss" placeholder="例：司機折返浪費1.5小時，油錢與客戶扣款約 800 元。"></textarea></div>`;
+        const blockHtml = `<div class="report-block card-danger err-block" id="err-block-${errBlockCount}"><div class="block-header"><span class="block-title" style="color: var(--danger);">🚨 異常項目 #${errBlockCount}</span>${errBlockCount > 1 ? `<span class="remove-btn" onclick="removeErrBlock(${errBlockCount})">❌ 刪除</span>` : ''}</div><label class="rpt-label">🏢 受影響客戶：</label><input type="text" class="rpt-input err-client" placeholder="例: 海底撈、大三元..."><label class="rpt-label">⚠️ 錯誤類型 (核心原因)：</label><select class="rpt-select err-type"><option value="數量錯誤 (少給/多給)">數量錯誤 (少給/多給)</option><option value="品項撿錯 (A拿成B)">品項撿錯 (A拿成B)</option><option value="漏撿 (完全沒拿到)">漏撿 (完全沒拿到)</option><option value="司機搬錯車/送錯點">司機搬錯車/送錯點</option><option value="對點員未確實核對">對點員未確實核對</option><option value="其他">其他</option></select><label class="rpt-label">📝 狀況詳情：</label><textarea class="rpt-textarea err-details" placeholder="例：客戶要10包青花椒，現場點交只剩8包，且有一包拿成大紅袍。"></textarea><label class="rpt-label">👉 追究責任歸屬：</label><div style="font-size:11px; color:#999;">請填寫應負責的同仁姓名 (可複填)</div><input type="text" class="rpt-input err-responsible" placeholder="例：揀貨員(王小明)、對點員(陳大山)"><label class="rpt-label">💸 造成損失與浪費時間評估：</label><textarea class="rpt-textarea err-loss" placeholder="例：司機折返浪費1.5小時，油錢與客戶扣款約 800 元。"></textarea></div>`;
         container.insertAdjacentHTML('beforeend', blockHtml);
     }
 
