@@ -132,7 +132,7 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>專屬智能考勤 App</p>
+            <p>專屬智能考勤 App (正式版)</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
@@ -379,7 +379,7 @@
     const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     const HR_MANAGERS = ["姜道凌"]; 
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
-    const NO_GPS_WORKERS = ["蔡政達"];
+    const NO_GPS_WORKERS = ["蔡政達", "test", "蔡tsat", "TEST 2"];
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
     const COMPANY_LAT_1 = 24.956650267283113; 
@@ -1196,7 +1196,7 @@
 
     function addErrorBlock() {
         errBlockCount++; const container = document.getElementById('dynamicErrors');
-        const blockHtml = `<div class="report-block card-danger err-block" id="err-block-${errBlockCount}"><div class="block-header"><span class="block-title" style="color: var(--danger);">🚨 異常項目 #${errBlockCount}</span>${errBlockCount > 1 ? `<span class="remove-btn" onclick="removeErrBlock(${errBlockCount})">❌ 刪除</span>` : ''}</div><label class="rpt-label">🏢 受影響客戶：</label><input type="text" class="rpt-input err-client" placeholder="例: 海底撈、大三元..."><label class="rpt-label">⚠️ 錯誤類型 (核心原因)：</label><select class="rpt-select err-type"><option value="數量錯誤 (少給/多給)">數量錯誤 (少給/多給)</option><option value="品項撿錯 (A拿成B)">品項撿錯 (A拿成B)</option><option value="漏撿 (完全沒拿到)">漏撿 (完全沒拿到)</option><option value="司機搬錯車/送錯點">司機搬錯車/送錯點</option><option value="對點員未確實核對">對點員未確實核對</option><option value="其他">其他</option></select><label class="rpt-label">📝 狀況詳情：</label><textarea class="rpt-textarea err-details" placeholder="例：客戶要10包青花椒，現場點交只剩8包，且有一包拿成大紅袍。"></textarea><label class="rpt-label">👉 追究責任歸屬：</label><div style="font-size:11px; color:#999;">請填寫應負責的同仁姓名 (可複填)</div><input type="text" class="rpt-input err-responsible" placeholder="例：揀貨員(王小明)、對點員(陳大山)"><label class="rpt-label">💸 造成損失與浪費時間評估：</label><textarea class="rpt-textarea err-loss" placeholder="例：司機折返浪費1.5小時，油錢與客戶扣款約 800 元。"></textarea></div>`;
+        const blockHtml = `<div class="report-block card-danger err-block" id="err-block-${errBlockCount}"><div class="block-header"><span class="block-title" style="color: var(--danger);">🚨 異常項目 #${errBlockCount}</span>${errBlockCount > 1 ? `<span class="remove-btn" onclick="removeErrBlock(${errBlockCount})">❌ 刪除</span>` : ''}</div><label class="rpt-label">🏢 受影響客戶：</label><input type="text" class="rpt-input err-client" placeholder="例: 海底捞、大三元..."><label class="rpt-label">⚠️ 錯誤類型 (核心原因)：</label><select class="rpt-select err-type"><option value="數量錯誤 (少給/多給)">數量錯誤 (少給/多給)</option><option value="品項撿錯 (A拿成B)">品項撿錯 (A拿成B)</option><option value="漏撿 (完全沒拿到)">漏撿 (完全沒拿到)</option><option value="司機搬錯車/送錯點">司機搬錯車/送錯點</option><option value="對點員未確實核對">對點員未確實核對</option><option value="其他">其他</option></select><label class="rpt-label">📝 狀況詳情：</label><textarea class="rpt-textarea err-details" placeholder="例：客戶要10包青花椒，現場點交只剩8包，且有一包拿成大紅袍。"></textarea><label class="rpt-label">👉 追究責任歸屬：</label><div style="font-size:11px; color:#999;">請填寫應負責的同仁姓名 (可複填)</div><input type="text" class="rpt-input err-responsible" placeholder="例：揀貨員(王小明)、對點員(陳大山)"><label class="rpt-label">💸 造成損失與浪費時間評估：</label><textarea class="rpt-textarea err-loss" placeholder="例：司機折返浪費1.5小時，油錢與客戶扣款約 800 元。"></textarea></div>`;
         container.insertAdjacentHTML('beforeend', blockHtml);
     }
 
