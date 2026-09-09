@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="禾禾園">
     <meta name="theme-color" content="#f4f7f6">
 
-    <title>禾禾園 - 智能考勤 App (正式版)</title>
+    <title>禾禾園 - 智能考勤 App (沙盒測試版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -132,7 +132,7 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>專屬智能考勤 App (正式版)</p>
+            <p>專屬智能考勤 App (沙盒測試版)</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
@@ -359,7 +359,7 @@
 
 <script>
     // ==========================================
-    // 🔗 API 網址設定區
+    // 🔗 API 網址設定區 (老闆！沙盒測試記得改這裡喔！)
     // ==========================================
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
@@ -718,7 +718,7 @@
             const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
             const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
-            // 同時抓取本月與上月的出勤資料
+            // 雙渦輪抓取：同時去後台拿這個月跟上個月的出勤表
             const [currText, prevText] = await Promise.all([
                 fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" }),
                 fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(() => "[]")
@@ -727,7 +727,7 @@
             let currData = []; try { currData = JSON.parse(currText); } catch(e){}
             let prevData = []; try { prevData = JSON.parse(prevText); } catch(e){}
 
-            // 完美的資料合併去重，防止 API 回傳相同的預設表
+            // 完美的資料合併去重
             let uniqueRecords = new Map();
             if (currData.length > 0) {
                 uniqueRecords.set("HEADER", currData[0]); 
@@ -1013,7 +1013,7 @@
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         
-        let finalReason = "";
+        let finalReason = ""; 
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         
