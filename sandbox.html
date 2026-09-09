@@ -359,7 +359,7 @@
 
 <script>
     // ==========================================
-    // 🔗 API 網址設定區 (老闆！沙盒測試記得改這裡喔！)
+    // 🔗 API 網址設定區 (⚠️ 沙盒測試！請將這裡換成您沙盒版的 URL)
     // ==========================================
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
@@ -1013,7 +1013,7 @@
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         
-        let finalReason = ""; 
+        let finalReason = "";
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         
