@@ -710,6 +710,17 @@
         }
     }
 
+    // 🚀 安全找回：負責去後台抓取 globalDB 與載入所有資料的主引擎
+    async function fetchBackendData() {
+        try {
+            const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime()); 
+            globalDB = await res.json();
+            updateAnnualLeaveUI(); populateAgentDropdown(); loadPendingProofs();
+            if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
+            renderHomeAlerts(); handleTypeChange();
+        } catch (e) { console.error("資料載入失敗:", e); }
+    }
+
     // 🚀 核心升級：抓取兩個月的資料並合併顯示在「近期出勤」
     async function checkTodayAttendance() {
         try {
@@ -1013,7 +1024,7 @@
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         
-        let finalReason = "";
+        let finalReason = ""; 
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         
