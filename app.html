@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="禾禾園">
     <meta name="theme-color" content="#f4f7f6">
 
-    <title>禾禾園 - 智能考勤 App (正式版)</title>
+    <title>禾禾園 - 智能考勤 App</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -98,7 +98,6 @@
         .report-content { display: none; }
         .report-content.active { display: block; }
         
-        /* 表單區塊 */
         .report-block { background: #fff; border: 1px solid #e0e0e0; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
         .card-danger { border-top: 4px solid var(--danger); background: #fce8e6; }
         .card-primary { border-top: 4px solid var(--primary); }
@@ -151,7 +150,6 @@
             </div>
         </div>
 
-        <!-- 📍 打卡區塊 -->
         <div id="viewHome" class="view-section active">
             <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
             <div class="info-cards">
@@ -191,11 +189,9 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
                 
-                <!-- 加班/值班/外勤申請欄位 -->
+                <!-- 🚀 隱藏申請時數，僅保留事由填寫 -->
                 <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
-                    <label id="lblOtHours" style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
-                    <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
-                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請填妥事由 (必填)</label>
+                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請簡單填寫加班事由 (必填)</label>
                     <input type="text" id="overtimeReason" class="form-control" placeholder="例如：拜訪客戶、庫存盤點..." style="border-color: #ffe69c; background:white;">
                 </div>
 
@@ -366,15 +362,9 @@
 </div>
 
 <script>
-    // ==========================================
-    // 🔗 API 網址設定區
-    // ==========================================
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
 
-    // ==========================================
-    // ⚙️ 系統常數設定
-    // ==========================================
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜", "楊盟吉"];
     const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     const HR_MANAGERS = ["姜道凌"]; 
@@ -639,8 +629,13 @@
             }
 
             if (type === "上班") {
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
-                else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性上班)", true); 
+                    addStatusBtn("遲到", false);
+                    addStatusBtn("請假後上班", false);
+                    addStatusBtn("外出回廠上班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                } else {
                     if (time < 440) addStatusBtn("個人因素提早上班", true);
                     else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
                     else addStatusBtn("遲到", true);
@@ -649,8 +644,13 @@
                     addStatusBtn("外勤/遠端打卡", false); 
                 }
             } else {
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
-                else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性下班)", true); 
+                    addStatusBtn("經主管核准加班", false);
+                    addStatusBtn("值班(換補休)", false);
+                    addStatusBtn("外出暫時下班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                } else {
                     if (time >= 1010) { 
                         if (myDept === "運輸部") {
                             addStatusBtn("勤務結束下班 (含保障加班)", true); 
@@ -673,18 +673,13 @@
 
     function toggleReasonBox(txt) {
         const ob = document.getElementById('overtimeBox');
-        const lblOt = document.getElementById('lblOtHours');
-        const inputOt = document.getElementById('overtimeHours');
         if (!ob) return;
         
+        // 🚀 隱藏申請時數，僅保留事由填寫
         if ((txt.includes("加班") || txt.includes("值班")) && txt !== "勤務結束下班 (含保障加班)") {
             ob.style.display = "block";
-            if (lblOt) lblOt.style.display = "block";
-            if (inputOt) inputOt.style.display = "block";
         } else if (txt.includes("外勤") || txt.includes("遠端")) {
             ob.style.display = "block";
-            if (lblOt) lblOt.style.display = "none";
-            if (inputOt) inputOt.style.display = "none";
         } else {
             ob.style.display = "none";
         }
@@ -1014,22 +1009,16 @@
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         const overtimeReasonInput = document.getElementById('overtimeReason');
-        const overtimeHoursInput = document.getElementById('overtimeHours');
         
         let finalReason = overtimeReasonInput ? overtimeReasonInput.value.trim() : "";
-        let finalHours = overtimeHoursInput ? overtimeHoursInput.value.trim() : "";
         let isOvertime = (selectedStatus.includes("加班") || selectedStatus.includes("值班")) && selectedStatus !== "勤務結束下班 (含保障加班)";
         let isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
 
         if (isOvertime || isRemote) {
             if (isOvertime) {
-                if (!finalHours || !finalReason) {
-                    return Swal.fire('提示', '申請加班或值班時，請務必填寫「申請時數」與「事由」！', 'warning');
+                if (!finalReason) {
+                    return Swal.fire('提示', '申請加班或值班時，請務必填寫「事由」！', 'warning');
                 }
-                if (parseFloat(finalHours) % 0.5 !== 0) {
-                    return Swal.fire('提示', '為配合結算，加班時數請以「0.5小時 (半小時)」為單位輸入喔！(例如：1 或 1.5)', 'warning');
-                }
-                finalReason = finalReason + " (申請 " + finalHours + " 小時)";
             }
             if (isRemote) {
                 if (!finalReason) {
@@ -1057,7 +1046,7 @@
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
                 
                 if (isOvertime) {
-                    // 🚀 終極修正：手動組裝台灣本地時間，杜絕時區差 8 小時的問題！
+                    // 🚀 將加班單直接送到後台，無須硬性規定時數，由結算引擎去智能抓取！
                     let n = new Date();
                     let pad = (num) => String(num).padStart(2, '0');
                     let localTimeStr = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`;
@@ -1124,7 +1113,6 @@
         const pReason = document.getElementById('pcReason').value;
         if(!pDate || !pTime || !pReason) return Swal.fire('提示', '請填寫完整補登日期、時間與原因！', 'warning');
         
-        // 🚀 新增：AM/PM 防呆攔截機制
         const hourSelected = parseInt(pTime.split(':')[0], 10);
         
         if (pType === "上班" && hourSelected >= 12) {
