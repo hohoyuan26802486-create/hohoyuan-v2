@@ -1148,7 +1148,7 @@
         if (isManager) {
             innerHtml = `<label class="rpt-label">團隊今日狀態：</label><select class="rpt-select m-status"><option value="🟢 正常">🟢 正常</option><option value="🟡 追趕中">🟡 追趕中</option><option value="🔴 發生異常">🔴 發生異常</option></select><label class="rpt-label">今日重大問題排除：</label><textarea class="rpt-textarea m-issue" placeholder="解決了哪些下屬無法解決的難題？"></textarea><label class="rpt-label">跨部門協調事項：</label><textarea class="rpt-textarea m-coord" placeholder="今天與誰對接、溝通結果？"></textarea><label class="rpt-label">明日重點戰略：</label><textarea class="rpt-textarea m-plan" placeholder="明天部門的核心目標？"></textarea><label class="rpt-label">人員觀察與建議：</label><textarea class="rpt-textarea m-advice" placeholder="誰表現好？誰需要輔導？"></textarea>`;
         } else {
-            if (currentUser === "李孟瑾" || currentUser === "許芳瑜") {
+            if (currentUser === "林心評" || currentUser === "許芳瑜") {
                 innerHtml = `<label class="rpt-label">今日採購戰果：</label><select class="rpt-select pur-type"><option value="降價/凍漲">💰 降價/凍漲</option><option value="新供應商">🤝 找新供應商</option><option value="潛力新品">✨ 潛力新品</option><option value="確保交期">🚚 確保交期</option><option value="例行採購">📝 例行採購</option></select><label class="rpt-label">廠商/商品名稱：</label><input type="text" class="rpt-input pur-target" placeholder="對象名稱"><label class="rpt-label">具體價值貢獻：</label><textarea class="rpt-textarea pur-value" placeholder="例如: 省下約3萬元"></textarea><label class="rpt-label">市場情報預警：</label><textarea class="rpt-textarea pur-market" placeholder="漲價傳聞、供貨異常"></textarea>`;
             } 
             else if (currentUser === "林淑娟" || currentUser === "蘇安琪") { innerHtml = `<label class="rpt-label">今日報價單/標單數量：</label><input type="text" class="rpt-input ast-count" placeholder="例如: 報價5份/標單2份"><label class="rpt-label">處理客戶名單：</label><textarea class="rpt-textarea ast-clients" placeholder="海底撈、大三元..."></textarea><label class="rpt-label">客情動態與亮點貢獻：</label><textarea class="rpt-textarea ast-voice" placeholder="例如: 促成加碼訂購 / 海底撈詢價"></textarea>`; }
@@ -1190,7 +1190,7 @@
             let text = ""; const getVal = (selector) => { const node = block.querySelector(selector); let val = node ? node.value.trim() : ""; if(val) hasContent = true; return val; };
             if (isManager) { text = `【團隊狀態】${getVal('.m-status')}\n【問題排除】\n${getVal('.m-issue')}\n【跨部協調】\n${getVal('.m-coord')}\n【明日戰略】\n${getVal('.m-plan')}\n【人員觀察】\n${getVal('.m-advice')}`; } 
             else {
-                if (currentUser === "李孟瑾" || currentUser === "許芳瑜") { text = `【戰果】${getVal('.pur-type')} (${getVal('.pur-target')})\n💰【價值】\n${getVal('.pur-value')}\n📈【情報】\n${getVal('.pur-market')}`; } 
+                if (currentUser === "林心評" || currentUser === "許芳瑜") { text = `【戰果】${getVal('.pur-type')} (${getVal('.pur-target')})\n💰【價值】\n${getVal('.pur-value')}\n📈【情報】\n${getVal('.pur-market')}`; } 
                 else if (currentUser === "林淑娟" || currentUser === "蘇安琪") { text = `【數量】${getVal('.ast-count')}\n【客戶】${getVal('.ast-clients')}\n✨【客情貢獻】\n${getVal('.ast-voice')}`; } 
                 else if (currentUser === "簡金嬌" || currentUser === "陳美玲") { text = `【單量】${getVal('.order-count')} 張\n⚠️【缺貨】\n${getVal('.order-short')}\n🛑【異常】\n${getVal('.order-issue')}`; } 
                 else if (currentUser === "盧嬿婷") { text = `【報告】\n${getVal('.qc-report')}\n【規格】${getVal('.qc-spec')}\n🛡️【動態】${getVal('.qc-event')}\n⚠️【通報】\n${getVal('.qc-issue')}\n💡【提醒】\n${getVal('.qc-advice')}`; } 
