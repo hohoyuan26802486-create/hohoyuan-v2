@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="禾禾園">
     <meta name="theme-color" content="#f4f7f6">
 
-    <title>禾禾園 - 專屬考勤 App (沙盒測試版)</title>
+    <title>禾禾園 - 智能考勤 App (正式版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -132,7 +132,7 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>專屬智能考勤 App (沙盒版)</p>
+            <p>專屬智能考勤 App (正式版)</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
@@ -189,13 +189,6 @@
                 <div id="statusArea" style="width: 100%; margin-top: 20px;">
                     <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); text-align: center; margin-bottom: 10px;">⏱️ 自動狀態判定</div>
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
-                </div>
-                
-                <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
-                    <label id="lblOtHours" style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">⏳ 申請時數 <span style="font-size:11px; color:#b06000;">(以0.5小時為單位)</span></label>
-                    <input type="number" id="overtimeHours" class="form-control" placeholder="例如：2 或 1.5" step="0.5" min="0.5" style="border-color: #ffe69c; margin-bottom: 10px; background:white;">
-                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請填妥事由 (必填)</label>
-                    <input type="text" id="overtimeReason" class="form-control" placeholder="例如：拜訪客戶、庫存盤點..." style="border-color: #ffe69c; background:white;">
                 </div>
 
                 <div class="punch-btn-wrapper">
@@ -334,7 +327,7 @@
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
-                <label for="histAtt" style="flex:1; text-align:center; padding: 10px 5px;">本月出勤</label>
+                <label for="histAtt" style="flex:1; text-align:center; padding: 10px 5px;">近期出勤</label>
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
@@ -378,7 +371,7 @@
     const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     const HR_MANAGERS = ["姜道凌"]; 
     const FLEX_WORKERS = ["陳美玲", "簡金嬌", "盧嬿婷"]; 
-    const NO_GPS_WORKERS = ["蔡政達"];
+    const NO_GPS_WORKERS = ["蔡政達", "test", "蔡tsat", "TEST 2"];
     const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
     const COMPANY_LAT_1 = 24.956650267283113; 
@@ -625,8 +618,7 @@
 
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return; const type = typeInput.value;
-            const list = document.getElementById('statusList'); const overtimeBox = document.getElementById('overtimeBox');
-            if(overtimeBox) overtimeBox.style.display = "none";
+            const list = document.getElementById('statusList'); 
 
             const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
             if(list) list.innerHTML = "";
@@ -638,8 +630,13 @@
             }
 
             if (type === "上班") {
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性上班)", true); } 
-                else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性上班)", true); 
+                    addStatusBtn("遲到", false);
+                    addStatusBtn("請假後上班", false);
+                    addStatusBtn("外出回廠上班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                } else {
                     if (time < 440) addStatusBtn("個人因素提早上班", true);
                     else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
                     else addStatusBtn("遲到", true);
@@ -648,12 +645,24 @@
                     addStatusBtn("外勤/遠端打卡", false); 
                 }
             } else {
-                if (isFlexWorker) { addStatusBtn("打卡紀錄 (彈性下班)", true); } 
-                else {
+                if (isFlexWorker) { 
+                    addStatusBtn("打卡紀錄 (彈性下班)", true); 
+                    addStatusBtn("經主管核准加班", false);
+                    addStatusBtn("值班(換補休)", false);
+                    addStatusBtn("外出暫時下班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                } else {
                     if (time >= 1010) { 
-                        addStatusBtn("因個人因素延後下班", true); 
-                        if (myDept !== "運輸部") { addStatusBtn("經主管核准加班", false); }
-                    } else { addStatusBtn("正常下班", true); }
+                        if (myDept === "運輸部") {
+                            addStatusBtn("勤務結束下班 (含保障加班)", true); 
+                            addStatusBtn("因個人因素延後下班", false); 
+                        } else {
+                            addStatusBtn("因個人因素延後下班", true); 
+                            addStatusBtn("經主管核准加班", false); 
+                        }
+                    } else { 
+                        addStatusBtn("正常下班", true); 
+                    }
                     addStatusBtn("值班(換補休)", false); 
                     addStatusBtn("外出暫時下班", false);
                     addStatusBtn("外勤/遠端打卡", false); 
@@ -663,25 +672,6 @@
         } catch(e) { console.error(e); }
     }
 
-    function toggleReasonBox(txt) {
-        const ob = document.getElementById('overtimeBox');
-        const lblOt = document.getElementById('lblOtHours');
-        const inputOt = document.getElementById('overtimeHours');
-        if (!ob) return;
-        
-        if (txt.includes("加班") || txt.includes("值班")) {
-            ob.style.display = "block";
-            if (lblOt) lblOt.style.display = "block";
-            if (inputOt) inputOt.style.display = "block";
-        } else if (txt.includes("外勤") || txt.includes("遠端")) {
-            ob.style.display = "block";
-            if (lblOt) lblOt.style.display = "none";
-            if (inputOt) inputOt.style.display = "none";
-        } else {
-            ob.style.display = "none";
-        }
-    }
-
     function addStatusBtn(txt, isSelected) {
         const div = document.createElement('div');
         div.className = isSelected ? "status-btn selected" : "status-btn";
@@ -689,14 +679,12 @@
         
         if (isSelected) {
             selectedStatus = txt;
-            toggleReasonBox(txt);
         }
 
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); 
             selectedStatus = txt;
-            toggleReasonBox(txt);
             updateGPSUI();
         };
         document.getElementById('statusList').appendChild(div);
@@ -716,20 +704,83 @@
         if (isWithinRange) { 
             box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
         } else if (isRemote) {
-            box.innerText = "⚠️ 遠端打卡模式 (需填妥事由)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
+            box.innerText = "⚠️ 遠端打卡模式"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
         } else { 
             box.innerText = "❌ 不在打卡範圍內 (需選外勤/遠端)"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; 
         }
     }
 
-    async function fetchBackendData() {
+    // 🚀 核心升級：抓取兩個月的資料並合併顯示在「近期出勤」
+    async function checkTodayAttendance() {
         try {
-            const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime()); 
-            globalDB = await res.json();
-            updateAnnualLeaveUI(); populateAgentDropdown(); loadPendingProofs();
+            const now = new Date();
+            const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+            // 同時抓取本月與上月的出勤資料
+            const [currText, prevText] = await Promise.all([
+                fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" }),
+                fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(() => "[]")
+            ]);
+
+            let currData = []; try { currData = JSON.parse(currText); } catch(e){}
+            let prevData = []; try { prevData = JSON.parse(prevText); } catch(e){}
+
+            // 完美的資料合併去重，防止 API 回傳相同的預設表
+            let uniqueRecords = new Map();
+            if (currData.length > 0) {
+                uniqueRecords.set("HEADER", currData[0]); 
+                for (let i = 1; i < currData.length; i++) {
+                    uniqueRecords.set(currData[i][0] + "_" + currData[i][1] + "_" + currData[i][3], currData[i]); 
+                }
+            }
+            if (prevData.length > 1) {
+                if (uniqueRecords.size === 0) uniqueRecords.set("HEADER", prevData[0]);
+                for (let i = 1; i < prevData.length; i++) {
+                    uniqueRecords.set(prevData[i][0] + "_" + prevData[i][1] + "_" + prevData[i][3], prevData[i]);
+                }
+            }
+            currentMonthAttData = Array.from(uniqueRecords.values());
+
+            let hasIn = false; let hasOut = false; let inTime = ""; let outTime = "";
+            let dailyPunches = {}; let todayDayStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+            
+            // 漏打卡警告「只抓本月」，避免上個月資料干擾
+            let currentMonthPrefix = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0');
+
+            for (let i = 1; i < currentMonthAttData.length; i++) {
+                let rowName = String(currentMonthAttData[i][1]).trim(); let rowType = String(currentMonthAttData[i][3]).trim(); let rowDate = new Date(currentMonthAttData[i][0]);
+                if (rowName === currentUser && !isNaN(rowDate.getTime())) {
+                    let dStr = rowDate.getFullYear() + '/' + String(rowDate.getMonth()+1).padStart(2,'0') + '/' + String(rowDate.getDate()).padStart(2,'0');
+                    if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
+                    if (rowType.includes("上班")) dailyPunches[dStr].in = true; if (rowType.includes("下班")) dailyPunches[dStr].out = true;
+                    if (dStr === todayDayStr) {
+                        let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
+                        if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
+                        if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
+                    }
+                }
+            }
+
+            let mCount = 0; let missingDates = []; let sortedDays = Object.keys(dailyPunches).sort();
+            for (let d of sortedDays) {
+                if (d !== todayDayStr && d.startsWith(currentMonthPrefix)) { 
+                    if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
+                        mCount++; let parts = d.split('/'); let typeMissing = !dailyPunches[d].in ? '缺上班' : '缺下班';
+                        missingDates.push(`${parts[1]}/${parts[2]} (${typeMissing})`);
+                    }
+                }
+            }
+            monthlyMissingCount = mCount; monthlyMissingDates = missingDates; todayHasIn = hasIn; todayHasOut = hasOut;
+
+            const statusCard = document.getElementById('cardAttStatus');
+            if (hasIn && hasOut) { statusCard.innerHTML = `<span style="color:var(--primary);">✅ 已下班 (${outTime})</span>`; } 
+            else if (hasIn) { statusCard.innerHTML = `<span style="color:#0f9d58;">✅ 已上班 (${inTime})</span>`; } 
+            else { statusCard.innerHTML = `<span style="color:var(--text-sub);">尚未打卡</span>`; }
             if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
-            renderHomeAlerts(); handleTypeChange();
-        } catch (e) { console.error("資料載入失敗:", e); }
+            renderHomeAlerts();
+        } catch (e) { document.getElementById('cardAttStatus').innerText = "無法載入"; }
     }
 
     function handleLeaveTypeChange() {
@@ -799,51 +850,6 @@
         else { pending.forEach(r => { sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; }); }
     }
 
-    async function checkTodayAttendance() {
-        try {
-            const now = new Date(); const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const todayY = now.getFullYear(); const todayM = now.getMonth(); const todayD = now.getDate();
-            const text = await fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: yearMonth, key: "" });
-            currentMonthAttData = JSON.parse(text);
-            
-            let hasIn = false; let hasOut = false; let inTime = ""; let outTime = "";
-            let dailyPunches = {}; let todayDayStr = todayY + '/' + String(todayM+1).padStart(2,'0') + '/' + String(todayD).padStart(2,'0');
-
-            for (let i = 1; i < currentMonthAttData.length; i++) {
-                let rowName = String(currentMonthAttData[i][1]).trim(); let rowType = String(currentMonthAttData[i][3]).trim(); let rowDate = new Date(currentMonthAttData[i][0]);
-                if (rowName === currentUser && !isNaN(rowDate.getTime())) {
-                    let dStr = rowDate.getFullYear() + '/' + String(rowDate.getMonth()+1).padStart(2,'0') + '/' + String(rowDate.getDate()).padStart(2,'0');
-                    if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
-                    if (rowType.includes("上班")) dailyPunches[dStr].in = true; if (rowType.includes("下班")) dailyPunches[dStr].out = true;
-                    if (dStr === todayDayStr) {
-                        let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
-                        if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
-                        if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
-                    }
-                }
-            }
-
-            let mCount = 0; let missingDates = []; let sortedDays = Object.keys(dailyPunches).sort();
-            for (let d of sortedDays) {
-                if (d !== todayDayStr) {
-                    if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
-                        mCount++; let parts = d.split('/'); let typeMissing = !dailyPunches[d].in ? '缺上班' : '缺下班';
-                        missingDates.push(`${parts[1]}/${parts[2]} (${typeMissing})`);
-                    }
-                }
-            }
-            monthlyMissingCount = mCount; monthlyMissingDates = missingDates; todayHasIn = hasIn; todayHasOut = hasOut;
-
-            const statusCard = document.getElementById('cardAttStatus');
-            if (hasIn && hasOut) { statusCard.innerHTML = `<span style="color:var(--primary);">✅ 已下班 (${outTime})</span>`; } 
-            else if (hasIn) { statusCard.innerHTML = `<span style="color:#0f9d58;">✅ 已上班 (${inTime})</span>`; } 
-            else { statusCard.innerHTML = `<span style="color:var(--text-sub);">尚未打卡</span>`; }
-            if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
-            renderHomeAlerts();
-        } catch (e) { document.getElementById('cardAttStatus').innerText = "無法載入"; }
-    }
-
-    // 🚀 核心升級：前端核決判斷 (支援 3 天升級與補登直通)
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         let leaveId = r[0]; let empName = r[2]; let empDept = r[3]; let typeStr = r[4]; 
         let sDate = new Date(r[5]); let eDate = new Date(r[6]);
@@ -908,9 +914,9 @@
         const type = document.querySelector('input[name="historyType"]:checked').value; const container = document.getElementById('historyContent'); container.innerHTML = "";
 
         if (type === 'att') {
-            if (!currentMonthAttData || currentMonthAttData.length <= 1) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>本月尚無您的打卡紀錄喔！</div>"; return; }
+            if (!currentMonthAttData || currentMonthAttData.length <= 1) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
             let myAtts = currentMonthAttData.slice(1).filter(r => String(r[1]).trim() === currentUser); myAtts.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
-            if (myAtts.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>本月尚無您的打卡紀錄喔！</div>"; return; }
+            if (myAtts.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
             myAtts.forEach(r => {
                 let timeStr = formatTimeWithDay(r[0]); let typeStr = r[3]; let status = r[4];
                 let colorClass = 'history-card'; if(status.includes('遲到') || status.includes('早退') || status.includes('異常')) colorClass += ' error';
@@ -1006,31 +1012,8 @@
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
-        const overtimeReasonInput = document.getElementById('overtimeReason');
-        const overtimeHoursInput = document.getElementById('overtimeHours');
         
-        let finalReason = overtimeReasonInput ? overtimeReasonInput.value.trim() : "";
-        let finalHours = overtimeHoursInput ? overtimeHoursInput.value.trim() : "";
-        let isOvertime = selectedStatus.includes("加班") || selectedStatus.includes("值班");
-        let isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
-
-        if (isOvertime || isRemote) {
-            if (isOvertime) {
-                if (!finalHours || !finalReason) {
-                    return Swal.fire('提示', '申請加班或值班時，請務必填寫「申請時數」與「事由」！', 'warning');
-                }
-                if (parseFloat(finalHours) % 0.5 !== 0) {
-                    return Swal.fire('提示', '為配合結算，加班時數請以「0.5小時 (半小時)」為單位輸入喔！(例如：1 或 1.5)', 'warning');
-                }
-                finalReason = finalReason + " (申請 " + finalHours + " 小時)";
-            }
-            if (isRemote) {
-                if (!finalReason) {
-                    return Swal.fire('提示', '使用「外勤/遠端打卡」模式時，請務必填妥「事由」(如：拜訪某某客戶、跨廠區支援)！', 'warning');
-                }
-            }
-        }
-
+        let finalReason = "";
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         
@@ -1048,13 +1031,6 @@
             else if (result === "Duplicate") { Swal.fire('注意', `您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); } 
             else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
-                
-                if (isOvertime) {
-                    const nowStr = new Date().toISOString().slice(0, 16); 
-                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: nowStr, end: nowStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
-                    await fetchApi(ATTENDANCE_API_URL, otPayload);
-                }
-
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
             } else { Swal.fire('失敗', result, 'error'); }
         } catch (e) { Swal.fire('跨域連線遭阻擋', '真實錯誤訊息：' + e.message, 'error'); } 
@@ -1107,8 +1083,30 @@
     }
 
     async function submitPunchCorrection() {
-        const pDate = document.getElementById('pcDate').value; const pTime = document.getElementById('pcTime').value; const pType = document.getElementById('pcType').value; const pReason = document.getElementById('pcReason').value;
+        const pDate = document.getElementById('pcDate').value; 
+        const pTime = document.getElementById('pcTime').value; 
+        const pType = document.getElementById('pcType').value; 
+        const pReason = document.getElementById('pcReason').value;
         if(!pDate || !pTime || !pReason) return Swal.fire('提示', '請填寫完整補登日期、時間與原因！', 'warning');
+        
+        const hourSelected = parseInt(pTime.split(':')[0], 10);
+        
+        if (pType === "上班" && hourSelected >= 12) {
+            return Swal.fire(
+                '時段錯誤 ⚠️', 
+                `您選擇的上班時間是 下午 ${pTime}！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！`, 
+                'error'
+            );
+        }
+        
+        if (pType === "下班" && hourSelected < 12 && hourSelected > 4) { 
+            return Swal.fire(
+                '時段錯誤 ⚠️', 
+                `您選擇的下班時間是 上午 ${pTime}！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！`, 
+                'error'
+            );
+        }
+
         showLoading("申請送出中...");
         
         const dateTimeStr = pDate + "T" + pTime;
@@ -1130,7 +1128,7 @@
     }
 
     function addReportBlock() {
-        if (!globalDB || !globalDB.employees) return;
+        if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成");
         const empRecord = globalDB.employees.find(r => r[0] === currentUser); if (!empRecord) return;
         
         const myDept = empRecord[1]; const isManager = (MANAGERS.includes(currentUser) || TOP_BOSSES.includes(currentUser));
