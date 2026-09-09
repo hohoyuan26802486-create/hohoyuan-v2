@@ -327,7 +327,7 @@
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
-                <label for="histAtt" style="flex:1; text-align:center; padding: 10px 5px;">本月出勤</label>
+                <label for="histAtt" style="flex:1; text-align:center; padding: 10px 5px;">近期出勤</label>
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
@@ -359,7 +359,7 @@
 
 <script>
     // ==========================================
-    // 🔗 API 網址設定區
+    // 🔗 API 網址設定區 (正式版資料庫)
     // ==========================================
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
@@ -710,6 +710,7 @@
         }
     }
 
+    // 🚀 安全找回：負責去後台抓取 globalDB 與載入所有資料的主引擎
     async function fetchBackendData() {
         try {
             const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime()); 
@@ -718,6 +719,79 @@
             if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
             renderHomeAlerts(); handleTypeChange();
         } catch (e) { console.error("資料載入失敗:", e); }
+    }
+
+    // 🚀 核心升級：抓取兩個月的資料並合併顯示在「近期出勤」
+    async function checkTodayAttendance() {
+        try {
+            const now = new Date();
+            const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+            // 雙渦輪抓取：同時去後台拿這個月跟上個月的出勤表
+            const [currText, prevText] = await Promise.all([
+                fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" }),
+                fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(() => "[]")
+            ]);
+
+            let currData = []; try { currData = JSON.parse(currText); } catch(e){}
+            let prevData = []; try { prevData = JSON.parse(prevText); } catch(e){}
+
+            // 完美的資料合併去重
+            let uniqueRecords = new Map();
+            if (currData.length > 0) {
+                uniqueRecords.set("HEADER", currData[0]); 
+                for (let i = 1; i < currData.length; i++) {
+                    uniqueRecords.set(currData[i][0] + "_" + currData[i][1] + "_" + currData[i][3], currData[i]); 
+                }
+            }
+            if (prevData.length > 1) {
+                if (uniqueRecords.size === 0) uniqueRecords.set("HEADER", prevData[0]);
+                for (let i = 1; i < prevData.length; i++) {
+                    uniqueRecords.set(prevData[i][0] + "_" + prevData[i][1] + "_" + prevData[i][3], prevData[i]);
+                }
+            }
+            currentMonthAttData = Array.from(uniqueRecords.values());
+
+            let hasIn = false; let hasOut = false; let inTime = ""; let outTime = "";
+            let dailyPunches = {}; let todayDayStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+            
+            // 漏打卡警告「只抓本月」，避免上個月資料干擾
+            let currentMonthPrefix = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0');
+
+            for (let i = 1; i < currentMonthAttData.length; i++) {
+                let rowName = String(currentMonthAttData[i][1]).trim(); let rowType = String(currentMonthAttData[i][3]).trim(); let rowDate = new Date(currentMonthAttData[i][0]);
+                if (rowName === currentUser && !isNaN(rowDate.getTime())) {
+                    let dStr = rowDate.getFullYear() + '/' + String(rowDate.getMonth()+1).padStart(2,'0') + '/' + String(rowDate.getDate()).padStart(2,'0');
+                    if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
+                    if (rowType.includes("上班")) dailyPunches[dStr].in = true; if (rowType.includes("下班")) dailyPunches[dStr].out = true;
+                    if (dStr === todayDayStr) {
+                        let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
+                        if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
+                        if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
+                    }
+                }
+            }
+
+            let mCount = 0; let missingDates = []; let sortedDays = Object.keys(dailyPunches).sort();
+            for (let d of sortedDays) {
+                if (d !== todayDayStr && d.startsWith(currentMonthPrefix)) { 
+                    if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
+                        mCount++; let parts = d.split('/'); let typeMissing = !dailyPunches[d].in ? '缺上班' : '缺下班';
+                        missingDates.push(`${parts[1]}/${parts[2]} (${typeMissing})`);
+                    }
+                }
+            }
+            monthlyMissingCount = mCount; monthlyMissingDates = missingDates; todayHasIn = hasIn; todayHasOut = hasOut;
+
+            const statusCard = document.getElementById('cardAttStatus');
+            if (hasIn && hasOut) { statusCard.innerHTML = `<span style="color:var(--primary);">✅ 已下班 (${outTime})</span>`; } 
+            else if (hasIn) { statusCard.innerHTML = `<span style="color:#0f9d58;">✅ 已上班 (${inTime})</span>`; } 
+            else { statusCard.innerHTML = `<span style="color:var(--text-sub);">尚未打卡</span>`; }
+            if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
+            renderHomeAlerts();
+        } catch (e) { document.getElementById('cardAttStatus').innerText = "無法載入"; }
     }
 
     function handleLeaveTypeChange() {
@@ -787,50 +861,6 @@
         else { pending.forEach(r => { sel.innerHTML += `<option value="${r[0]}">${r[4]} (${new Date(r[5]).toLocaleDateString()})</option>`; }); }
     }
 
-    async function checkTodayAttendance() {
-        try {
-            const now = new Date(); const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const todayY = now.getFullYear(); const todayM = now.getMonth(); const todayD = now.getDate();
-            const text = await fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: yearMonth, key: "" });
-            currentMonthAttData = JSON.parse(text);
-            
-            let hasIn = false; let hasOut = false; let inTime = ""; let outTime = "";
-            let dailyPunches = {}; let todayDayStr = todayY + '/' + String(todayM+1).padStart(2,'0') + '/' + String(todayD).padStart(2,'0');
-
-            for (let i = 1; i < currentMonthAttData.length; i++) {
-                let rowName = String(currentMonthAttData[i][1]).trim(); let rowType = String(currentMonthAttData[i][3]).trim(); let rowDate = new Date(currentMonthAttData[i][0]);
-                if (rowName === currentUser && !isNaN(rowDate.getTime())) {
-                    let dStr = rowDate.getFullYear() + '/' + String(rowDate.getMonth()+1).padStart(2,'0') + '/' + String(rowDate.getDate()).padStart(2,'0');
-                    if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
-                    if (rowType.includes("上班")) dailyPunches[dStr].in = true; if (rowType.includes("下班")) dailyPunches[dStr].out = true;
-                    if (dStr === todayDayStr) {
-                        let shortTime = `${String(rowDate.getHours()).padStart(2, '0')}:${String(rowDate.getMinutes()).padStart(2, '0')}`;
-                        if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
-                        if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
-                    }
-                }
-            }
-
-            let mCount = 0; let missingDates = []; let sortedDays = Object.keys(dailyPunches).sort();
-            for (let d of sortedDays) {
-                if (d !== todayDayStr) {
-                    if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
-                        mCount++; let parts = d.split('/'); let typeMissing = !dailyPunches[d].in ? '缺上班' : '缺下班';
-                        missingDates.push(`${parts[1]}/${parts[2]} (${typeMissing})`);
-                    }
-                }
-            }
-            monthlyMissingCount = mCount; monthlyMissingDates = missingDates; todayHasIn = hasIn; todayHasOut = hasOut;
-
-            const statusCard = document.getElementById('cardAttStatus');
-            if (hasIn && hasOut) { statusCard.innerHTML = `<span style="color:var(--primary);">✅ 已下班 (${outTime})</span>`; } 
-            else if (hasIn) { statusCard.innerHTML = `<span style="color:#0f9d58;">✅ 已上班 (${inTime})</span>`; } 
-            else { statusCard.innerHTML = `<span style="color:var(--text-sub);">尚未打卡</span>`; }
-            if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
-            renderHomeAlerts();
-        } catch (e) { document.getElementById('cardAttStatus').innerText = "無法載入"; }
-    }
-
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         let leaveId = r[0]; let empName = r[2]; let empDept = r[3]; let typeStr = r[4]; 
         let sDate = new Date(r[5]); let eDate = new Date(r[6]);
@@ -895,9 +925,9 @@
         const type = document.querySelector('input[name="historyType"]:checked').value; const container = document.getElementById('historyContent'); container.innerHTML = "";
 
         if (type === 'att') {
-            if (!currentMonthAttData || currentMonthAttData.length <= 1) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>本月尚無您的打卡紀錄喔！</div>"; return; }
+            if (!currentMonthAttData || currentMonthAttData.length <= 1) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
             let myAtts = currentMonthAttData.slice(1).filter(r => String(r[1]).trim() === currentUser); myAtts.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
-            if (myAtts.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>本月尚無您的打卡紀錄喔！</div>"; return; }
+            if (myAtts.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
             myAtts.forEach(r => {
                 let timeStr = formatTimeWithDay(r[0]); let typeStr = r[3]; let status = r[4];
                 let colorClass = 'history-card'; if(status.includes('遲到') || status.includes('早退') || status.includes('異常')) colorClass += ' error';
@@ -1123,7 +1153,7 @@
             } 
             else if (currentUser === "林淑娟" || currentUser === "蘇安琪") { innerHtml = `<label class="rpt-label">今日報價單/標單數量：</label><input type="text" class="rpt-input ast-count" placeholder="例如: 報價5份/標單2份"><label class="rpt-label">處理客戶名單：</label><textarea class="rpt-textarea ast-clients" placeholder="海底撈、大三元..."></textarea><label class="rpt-label">客情動態與亮點貢獻：</label><textarea class="rpt-textarea ast-voice" placeholder="例如: 促成加碼訂購 / 海底撈詢價"></textarea>`; }
             else if (currentUser === "簡金嬌" || currentUser === "陳美玲") { innerHtml = `<label class="rpt-label">今日打單量：</label><input type="number" class="rpt-input order-count" placeholder="幾張"><label class="rpt-label" style="color:var(--danger);">⚠️ 缺貨/庫存預警 (通報採購)：</label><textarea class="rpt-textarea order-short" placeholder="大紅袍花椒剩不到5斤..."></textarea><label class="rpt-label">營運異常回報：</label><textarea class="rpt-textarea order-issue" placeholder="地址變更 / 系統不順"></textarea>`; }
-            else if (currentUser === "盧嬿婷") { innerHtml = `<label class="rpt-label">向廠商索取檢驗報告：</label><textarea class="rpt-textarea qc-report" placeholder="數量與明細 (例: 2份, A廠商農殘)"></textarea><label class="rpt-label">規格書撰寫/更新量：</label><input type="text" class="rpt-input qc-spec" placeholder="數量與商品"><label class="rpt-label" style="color:var(--danger);">🛡️ 今日外部動態：</label><select class="rpt-select qc-event"><option value="🟢 無異常">🟢 無異常</option><option value="🚨 處理食安疑慮">🚨 處理食安疑慮</option><option value="🏢 衛生局查驗/抽驗">🏢 衛生局查驗/抽驗</option><option value="🏨 飯店客戶巡廠">🏨 飯店客戶巡廠</option></select><label class="rpt-label">處理結果 / 品質異常通報：</label><textarea class="rpt-textarea qc-issue" placeholder="稽核結果？檢驗未過的商品？"></textarea><label class="rpt-label">法規與食安提醒：</label><textarea class="textarea qc-advice" placeholder="最新法規變動提醒..."></textarea>`; }
+            else if (currentUser === "盧嬿婷") { innerHtml = `<label class="rpt-label">向廠商索取檢驗報告：</label><textarea class="rpt-textarea qc-report" placeholder="數量與明細 (例: 2份, A廠商農殘)"></textarea><label class="rpt-label">規格書撰寫/更新量：</label><input type="text" class="rpt-input qc-spec" placeholder="數量與商品"><label class="rpt-label" style="color:var(--danger);">🛡️ 今日外部動態：</label><select class="rpt-select qc-event"><option value="🟢 無異常">🟢 無異常</option><option value="🚨 處理食安疑慮">🚨 處理食安疑慮</option><option value="🏢 衛生局查驗/抽驗">🏢 衛生局查驗/抽驗</option><option value="🏨 飯店客戶巡廠">🏨 飯店客戶巡廠</option></select><label class="rpt-label">處理結果 / 品質異常通報：</label><textarea class="rpt-textarea qc-issue" placeholder="稽核結果？檢驗未過的商品？"></textarea><label class="rpt-label">法規與食安提醒：</label><textarea class="rpt-textarea qc-advice" placeholder="最新法規變動提醒..."></textarea>`; }
             else {
                 switch(myDept) {
                     case "會計部": innerHtml = `<label class="rpt-label">今日對帳 (家數與名單)：</label><input type="text" class="rpt-input acc-match" placeholder="例如: 3家(大三元...)"><label class="rpt-label">今日催帳 (家數與名單)：</label><input type="text" class="rpt-input acc-chase" placeholder="例如: 2家(王老闆...)"><label class="rpt-label">應收/應付處理件數：</label><input type="text" class="rpt-input acc-process" placeholder="例如: 5件"><label class="rpt-label" style="color:var(--danger);">🚨 逾期未歸帳款：</label><input type="text" class="rpt-input acc-overdue" placeholder="客戶名稱與預計金額"><label class="rpt-label" style="color:var(--danger);">⚠️ 需特別注意客戶：</label><textarea class="rpt-textarea acc-warn" placeholder="名稱與原因 (例如付款變慢)"></textarea><label class="rpt-label">給公司的建議：</label><textarea class="rpt-textarea acc-advice" placeholder="財務戰略建議..."></textarea><label class="rpt-label">📌 其他處理事項：</label><textarea class="rpt-textarea acc-other" placeholder="填寫其他交辦或處理事項..."></textarea>`; break;
