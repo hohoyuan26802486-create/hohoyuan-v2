@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="禾禾園">
     <meta name="theme-color" content="#f4f7f6">
 
-    <title>禾禾園 - 智能考勤 App</title>
+    <title>禾禾園 - 智能考勤 App (正式版)</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -98,6 +98,7 @@
         .report-content { display: none; }
         .report-content.active { display: block; }
         
+        /* 表單區塊 */
         .report-block { background: #fff; border: 1px solid #e0e0e0; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
         .card-danger { border-top: 4px solid var(--danger); background: #fce8e6; }
         .card-primary { border-top: 4px solid var(--primary); }
@@ -150,6 +151,7 @@
             </div>
         </div>
 
+        <!-- 📍 打卡區塊 -->
         <div id="viewHome" class="view-section active">
             <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
             <div class="info-cards">
@@ -187,12 +189,6 @@
                 <div id="statusArea" style="width: 100%; margin-top: 20px;">
                     <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); text-align: center; margin-bottom: 10px;">⏱️ 自動狀態判定</div>
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
-                </div>
-                
-                <!-- 🚀 隱藏申請時數，僅保留事由填寫 -->
-                <div id="overtimeBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
-                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請簡單填寫加班事由 (必填)</label>
-                    <input type="text" id="overtimeReason" class="form-control" placeholder="例如：拜訪客戶、庫存盤點..." style="border-color: #ffe69c; background:white;">
                 </div>
 
                 <div class="punch-btn-wrapper">
@@ -362,9 +358,15 @@
 </div>
 
 <script>
+    // ==========================================
+    // 🔗 API 網址設定區
+    // ==========================================
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
 
+    // ==========================================
+    // ⚙️ 系統常數設定
+    // ==========================================
     const MANAGERS = ["吳宏文", "許翊宏", "許哲瑋", "范揚坤", "鍾宇坤", "黃進榮", "汪怡玲", "蔡政達", "姜道凌", "許芳瑜", "楊盟吉"];
     const TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     const HR_MANAGERS = ["姜道凌"]; 
@@ -616,8 +618,7 @@
 
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return; const type = typeInput.value;
-            const list = document.getElementById('statusList'); const overtimeBox = document.getElementById('overtimeBox');
-            if(overtimeBox) overtimeBox.style.display = "none";
+            const list = document.getElementById('statusList'); 
 
             const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
             if(list) list.innerHTML = "";
@@ -671,20 +672,6 @@
         } catch(e) { console.error(e); }
     }
 
-    function toggleReasonBox(txt) {
-        const ob = document.getElementById('overtimeBox');
-        if (!ob) return;
-        
-        // 🚀 隱藏申請時數，僅保留事由填寫
-        if ((txt.includes("加班") || txt.includes("值班")) && txt !== "勤務結束下班 (含保障加班)") {
-            ob.style.display = "block";
-        } else if (txt.includes("外勤") || txt.includes("遠端")) {
-            ob.style.display = "block";
-        } else {
-            ob.style.display = "none";
-        }
-    }
-
     function addStatusBtn(txt, isSelected) {
         const div = document.createElement('div');
         div.className = isSelected ? "status-btn selected" : "status-btn";
@@ -692,14 +679,12 @@
         
         if (isSelected) {
             selectedStatus = txt;
-            toggleReasonBox(txt);
         }
 
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); 
             selectedStatus = txt;
-            toggleReasonBox(txt);
             updateGPSUI();
         };
         document.getElementById('statusList').appendChild(div);
@@ -719,7 +704,7 @@
         if (isWithinRange) { 
             box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
         } else if (isRemote) {
-            box.innerText = "⚠️ 遠端打卡模式 (需填妥事由)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
+            box.innerText = "⚠️ 遠端打卡模式"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
         } else { 
             box.innerText = "❌ 不在打卡範圍內 (需選外勤/遠端)"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; 
         }
@@ -1008,25 +993,8 @@
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
-        const overtimeReasonInput = document.getElementById('overtimeReason');
         
-        let finalReason = overtimeReasonInput ? overtimeReasonInput.value.trim() : "";
-        let isOvertime = (selectedStatus.includes("加班") || selectedStatus.includes("值班")) && selectedStatus !== "勤務結束下班 (含保障加班)";
-        let isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
-
-        if (isOvertime || isRemote) {
-            if (isOvertime) {
-                if (!finalReason) {
-                    return Swal.fire('提示', '申請加班或值班時，請務必填寫「事由」！', 'warning');
-                }
-            }
-            if (isRemote) {
-                if (!finalReason) {
-                    return Swal.fire('提示', '使用「外勤/遠端打卡」模式時，請務必填妥「事由」(如：拜訪某某客戶、跨廠區支援)！', 'warning');
-                }
-            }
-        }
-
+        let finalReason = ""; 
         let finalStatus = selectedStatus;
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         
@@ -1044,17 +1012,6 @@
             else if (result === "Duplicate") { Swal.fire('注意', `您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); } 
             else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
-                
-                if (isOvertime) {
-                    // 🚀 將加班單直接送到後台，無須硬性規定時數，由結算引擎去智能抓取！
-                    let n = new Date();
-                    let pad = (num) => String(num).padStart(2, '0');
-                    let localTimeStr = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`;
-                    
-                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
-                    await fetchApi(ATTENDANCE_API_URL, otPayload);
-                }
-
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
             } else { Swal.fire('失敗', result, 'error'); }
         } catch (e) { Swal.fire('跨域連線遭阻擋', '真實錯誤訊息：' + e.message, 'error'); } 
@@ -1166,7 +1123,7 @@
             } 
             else if (currentUser === "林淑娟" || currentUser === "蘇安琪") { innerHtml = `<label class="rpt-label">今日報價單/標單數量：</label><input type="text" class="rpt-input ast-count" placeholder="例如: 報價5份/標單2份"><label class="rpt-label">處理客戶名單：</label><textarea class="rpt-textarea ast-clients" placeholder="海底撈、大三元..."></textarea><label class="rpt-label">客情動態與亮點貢獻：</label><textarea class="rpt-textarea ast-voice" placeholder="例如: 促成加碼訂購 / 海底撈詢價"></textarea>`; }
             else if (currentUser === "簡金嬌" || currentUser === "陳美玲") { innerHtml = `<label class="rpt-label">今日打單量：</label><input type="number" class="rpt-input order-count" placeholder="幾張"><label class="rpt-label" style="color:var(--danger);">⚠️ 缺貨/庫存預警 (通報採購)：</label><textarea class="rpt-textarea order-short" placeholder="大紅袍花椒剩不到5斤..."></textarea><label class="rpt-label">營運異常回報：</label><textarea class="rpt-textarea order-issue" placeholder="地址變更 / 系統不順"></textarea>`; }
-            else if (currentUser === "盧嬿婷") { innerHtml = `<label class="rpt-label">向廠商索取檢驗報告：</label><textarea class="rpt-textarea qc-report" placeholder="數量與明細 (例: 2份, A廠商農殘)"></textarea><label class="rpt-label">規格書撰寫/更新量：</label><input type="text" class="rpt-input qc-spec" placeholder="數量與商品"><label class="rpt-label" style="color:var(--danger);">🛡️ 今日外部動態：</label><select class="rpt-select qc-event"><option value="🟢 無異常">🟢 無異常</option><option value="🚨 處理食安疑慮">🚨 處理食安疑慮</option><option value="🏢 衛生局查驗/抽驗">🏢 衛生局查驗/抽驗</option><option value="🏨 飯店客戶巡廠">🏨 飯店客戶巡廠</option></select><label class="rpt-label">處理結果 / 品質異常通報：</label><textarea class="rpt-textarea qc-issue" placeholder="稽核結果？檢驗未過的商品？"></textarea><label class="rpt-label">法規與食安提醒：</label><textarea class="rpt-textarea qc-advice" placeholder="最新法規變動提醒..."></textarea>`; }
+            else if (currentUser === "盧嬿婷") { innerHtml = `<label class="rpt-label">向廠商索取檢驗報告：</label><textarea class="rpt-textarea qc-report" placeholder="數量與明細 (例: 2份, A廠商農殘)"></textarea><label class="rpt-label">規格書撰寫/更新量：</label><input type="text" class="rpt-input qc-spec" placeholder="數量與商品"><label class="rpt-label" style="color:var(--danger);">🛡️ 今日外部動態：</label><select class="rpt-select qc-event"><option value="🟢 無異常">🟢 無異常</option><option value="🚨 處理食安疑慮">🚨 處理食安疑慮</option><option value="🏢 衛生局查驗/抽驗">🏢 衛生局查驗/抽驗</option><option value="🏨 飯店客戶巡廠">🏨 飯店客戶巡廠</option></select><label class="rpt-label">處理結果 / 品質異常通報：</label><textarea class="rpt-textarea qc-issue" placeholder="稽核結果？檢驗未過的商品？"></textarea><label class="rpt-label">法規與食安提醒：</label><textarea class="textarea qc-advice" placeholder="最新法規變動提醒..."></textarea>`; }
             else {
                 switch(myDept) {
                     case "會計部": innerHtml = `<label class="rpt-label">今日對帳 (家數與名單)：</label><input type="text" class="rpt-input acc-match" placeholder="例如: 3家(大三元...)"><label class="rpt-label">今日催帳 (家數與名單)：</label><input type="text" class="rpt-input acc-chase" placeholder="例如: 2家(王老闆...)"><label class="rpt-label">應收/應付處理件數：</label><input type="text" class="rpt-input acc-process" placeholder="例如: 5件"><label class="rpt-label" style="color:var(--danger);">🚨 逾期未歸帳款：</label><input type="text" class="rpt-input acc-overdue" placeholder="客戶名稱與預計金額"><label class="rpt-label" style="color:var(--danger);">⚠️ 需特別注意客戶：</label><textarea class="rpt-textarea acc-warn" placeholder="名稱與原因 (例如付款變慢)"></textarea><label class="rpt-label">給公司的建議：</label><textarea class="rpt-textarea acc-advice" placeholder="財務戰略建議..."></textarea><label class="rpt-label">📌 其他處理事項：</label><textarea class="rpt-textarea acc-other" placeholder="填寫其他交辦或處理事項..."></textarea>`; break;
