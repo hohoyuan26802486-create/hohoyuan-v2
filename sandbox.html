@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="禾禾園">
+    <meta name="apple-mobile-web-app-title" content="禾禾園(測試區)">
     <meta name="theme-color" content="#f4f7f6">
 
     <title>禾禾園 - 智能考勤 App (沙盒測試版)</title>
@@ -30,7 +30,7 @@
         #loginScreen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding: 30px; background: white; z-index: 100; position: absolute; width: 100%; transition: 0.3s;}
         .logo-area { text-align: center; margin-bottom: 40px; }
         .logo-area h1 { color: var(--primary); font-size: 28px; margin: 0; font-weight: 800; letter-spacing: 2px;}
-        .logo-area p { color: var(--text-sub); font-size: 14px; margin-top: 8px;}
+        .logo-area p { color: var(--danger); font-size: 14px; margin-top: 8px; font-weight: bold;}
         .login-input { width: 100%; padding: 16px; margin-bottom: 20px; border: 1px solid #dadce0; border-radius: 12px; font-size: 16px; outline: none; transition: 0.2s; }
         .login-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
         .btn-login { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
@@ -41,7 +41,7 @@
         .app-title { font-weight: 900; color: var(--primary); font-size: 18px; letter-spacing: 1px;}
         .avatar { width: 60px; height: 60px; background: var(--primary-light); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; overflow: hidden; border: 2px solid white; box-shadow: 0 3px 10px rgba(0,0,0,0.1); flex-shrink: 0;}
         .greeting h2 { font-size: 28px; color: var(--text-main); margin: 0 0 5px 0; font-weight: 800;}
-        .greeting p { font-size: 14px; color: var(--text-sub); margin: 0; font-weight: 500;}
+        .greeting p { font-size: 14px; color: var(--danger); margin: 0; font-weight: bold;}
 
         .view-section { display: none; flex: 1; flex-direction: column; padding: 20px; overflow-y: auto;}
         .view-section.active { display: flex; }
@@ -132,22 +132,22 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>專屬智能考勤 App (沙盒測試版)</p>
+            <p>【沙盒測試環境】</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
-        <button class="btn-login" onclick="doLogin()">登入專屬系統</button>
+        <button class="btn-login" onclick="doLogin()">登入測試系統</button>
     </div>
 
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
-                <div class="app-title">HOHO YUAN</div>
+                <div class="app-title">HOHO YUAN (Sandbox)</div>
                 <div class="avatar" id="userAvatarBtn" onclick="showUserMenu()" title="設定">👤</div>
             </div>
             <div class="greeting">
                 <h2>Hello, <span id="displayUserName">員工</span></h2>
-                <p>今天也是充滿活力的一天！</p>
+                <p>歡迎來到沙盒測試環境！</p>
             </div>
         </div>
 
@@ -189,6 +189,12 @@
                 <div id="statusArea" style="width: 100%; margin-top: 20px;">
                     <div style="font-size: 13px; font-weight: bold; color: var(--text-sub); text-align: center; margin-bottom: 10px;">⏱️ 自動狀態判定</div>
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
+                </div>
+
+                <!-- 🚀 喚醒：動態事由填寫區塊 -->
+                <div id="reasonBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
+                    <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請填妥事由 (必填)</label>
+                    <input type="text" id="punchReason" class="form-control" placeholder="例如：拜訪客戶、跨廠區支援..." style="border-color: #ffe69c; background:white;">
                 </div>
 
                 <div class="punch-btn-wrapper">
@@ -359,9 +365,12 @@
 
 <script>
     // ==========================================
-    // 🔗 API 網址設定區 (⚠️ 沙盒測試！請將這裡換成您沙盒版的 URL)
+    // 🔗 API 網址設定區
     // ==========================================
-    const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbw60wzR55r8KsTX9xonM9wJaeVmx62pIE-vaMvrLhTuSvf4d9jTzGEnQznWJ7SYo55OGA/exec";
+    // ⚠️ 沙盒測試區的 Web App URL 已更新為您提供的網址！
+    const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbzaPP6NMHAGtKKTiIUYysctkvoLIxK7gcbv6mOzui70PzSmEShACRhfebjg-NLmC34O/exec"; 
+    
+    // 如果報表也需要分開測試，請建立新的報表 Google Sheet 並替換下方 URL；若共用則保留。
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
 
     // ==========================================
@@ -609,6 +618,22 @@
         else { compBox.style.display = 'none'; document.getElementById('compLeaveDate').value = ''; }
     }
 
+    // 🚀 喚醒動態理由框判定邏輯
+    function toggleReasonBox(txt) {
+        const rb = document.getElementById('reasonBox');
+        if (!rb) return;
+        
+        if (txt.includes("外勤") || txt.includes("遠端") || txt.includes("加班") || txt.includes("值班")) {
+            if (txt === "勤務結束下班 (含保障加班)") {
+                rb.style.display = "none";
+            } else {
+                rb.style.display = "block";
+            }
+        } else {
+            rb.style.display = "none";
+        }
+    }
+
     function handleTypeChange() {
         try {
             if(!currentUser) return;
@@ -679,12 +704,14 @@
         
         if (isSelected) {
             selectedStatus = txt;
+            toggleReasonBox(txt); // 喚醒
         }
 
         div.onclick = function() {
             document.querySelectorAll('#statusList .status-btn').forEach(b => b.classList.remove('selected'));
             div.classList.add('selected'); 
             selectedStatus = txt;
+            toggleReasonBox(txt); // 喚醒
             updateGPSUI();
         };
         document.getElementById('statusList').appendChild(div);
@@ -710,7 +737,6 @@
         }
     }
 
-    // 🚀 安全找回：負責去後台抓取 globalDB 與載入所有資料的主引擎
     async function fetchBackendData() {
         try {
             const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime()); 
@@ -721,7 +747,6 @@
         } catch (e) { console.error("資料載入失敗:", e); }
     }
 
-    // 🚀 核心升級：抓取兩個月的資料並合併顯示在「近期出勤」
     async function checkTodayAttendance() {
         try {
             const now = new Date();
@@ -729,7 +754,6 @@
             const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
             const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
-            // 雙渦輪抓取：同時去後台拿這個月跟上個月的出勤表
             const [currText, prevText] = await Promise.all([
                 fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" }),
                 fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(() => "[]")
@@ -738,7 +762,6 @@
             let currData = []; try { currData = JSON.parse(currText); } catch(e){}
             let prevData = []; try { prevData = JSON.parse(prevText); } catch(e){}
 
-            // 完美的資料合併去重
             let uniqueRecords = new Map();
             if (currData.length > 0) {
                 uniqueRecords.set("HEADER", currData[0]); 
@@ -757,7 +780,6 @@
             let hasIn = false; let hasOut = false; let inTime = ""; let outTime = "";
             let dailyPunches = {}; let todayDayStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
             
-            // 漏打卡警告「只抓本月」，避免上個月資料干擾
             let currentMonthPrefix = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0');
 
             for (let i = 1; i < currentMonthAttData.length; i++) {
@@ -1023,9 +1045,17 @@
     async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
+        const reasonInput = document.getElementById('punchReason');
         
-        let finalReason = ""; 
+        let finalReason = (reasonInput && document.getElementById('reasonBox').style.display !== "none") ? reasonInput.value.trim() : ""; 
         let finalStatus = selectedStatus;
+
+        if (finalStatus.includes("外勤") || finalStatus.includes("遠端") || ((finalStatus.includes("加班") || finalStatus.includes("值班")) && finalStatus !== "勤務結束下班 (含保障加班)")) {
+            if (!finalReason) {
+                return Swal.fire('提示', '請務必填妥「事由」(例如：拜訪客戶、處理公務)！', 'warning');
+            }
+        }
+
         if (isHolidayToday()) { finalStatus = `【${document.getElementById('holidayType').value}】` + selectedStatus; }
         
         showLoading("打卡資料傳送中...");
@@ -1042,6 +1072,16 @@
             else if (result === "Duplicate") { Swal.fire('注意', `您剛剛已經打過卡了喔！請勿連續重複點擊！`, 'warning'); } 
             else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
+                
+                if (finalStatus.includes("加班") || finalStatus.includes("值班")) {
+                    let n = new Date();
+                    let pad = (num) => String(num).padStart(2, '0');
+                    let localTimeStr = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`;
+                    
+                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
+                    await fetchApi(ATTENDANCE_API_URL, otPayload);
+                }
+
                 Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
             } else { Swal.fire('失敗', result, 'error'); }
         } catch (e) { Swal.fire('跨域連線遭阻擋', '真實錯誤訊息：' + e.message, 'error'); } 
