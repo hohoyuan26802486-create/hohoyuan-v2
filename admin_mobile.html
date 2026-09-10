@@ -101,7 +101,7 @@
         .status-err { background: var(--danger-bg); color: var(--danger); }
 
         /* 簽核卡片 */
-        .approval-card { border-left: 4px solid var(--warning); }
+        .approval-card { border-left: 4px solid var(--warning); cursor: pointer;}
         .approval-card.high-risk { border-left-color: var(--danger); }
         .ac-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px dashed #E0E0E0; padding-bottom: 8px; }
         .ac-name { font-size: 16px; font-weight: 900; color: var(--navy); display: flex; align-items: center; gap: 8px; }
@@ -110,8 +110,10 @@
         .ac-type.urgent { background: var(--danger-bg); color: var(--danger); }
         .ac-body { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
         .ac-body strong { color: var(--text-main); }
-        .btn-outline { flex: 1; padding: 10px; border: 1px solid var(--danger); background: white; color: var(--danger); border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .btn-fill { flex: 1; padding: 10px; border: none; background: var(--success); color: white; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .btn-outline { flex: 1; padding: 10px; border: 1px solid var(--danger); background: white; color: var(--danger); border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;}
+        .btn-outline:active { background: #fce8e6; }
+        .btn-fill { flex: 1; padding: 10px; border: none; background: var(--success); color: white; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;}
+        .btn-fill:active { opacity: 0.8; }
 
         /* 模態彈窗 (Modal) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; display: none; justify-content: center; align-items: flex-end; }
@@ -255,7 +257,7 @@
         </div>
     </div>
 
-    <!-- 視圖 4：管理決策報表 (新增鑽取分析功能) -->
+    <!-- 視圖 4：管理決策報表 (鑽取分析功能) -->
     <div id="viewReport" class="view-section">
         <div style="padding: 20px;">
             <div class="section-header">
@@ -286,7 +288,7 @@
                 </div>
             </div>
 
-            <!-- 新增：部門休假風險排行榜 -->
+            <!-- 部門休假風險排行榜 -->
             <div class="card" id="rptDeptLeaveRatioCard">
                 <h4 style="margin:0 0 15px 0; color: var(--navy);">📊 異常：部門休假比例排行</h4>
                 <div style="font-size:12px; color:var(--text-sub); margin-bottom:15px;">( 依據：部門本月總請假天數 ÷ 部門總人數 )</div>
@@ -410,7 +412,7 @@
             attDataThisMonth = JSON.parse(attText) || [];
 
             analyzeDataAndRender();
-            calculateRealReportData(); // 🌟 計算真實報表數據
+            calculateRealReportData(); 
         } catch(e) { console.error(e); Swal.fire('警告', '部分資料載入失敗，可能影響統計精準度', 'warning'); }
         finally { hideLoading(); }
     }
@@ -648,14 +650,46 @@
         `;
 
         document.getElementById('modalBody').innerHTML = bodyHtml;
+        
+        // 將 ID 與狀態透過 data- 屬性綁定到按鈕，避免引號出錯
         document.getElementById('modalFooter').innerHTML = `
-            <button class="btn-outline" onclick="processApproval('${id}', '已退回')">駁回申請</button>
-            <button class="btn-fill" onclick="processApproval('${id}', '已生效')">確認核准</button>
+            <button class="btn-outline" onclick="processApproval(this)" data-id="${id}" data-status="已退回">駁回申請</button>
+            <button class="btn-fill" onclick="processApproval(this)" data-id="${id}" data-status="已生效">確認核准</button>
         `;
         document.getElementById('globalModal').style.display = 'flex';
     }
 
-    // 🌟 計算真實報表數據 (包含加班、假別、部門休假比例)
+    // 🌟 修正後的簽核資料傳送功能 (補上 key)
+    async function processApproval(btn) {
+        let id = btn.getAttribute('data-id');
+        let status = btn.getAttribute('data-status');
+        let actionText = status === '已退回' ? '駁回' : '核准';
+        
+        if(status === '已退回') {
+            const { value: reason } = await Swal.fire({ title: '請輸入駁回原因', input: 'text', showCancelButton: true });
+            if(!reason) return;
+        }
+
+        showLoading("決策同步中...");
+        try {
+            // ✅ 補上 key: currentKey，讓資料庫知道是高階主管在操作，通過權限防護
+            const text = await fetchApi({ action: "updateLeave", id: String(id).trim(), newStatus: status, key: currentKey });
+            
+            if (text === "Success" || text.includes("Success")) { 
+                Swal.fire('成功', `申請單${actionText}成功！`, 'success'); 
+                closeModal();
+                loadSecureData(); // 重抓資料以更新畫面
+            } else {
+                Swal.fire('資料庫回報異常', text, 'error'); 
+            }
+        } catch(e) { 
+            Swal.fire('網路連線錯誤', e.message, 'error'); 
+        } finally { 
+            hideLoading(); 
+        }
+    }
+
+    // 🌟 計算真實報表數據
     function calculateRealReportData() {
         if (!db.leave || !db.employees) return;
         
@@ -665,10 +699,9 @@
 
         globalReportOT = {}; 
         globalReportLeave = { "病假": [], "事假": [], "特休": [] };
-        let deptLeaveStats = {}; // { dept: { totalDays: 0, headcount: 0 } }
+        let deptLeaveStats = {};
         let totalOTHours = 0;
 
-        // 初始化部門人數
         db.employees.forEach((r, i) => {
             if (i === 0 || !r[0] || r[19] === "已離職") return;
             let dept = r[1] || "未分類";
@@ -677,7 +710,6 @@
             if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
         });
 
-        // 讀取當月假單
         db.leave.forEach((r, i) => {
             if (i === 0 || r[8] !== "已生效") return;
             
@@ -710,7 +742,6 @@
             }
         });
 
-        // 渲染數據到畫面
         document.getElementById('rptTotalOT').innerText = totalOTHours.toFixed(1);
         
         let sickTotal = globalReportLeave["病假"].reduce((acc, curr) => acc + curr.days, 0);
@@ -721,7 +752,6 @@
         document.getElementById('rptPersonal').innerText = personalTotal.toFixed(1);
         document.getElementById('rptAnnual').innerText = annualTotal.toFixed(1);
 
-        // 渲染加班部門排行榜
         let otArr = Object.keys(globalReportOT).map(d => ({ dept: d, total: globalReportOT[d].total })).sort((a,b) => b.total - a.total);
         let maxOT = otArr.length > 0 ? otArr[0].total : 1; 
         if(maxOT === 0) maxOT = 1;
@@ -745,7 +775,6 @@
         if(otHtml === '') otHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月目前無加班紀錄</div>';
         document.getElementById('rptDeptOT').innerHTML = otHtml;
 
-        // 渲染部門休假比例排行 (Total Days / Headcount)
         let riskArr = [];
         for(let d in deptLeaveStats) {
             if(deptLeaveStats[d].headcount > 0) {
@@ -775,7 +804,6 @@
         document.getElementById('rptDeptLeaveRatio').innerHTML = riskHtml;
     }
 
-    // 🌟 點擊鑽取：顯示部門加班名單
     window.showDeptOvertimeDetail = function(deptName) {
         if(!globalReportOT[deptName]) return;
         
@@ -804,7 +832,6 @@
         document.getElementById('globalModal').style.display = 'flex';
     };
 
-    // 🌟 點擊鑽取：顯示各假別名單
     window.showLeaveDetail = function(leaveType) {
         let list = globalReportLeave[leaveType];
         if(!list) return;
@@ -819,7 +846,6 @@
         if(list.length === 0) {
             bodyHtml += '<div style="text-align:center; padding:20px; color:var(--text-light);">本月無紀錄</div>';
         } else {
-            // 排序：天數多到少
             list.sort((a,b) => b.days - a.days);
             list.forEach(item => {
                 bodyHtml += `
@@ -842,7 +868,6 @@
         document.getElementById('globalModal').style.display = 'flex';
     };
 
-    // 原有的員工詳細分析 Modal
     function openStaffDetailModal(empName) {
         if (!db.employees || !db.leave) return;
         const emp = db.employees.find(r => r[0] === empName);
@@ -933,7 +958,6 @@
 
     function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
-    // 組織人事清單
     function renderHRList() {
         const c = document.getElementById('hrListContainer');
         const keyword = document.getElementById('hrSearch').value.trim();
@@ -945,7 +969,7 @@
         let html = '';
         emps.forEach(r => {
             html += `
-                <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; cursor:pointer;" onclick="openStaffDetailModal('${r[0]}')">
+                <div class="card interactive-row" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; margin-bottom:10px;" onclick="openStaffDetailModal('${r[0]}')">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="width:42px; height:42px; border-radius:50%; background:var(--navy); color:white; display:flex; justify-content:center; align-items:center; font-weight:bold; font-size:16px;">${r[0].substring(0,1)}</div>
                         <div>
