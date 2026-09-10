@@ -85,7 +85,7 @@
     <div id="loginScreen">
         <div class="login-box">
             <h1>主管行動後台</h1>
-            <p>【沙盒專屬環境】</p>
+            <p>【連線正式資料庫】</p>
             <select id="loginRole" class="form-control" style="font-weight:bold; text-align:center;">
                 <option value="人事部">👩‍💼 人事部主管</option>
                 <option value="財務部">💰 財務部主管</option>
@@ -199,8 +199,8 @@
 </div>
 
 <script>
-    // ⚠️ 已替換為沙盒測試區 API URL
-    const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbzaPP6NMHAGtKKTiIUYysctkvoLIxK7gcbv6mOzui70PzSmEShACRhfebjg-NLmC34O/exec"; 
+    // ✅ 統一對接到：正式上線的真實資料庫大腦
+    const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbwpBQWJQfEPSZlcglHakr4pV6QXWrhi5xTZQIKqNC-XjkgDzWbegRqy-B5ENm3zdGohDQ/exec"; 
     
     let db = {};
     let currentRole = "";
@@ -227,7 +227,7 @@
             const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime());
             db = await res.json();
             hideLoading();
-        } catch(e) { hideLoading(); Swal.fire('連線失敗', '無法取得沙盒資料庫狀態', 'error'); }
+        } catch(e) { hideLoading(); Swal.fire('連線失敗', '無法取得正式資料庫狀態', 'error'); }
     }
 
     async function doLogin() {
