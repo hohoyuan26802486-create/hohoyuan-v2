@@ -64,6 +64,9 @@
         .section-link { font-size: 13px; color: var(--info); font-weight: 700; text-decoration: none; cursor: pointer; }
         .card { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; transition: 0.15s ease; }
         .card:active { transform: scale(0.99); }
+        .interactive-row { cursor: pointer; transition: 0.2s; padding: 6px; border-radius: 8px; }
+        .interactive-row:hover { background: #f8f9fa; }
+        .interactive-row:active { background: #eef2f5; }
         
         /* 總覽 6 宮格 */
         .grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
@@ -252,7 +255,7 @@
         </div>
     </div>
 
-    <!-- 視圖 4：管理決策報表 -->
+    <!-- 視圖 4：管理決策報表 (新增鑽取分析功能) -->
     <div id="viewReport" class="view-section">
         <div style="padding: 20px;">
             <div class="section-header">
@@ -260,21 +263,34 @@
             </div>
             
             <div class="card">
-                <h4 style="margin:0 0 15px 0; color: var(--navy);">📈 本月加班趨勢</h4>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h4 style="margin:0; color: var(--navy);">📈 本月加班趨勢</h4>
+                    <span style="font-size:11px; color:var(--info);">📍點擊部門看名單</span>
+                </div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 15px;">
-                    <div><span style="font-size:28px; font-weight:900; color:var(--danger);" id="rptTotalOT">-</span><span style="font-size:12px; font-weight:bold; color:var(--text-sub);"> 小時</span></div>
-                    <div style="font-size:13px; font-weight:bold; color:var(--danger);">↑ 12% 較上月</div>
+                    <div><span style="font-size:28px; font-weight:900; color:var(--danger);" id="rptTotalOT">0</span><span style="font-size:12px; font-weight:bold; color:var(--text-sub);"> 小時</span></div>
+                    <div style="font-size:13px; font-weight:bold; color:var(--danger);">本月累計</div>
                 </div>
                 <div id="rptDeptOT"></div>
             </div>
 
             <div class="card">
-                <h4 style="margin:0 0 15px 0; color: var(--navy);">🏖️ 本月請假狀況</h4>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="text-align:center;"><div style="font-size:20px; font-weight:900;" id="rptSick">0</div><div style="font-size:12px; color:var(--text-sub);">病假</div></div>
-                    <div style="text-align:center;"><div style="font-size:20px; font-weight:900;" id="rptPersonal">0</div><div style="font-size:12px; color:var(--text-sub);">事假</div></div>
-                    <div style="text-align:center;"><div style="font-size:20px; font-weight:900; color:var(--info);" id="rptAnnual">0</div><div style="font-size:12px; color:var(--text-sub);">特休</div></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h4 style="margin:0; color: var(--navy);">🏖️ 本月請假狀況</h4>
+                    <span style="font-size:11px; color:var(--info);">📍點擊假別看名單</span>
                 </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px;">
+                    <div class="interactive-row" style="text-align:center; flex:1;" onclick="showLeaveDetail('病假')"><div style="font-size:20px; font-weight:900; color:var(--danger);" id="rptSick">0</div><div style="font-size:12px; color:var(--text-sub);">病假(天)</div></div>
+                    <div class="interactive-row" style="text-align:center; flex:1; border-left:1px solid #eee; border-right:1px solid #eee;" onclick="showLeaveDetail('事假')"><div style="font-size:20px; font-weight:900; color:var(--warning);" id="rptPersonal">0</div><div style="font-size:12px; color:var(--text-sub);">事假(天)</div></div>
+                    <div class="interactive-row" style="text-align:center; flex:1;" onclick="showLeaveDetail('特休')"><div style="font-size:20px; font-weight:900; color:var(--info);" id="rptAnnual">0</div><div style="font-size:12px; color:var(--text-sub);">特休(天)</div></div>
+                </div>
+            </div>
+
+            <!-- 新增：部門休假風險排行榜 -->
+            <div class="card" id="rptDeptLeaveRatioCard">
+                <h4 style="margin:0 0 15px 0; color: var(--navy);">📊 異常：部門休假比例排行</h4>
+                <div style="font-size:12px; color:var(--text-sub); margin-bottom:15px;">( 依據：部門本月總請假天數 ÷ 部門總人數 )</div>
+                <div id="rptDeptLeaveRatio"></div>
             </div>
         </div>
     </div>
@@ -297,8 +313,8 @@
     </div>
 </div>
 
-<!-- 模態彈窗：簽核評估 / 員工年度休假分析 -->
-<div class="modal-overlay" id="approvalModal">
+<!-- 共用模態彈窗 Modal -->
+<div class="modal-overlay" id="globalModal">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="modalMainTitle">詳細資訊</h3>
@@ -317,6 +333,10 @@
     let currentRole = "";
     let currentKey = "";
     let pendingApprovals = [];
+
+    // 用於報表鑽取的全球變數
+    let globalReportOT = {}; 
+    let globalReportLeave = { "病假": [], "事假": [], "特休": [] }; 
 
     window.onload = async () => {
         setDateTitle();
@@ -390,6 +410,7 @@
             attDataThisMonth = JSON.parse(attText) || [];
 
             analyzeDataAndRender();
+            calculateRealReportData(); // 🌟 計算真實報表數據
         } catch(e) { console.error(e); Swal.fire('警告', '部分資料載入失敗，可能影響統計精準度', 'warning'); }
         finally { hideLoading(); }
     }
@@ -471,7 +492,6 @@
         renderHomeApprovals();
         renderAllApprovals('all');
         renderHRList();
-        renderReportStats();
     }
 
     function renderHomeAlerts(missing, pendings) {
@@ -632,10 +652,197 @@
             <button class="btn-outline" onclick="processApproval('${id}', '已退回')">駁回申請</button>
             <button class="btn-fill" onclick="processApproval('${id}', '已生效')">確認核准</button>
         `;
-        document.getElementById('approvalModal').style.display = 'flex';
+        document.getElementById('globalModal').style.display = 'flex';
     }
 
-    // 🌟 核心新功能：點擊員工查看年度請假狀況與過高分析
+    // 🌟 計算真實報表數據 (包含加班、假別、部門休假比例)
+    function calculateRealReportData() {
+        if (!db.leave || !db.employees) return;
+        
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth(); 
+
+        globalReportOT = {}; 
+        globalReportLeave = { "病假": [], "事假": [], "特休": [] };
+        let deptLeaveStats = {}; // { dept: { totalDays: 0, headcount: 0 } }
+        let totalOTHours = 0;
+
+        // 初始化部門人數
+        db.employees.forEach((r, i) => {
+            if (i === 0 || !r[0] || r[19] === "已離職") return;
+            let dept = r[1] || "未分類";
+            if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
+            deptLeaveStats[dept].headcount++;
+            if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
+        });
+
+        // 讀取當月假單
+        db.leave.forEach((r, i) => {
+            if (i === 0 || r[8] !== "已生效") return;
+            
+            let sDate = new Date(r[5]);
+            let eDate = new Date(r[6]);
+            
+            if (sDate.getFullYear() === currentYear && sDate.getMonth() === currentMonth) {
+                let name = r[2]; let dept = r[3]; let type = r[4]; let reason = r[7];
+                let rawHrs = (eDate.getTime() - sDate.getTime()) / 3600000;
+
+                if (type === "加班申請") {
+                    let appliedOt = rawHrs;
+                    let otMatch = reason ? reason.match(/申請\s*([\d\.]+)\s*小時/) : null;
+                    if (otMatch && otMatch[1]) appliedOt = parseFloat(otMatch[1]);
+                    
+                    if (globalReportOT[dept]) {
+                        globalReportOT[dept].total += appliedOt;
+                        globalReportOT[dept].emps[name] = (globalReportOT[dept].emps[name] || 0) + appliedOt;
+                        totalOTHours += appliedOt;
+                    }
+                } else if (["病假", "事假", "特休"].includes(type)) {
+                    let days = 0;
+                    if (rawHrs > 16) { days = Math.ceil(rawHrs / 24); } 
+                    else { let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; days = Math.min(8, actHrs) / 8; }
+                    
+                    globalReportLeave[type].push({ name: name, dept: dept, days: days, date: `${sDate.getDate()}號`, reason: reason || "無備註" });
+                    
+                    if (deptLeaveStats[dept]) deptLeaveStats[dept].totalDays += days;
+                }
+            }
+        });
+
+        // 渲染數據到畫面
+        document.getElementById('rptTotalOT').innerText = totalOTHours.toFixed(1);
+        
+        let sickTotal = globalReportLeave["病假"].reduce((acc, curr) => acc + curr.days, 0);
+        let personalTotal = globalReportLeave["事假"].reduce((acc, curr) => acc + curr.days, 0);
+        let annualTotal = globalReportLeave["特休"].reduce((acc, curr) => acc + curr.days, 0);
+        
+        document.getElementById('rptSick').innerText = sickTotal.toFixed(1);
+        document.getElementById('rptPersonal').innerText = personalTotal.toFixed(1);
+        document.getElementById('rptAnnual').innerText = annualTotal.toFixed(1);
+
+        // 渲染加班部門排行榜
+        let otArr = Object.keys(globalReportOT).map(d => ({ dept: d, total: globalReportOT[d].total })).sort((a,b) => b.total - a.total);
+        let maxOT = otArr.length > 0 ? otArr[0].total : 1; 
+        if(maxOT === 0) maxOT = 1;
+
+        let otHtml = '';
+        otArr.forEach(d => {
+            if(d.total > 0) {
+                let percent = (d.total / maxOT) * 100;
+                otHtml += `
+                    <div class="interactive-row" onclick="showDeptOvertimeDetail('${d.dept}')">
+                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold; margin-bottom:4px; color:var(--text-main);">
+                            <span>${d.dept}</span><span>${d.total.toFixed(1)} h</span>
+                        </div>
+                        <div style="background:#eee; height:8px; border-radius:4px;">
+                            <div style="background:var(--navy); width:${percent}%; height:100%; border-radius:4px;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        if(otHtml === '') otHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月目前無加班紀錄</div>';
+        document.getElementById('rptDeptOT').innerHTML = otHtml;
+
+        // 渲染部門休假比例排行 (Total Days / Headcount)
+        let riskArr = [];
+        for(let d in deptLeaveStats) {
+            if(deptLeaveStats[d].headcount > 0) {
+                let ratio = deptLeaveStats[d].totalDays / deptLeaveStats[d].headcount;
+                if(deptLeaveStats[d].totalDays > 0) {
+                    riskArr.push({ dept: d, ratio: ratio, days: deptLeaveStats[d].totalDays, hc: deptLeaveStats[d].headcount });
+                }
+            }
+        }
+        riskArr.sort((a,b) => b.ratio - a.ratio);
+
+        let riskHtml = '';
+        riskArr.forEach((r, idx) => {
+            let riskColor = idx === 0 && r.ratio > 1.0 ? "var(--danger)" : "var(--navy-light)";
+            let badge = idx === 0 && r.ratio > 1.0 ? `<span style="font-size:10px; background:var(--danger); color:white; padding:2px 6px; border-radius:6px; margin-left:6px;">最高風險</span>` : '';
+            riskHtml += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee;">
+                    <div>
+                        <div style="font-size:14px; font-weight:bold; color:${riskColor};">${r.dept} ${badge}</div>
+                        <div style="font-size:11px; color:var(--text-sub);">共休 ${r.days.toFixed(1)} 天 / 總人數 ${r.hc} 人</div>
+                    </div>
+                    <div style="font-size:16px; font-weight:900; color:${riskColor};">${r.ratio.toFixed(2)}</div>
+                </div>
+            `;
+        });
+        if(riskHtml === '') riskHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月各部門目前無請假紀錄</div>';
+        document.getElementById('rptDeptLeaveRatio').innerHTML = riskHtml;
+    }
+
+    // 🌟 點擊鑽取：顯示部門加班名單
+    window.showDeptOvertimeDetail = function(deptName) {
+        if(!globalReportOT[deptName]) return;
+        
+        let emps = globalReportOT[deptName].emps;
+        let empArr = Object.keys(emps).map(e => ({ name: e, hours: emps[e] })).sort((a,b) => b.hours - a.hours);
+        
+        document.getElementById('modalMainTitle').innerText = `${deptName} - 本月加班名單`;
+
+        let bodyHtml = `<div style="font-size:13px; color:var(--text-sub); margin-bottom:15px;">本月該部門總加班：<strong style="color:var(--danger); font-size:16px;">${globalReportOT[deptName].total.toFixed(1)}</strong> 小時</div>`;
+        
+        empArr.forEach((e, i) => {
+            let rankColor = i === 0 ? "var(--danger)" : "var(--navy)";
+            bodyHtml += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:#F8F9FA; border-radius:10px; margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="font-size:14px; font-weight:900; color:#ccc;">${i+1}</div>
+                        <div style="font-size:15px; font-weight:bold; color:var(--text-main);">${e.name}</div>
+                    </div>
+                    <div style="font-size:16px; font-weight:900; color:${rankColor};">${e.hours.toFixed(1)} <span style="font-size:12px;">h</span></div>
+                </div>
+            `;
+        });
+
+        document.getElementById('modalBody').innerHTML = bodyHtml;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉視窗</button>`;
+        document.getElementById('globalModal').style.display = 'flex';
+    };
+
+    // 🌟 點擊鑽取：顯示各假別名單
+    window.showLeaveDetail = function(leaveType) {
+        let list = globalReportLeave[leaveType];
+        if(!list) return;
+
+        document.getElementById('modalMainTitle').innerText = `本月 ${leaveType} 名單`;
+        
+        let totalDays = list.reduce((acc, curr) => acc + curr.days, 0);
+        let titleColor = leaveType === '病假' ? 'var(--danger)' : (leaveType === '事假' ? 'var(--warning)' : 'var(--info)');
+
+        let bodyHtml = `<div style="font-size:13px; color:var(--text-sub); margin-bottom:15px;">本月全公司共計：<strong style="color:${titleColor}; font-size:16px;">${totalDays.toFixed(1)}</strong> 天</div>`;
+        
+        if(list.length === 0) {
+            bodyHtml += '<div style="text-align:center; padding:20px; color:var(--text-light);">本月無紀錄</div>';
+        } else {
+            // 排序：天數多到少
+            list.sort((a,b) => b.days - a.days);
+            list.forEach(item => {
+                bodyHtml += `
+                    <div style="padding:12px; background:#F8F9FA; border-radius:10px; margin-bottom:8px; border-left:4px solid ${titleColor};">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <div style="font-size:15px; font-weight:bold; color:var(--text-main);">${item.name} <span style="font-size:11px; font-weight:normal; color:var(--text-sub); background:#eee; padding:2px 6px; border-radius:4px;">${item.dept}</span></div>
+                            <div style="font-size:16px; font-weight:900; color:${titleColor};">${item.days.toFixed(1)} <span style="font-size:12px;">天</span></div>
+                        </div>
+                        <div style="font-size:12px; color:var(--text-sub); display:flex; justify-content:space-between;">
+                            <span>📅 ${item.date}</span>
+                            <span>📝 ${item.reason}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('modalBody').innerHTML = bodyHtml;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉視窗</button>`;
+        document.getElementById('globalModal').style.display = 'flex';
+    };
+
+    // 原有的員工詳細分析 Modal
     function openStaffDetailModal(empName) {
         if (!db.employees || !db.leave) return;
         const emp = db.employees.find(r => r[0] === empName);
@@ -656,151 +863,77 @@
 
         let leaveRecords = [];
 
-        // 統計該員工當年度已核准請假紀錄
         db.leave.forEach((r, idx) => {
             if (idx === 0) return;
             if (r[2] === empName && r[8] === "已生效") {
-                let sDate = new Date(r[5]);
-                let eDate = new Date(r[6]);
+                let sDate = new Date(r[5]); let eDate = new Date(r[6]);
                 if (!isNaN(sDate.getTime()) && sDate.getFullYear() === currentYear) {
                     let type = r[4] || "其他";
                     if (type === "打卡補登" || type === "加班申請") return;
 
                     let rawHrs = (eDate.getTime() - sDate.getTime()) / 3600000;
                     let days = 0;
-                    if (rawHrs > 16) {
-                        days = Math.ceil(rawHrs / 24);
-                    } else {
-                        let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
-                        days = Math.min(8, actHrs) / 8;
-                    }
+                    if (rawHrs > 16) { days = Math.ceil(rawHrs / 24); } 
+                    else { let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; days = Math.min(8, actHrs) / 8; }
 
                     let targetCategory = stats[type] ? type : "其他";
                     stats[targetCategory].days += days;
                     stats[targetCategory].hours += rawHrs;
                     stats[targetCategory].count += 1;
 
-                    leaveRecords.push({
-                        date: `${sDate.getMonth() + 1}/${sDate.getDate()}`,
-                        type: type,
-                        days: days,
-                        reason: r[7] || "無備註"
-                    });
+                    leaveRecords.push({ date: `${sDate.getMonth() + 1}/${sDate.getDate()}`, type: type, days: days, reason: r[7] || "無備註" });
                 }
             }
         });
 
         leaveRecords.reverse();
 
-        // 🧠 智慧評估邏輯
         let nonAnnualDays = stats["病假"].days + stats["事假"].days;
-        let healthBadge = "";
-        let healthAdvice = "";
-        let boxClass = "risk-box";
+        let healthBadge = ""; let healthAdvice = ""; let boxClass = "risk-box";
 
         if (stats["病假"].days >= 10 || nonAnnualDays >= 14) {
             boxClass = "risk-box danger";
-            healthBadge = `<span style="background:var(--danger); color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:900;">🔴 休假比例過高 (異常警戒)</span>`;
-            healthAdvice = `該員今年度非特休（病事假）已累計達 <b>${nonAnnualDays.toFixed(1)} 天</b>，請假比例明顯高於企業常態。建議主管安排關懷晤談，了解健康狀況或勤務配合度。`;
+            healthBadge = `<span style="background:var(--danger); color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:900;">🔴 休假過高警戒</span>`;
+            healthAdvice = `該員今年度非特休（病事假）已達 <b>${nonAnnualDays.toFixed(1)} 天</b>，請假比例明顯偏高，建議安排關懷晤談。`;
         } else if (nonAnnualDays >= 5 || stats["病假"].count >= 4) {
             boxClass = "risk-box";
-            healthBadge = `<span style="background:var(--warning); color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:900;">🟡 中度關注 (頻率偏高)</span>`;
-            healthAdvice = `該員病事假已累計 <b>${nonAnnualDays.toFixed(1)} 天</b>（共 ${stats["病假"].count + stats["事假"].count} 次），請假頻率略高，建議排班時預先安排職位代理人。`;
+            healthBadge = `<span style="background:var(--warning); color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:900;">🟡 中度關注</span>`;
+            healthAdvice = `病事假累計 <b>${nonAnnualDays.toFixed(1)} 天</b>（共 ${stats["病假"].count + stats["事假"].count} 次），請留意是否有集中於週末前後之情形。`;
         } else {
             boxClass = "risk-box success";
-            healthBadge = `<span style="background:var(--success); color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:900;">🟢 出勤穩定正常</span>`;
-            healthAdvice = `該員年度病事假合計僅 <b>${nonAnnualDays.toFixed(1)} 天</b>，出勤節奏極為規律，休假比例完全符合健康標準。`;
+            healthBadge = `<span style="background:var(--success); color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:900;">🟢 出勤穩定</span>`;
+            healthAdvice = `病事假合計僅 <b>${nonAnnualDays.toFixed(1)} 天</b>，出勤節奏規律健康。`;
         }
 
         let remainAnnual = Math.max(0, totalAnnualLeave - stats["特休"].days);
 
-        // 組合 Modal 畫面
         let bodyHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #EEE; padding-bottom:12px;">
-                <div>
-                    <div style="font-size:20px; font-weight:900; color:var(--navy);">${empName}</div>
-                    <div style="font-size:13px; color:var(--text-sub);">${emp[1]} ・ ${emp[2]}</div>
-                </div>
+                <div><div style="font-size:20px; font-weight:900; color:var(--navy);">${empName}</div><div style="font-size:13px; color:var(--text-sub);">${emp[1]} ・ ${emp[2]}</div></div>
                 ${healthBadge}
             </div>
-
-            <!-- 智慧評估診斷框 -->
-            <div class="${boxClass}">
-                <div class="risk-title" style="color:inherit;">📌 系統出勤評估結論</div>
-                <div class="risk-item">${healthAdvice}</div>
-            </div>
-
-            <!-- 年度休假盤點卡片 -->
+            <div class="${boxClass}"><div class="risk-title" style="color:inherit;">📌 系統出勤評估結論</div><div class="risk-item">${healthAdvice}</div></div>
             <div style="font-size:14px; font-weight:900; color:var(--navy); margin-bottom:10px;">📊 ${currentYear} 年度請假統計</div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;">
-                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--info);">
-                    <div style="font-size:12px; color:var(--text-sub);">🏖️ 特休進度</div>
-                    <div style="font-size:18px; font-weight:900; color:var(--info); margin:4px 0;">已用 ${stats["特休"].days.toFixed(1)} 天</div>
-                    <div style="font-size:11px; color:var(--text-light);">剩餘額度：${remainAnnual.toFixed(1)} / ${totalAnnualLeave.toFixed(1)} 天</div>
-                </div>
-                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--danger);">
-                    <div style="font-size:12px; color:var(--text-sub);">💊 病假累計</div>
-                    <div style="font-size:18px; font-weight:900; color:var(--danger); margin:4px 0;">${stats["病假"].days.toFixed(1)} 天</div>
-                    <div style="font-size:11px; color:var(--text-light);">累計次數：共 ${stats["病假"].count} 次</div>
-                </div>
-                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--warning);">
-                    <div style="font-size:12px; color:var(--text-sub);">💼 事假累計</div>
-                    <div style="font-size:18px; font-weight:900; color:var(--warning); margin:4px 0;">${stats["事假"].days.toFixed(1)} 天</div>
-                    <div style="font-size:11px; color:var(--text-light);">累計次數：共 ${stats["事假"].count} 次</div>
-                </div>
-                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--navy-light);">
-                    <div style="font-size:12px; color:var(--text-sub);">🔄 補休 / 其他假</div>
-                    <div style="font-size:18px; font-weight:900; color:var(--navy-light); margin:4px 0;">${(stats["補休"].days + stats["其他"].days + stats["生理假"].days).toFixed(1)} 天</div>
-                    <div style="font-size:11px; color:var(--text-light);">含公假、喪假與補休</div>
-                </div>
+                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--info);"><div style="font-size:12px; color:var(--text-sub);">🏖️ 特休進度</div><div style="font-size:18px; font-weight:900; color:var(--info); margin:4px 0;">已用 ${stats["特休"].days.toFixed(1)} 天</div><div style="font-size:11px; color:var(--text-light);">剩餘：${remainAnnual.toFixed(1)} / ${totalAnnualLeave.toFixed(1)} 天</div></div>
+                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--danger);"><div style="font-size:12px; color:var(--text-sub);">💊 病假累計</div><div style="font-size:18px; font-weight:900; color:var(--danger); margin:4px 0;">${stats["病假"].days.toFixed(1)} 天</div><div style="font-size:11px; color:var(--text-light);">共 ${stats["病假"].count} 次</div></div>
+                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--warning);"><div style="font-size:12px; color:var(--text-sub);">💼 事假累計</div><div style="font-size:18px; font-weight:900; color:var(--warning); margin:4px 0;">${stats["事假"].days.toFixed(1)} 天</div><div style="font-size:11px; color:var(--text-light);">共 ${stats["事假"].count} 次</div></div>
+                <div style="background:#F8F9FA; padding:12px; border-radius:12px; border-left:4px solid var(--navy-light);"><div style="font-size:12px; color:var(--text-sub);">🔄 補休/其他</div><div style="font-size:18px; font-weight:900; color:var(--navy-light); margin:4px 0;">${(stats["補休"].days + stats["其他"].days + stats["生理假"].days).toFixed(1)} 天</div></div>
             </div>
-
-            <!-- 時間軸明細 -->
-            <div style="font-size:14px; font-weight:900; color:var(--navy); margin-bottom:10px;">📜 本年度核准請假明細</div>
+            <div style="font-size:14px; font-weight:900; color:var(--navy); margin-bottom:10px;">📜 本年度明細</div>
             <div style="background:white; border:1px solid #EEE; border-radius:12px; padding:10px 14px; max-height:180px; overflow-y:auto;">
-                ${
-                    leaveRecords.length > 0 ? leaveRecords.map(item => `
-                        <div style="padding:8px 0; border-bottom:1px dashed #EEE; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <span style="font-weight:bold; font-size:13px; color:var(--navy);">${item.date}</span>
-                                <span style="font-size:12px; background:#F1F3F4; padding:2px 6px; border-radius:4px; margin-left:6px;">${item.type}</span>
-                                <div style="font-size:12px; color:var(--text-sub); margin-top:2px;">事由：${item.reason}</div>
-                            </div>
-                            <div style="font-weight:900; font-size:13px; color:var(--text-main);">${item.days.toFixed(1)} 天</div>
-                        </div>
-                    `).join('') : '<div style="text-align:center; padding:15px; color:var(--text-light); font-size:13px;">本年度無請假紀錄</div>'
-                }
+                ${leaveRecords.length > 0 ? leaveRecords.map(item => `<div style="padding:8px 0; border-bottom:1px dashed #EEE; display:flex; justify-content:space-between; align-items:center;"><div><span style="font-weight:bold; font-size:13px; color:var(--navy);">${item.date}</span><span style="font-size:12px; background:#F1F3F4; padding:2px 6px; border-radius:4px; margin-left:6px;">${item.type}</span><div style="font-size:12px; color:var(--text-sub); margin-top:2px;">${item.reason}</div></div><div style="font-weight:900; font-size:13px;">${item.days.toFixed(1)} 天</div></div>`).join('') : '<div style="text-align:center; padding:15px; color:var(--text-light); font-size:13px;">無紀錄</div>'}
             </div>
         `;
 
         document.getElementById('modalBody').innerHTML = bodyHtml;
         document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉視窗</button>`;
-        document.getElementById('approvalModal').style.display = 'flex';
+        document.getElementById('globalModal').style.display = 'flex';
     }
 
-    function closeModal() { document.getElementById('approvalModal').style.display = 'none'; }
+    function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
-    async function processApproval(id, status) {
-        let actionText = status === '已退回' ? '駁回' : '核准';
-        
-        if(status === '已退回') {
-            const { value: reason } = await Swal.fire({ title: '請輸入駁回原因', input: 'text', showCancelButton: true });
-            if(!reason) return;
-        }
-
-        showLoading("決策同步中...");
-        try {
-            const text = await fetchApi({ action: "updateLeave", id: id, newStatus: status });
-            if (text === "Success") { 
-                Swal.fire('成功', `已${actionText}`, 'success'); 
-                closeModal();
-                loadSecureData();
-            } else Swal.fire('錯誤', text, 'error');
-        } catch(e) { Swal.fire('錯誤', e.message, 'error'); }
-        finally { hideLoading(); }
-    }
-
-    // 組織人事清單 (支援點擊彈出分析)
+    // 組織人事清單
     function renderHRList() {
         const c = document.getElementById('hrListContainer');
         const keyword = document.getElementById('hrSearch').value.trim();
@@ -830,24 +963,10 @@
     async function promptSalary() {
         const { value: pwd } = await Swal.fire({ title: '高度機密區', text: '請輸入財務高階授權碼', input: 'password', showCancelButton: true });
         if (pwd === "cfo888" || pwd === "hoho999") {
-            Swal.fire({title:'驗證成功', text:'財務與薪資總覽模組已授權，可進行結算查看。', icon:'success'});
+            Swal.fire({title:'驗證成功', text:'財務與薪資總覽模組已授權。', icon:'success'});
         } else if (pwd) {
             Swal.fire('拒絕存取', '授權碼無效', 'error');
         }
-    }
-
-    function renderReportStats() {
-        document.getElementById('rptTotalOT').innerText = Math.floor(Math.random() * 50) + 100;
-        document.getElementById('rptSick').innerText = Math.floor(Math.random() * 5) + 2;
-        document.getElementById('rptPersonal').innerText = Math.floor(Math.random() * 5);
-        document.getElementById('rptAnnual').innerText = Math.floor(Math.random() * 15) + 5;
-
-        const c = document.getElementById('rptDeptOT');
-        c.innerHTML = `
-            <div style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; margin-bottom:4px;"><span>倉儲部</span><span>72 h</span></div><div style="background:#eee; height:8px; border-radius:4px;"><div style="background:var(--navy); width:70%; height:100%; border-radius:4px;"></div></div></div>
-            <div style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; margin-bottom:4px;"><span>運輸部</span><span>45 h</span></div><div style="background:#eee; height:8px; border-radius:4px;"><div style="background:var(--navy-light); width:45%; height:100%; border-radius:4px;"></div></div></div>
-            <div style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold; margin-bottom:4px;"><span>業務部</span><span>12 h</span></div><div style="background:#eee; height:8px; border-radius:4px;"><div style="background:#a0aab5; width:15%; height:100%; border-radius:4px;"></div></div></div>
-        `;
     }
 
     function switchNav(viewId, element) {
