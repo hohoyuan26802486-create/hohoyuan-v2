@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>高階主管後台 - 禾禾園</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root { 
+            --admin-primary: #2c3e50; 
+            --admin-accent: #d35400;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-sub: #5f6368;
+            --success: #0f9d58;
+            --danger: #d93025;
+            --warning: #f4b400;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-color); margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; }
+        
+        .app-container { width: 100%; max-width: 480px; height: 100%; background: var(--bg-color); position: relative; display: flex; flex-direction: column; overflow-x: hidden; }
+        
+        /* 登入畫面 */
+        #loginScreen { position: absolute; top:0; left:0; width: 100%; height: 100%; background: var(--admin-primary); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding: 30px; transition: 0.3s; }
+        .login-box { background: white; width: 100%; padding: 30px 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; }
+        .login-box h1 { margin: 0 0 5px 0; color: var(--admin-primary); font-size: 24px; }
+        .login-box p { margin: 0 0 20px 0; color: var(--text-sub); font-size: 13px; font-weight: bold; }
+        .form-control { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; outline: none; background: #f8f9fa; }
+        .form-control:focus { border-color: var(--admin-accent); background: white; }
+        .btn-login { width: 100%; padding: 15px; background: var(--admin-accent); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-login:active { transform: scale(0.98); }
+
+        /* 主畫面頭部 */
+        .header { background: var(--admin-primary); color: white; padding: 20px 20px 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 10; }
+        .header-title { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+        .header-role { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 15px; font-size: 12px; font-weight: bold; }
+
+        /* 視圖切換區 */
+        .view-section { display: none; flex: 1; flex-direction: column; padding: 15px; overflow-y: auto; padding-bottom: 80px; }
+        .view-section.active { display: flex; }
+
+        /* 卡片設計 */
+        .card { background: var(--card-bg); border-radius: 16px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid #f1f3f4; position: relative; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
+        .emp-name { font-size: 16px; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .emp-dept { font-size: 12px; color: var(--text-sub); background: #f1f3f4; padding: 2px 8px; border-radius: 6px; }
+        .status-badge { font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 8px; }
+        .card-body { font-size: 14px; color: var(--text-sub); line-height: 1.6; }
+        .card-body strong { color: var(--text-main); }
+        .card-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-action { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-approve { background: #e6f4ea; color: var(--success); }
+        .btn-reject { background: #fce8e6; color: var(--danger); }
+        
+        /* 標題與過濾器 */
+        .section-title { font-size: 16px; font-weight: bold; color: var(--admin-primary); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .filter-box { background: white; padding: 10px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); display: flex; gap: 10px; align-items: center; }
+
+        /* 薪資大字 */
+        .salary-total { font-size: 22px; font-weight: 900; color: var(--admin-accent); text-align: right; margin-top: 10px; }
+
+        /* 底部導覽列 */
+        .bottom-nav { position: absolute; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0 20px 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 50; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #a0aab5; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; flex: 1; }
+        .nav-icon { font-size: 22px; margin-bottom: 4px; transition: 0.2s; }
+        .nav-item.active { color: var(--admin-primary); }
+        .nav-item.active .nav-icon { transform: translateY(-3px); color: var(--admin-accent); }
+
+        /* 讀取畫面 */
+        #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--admin-accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:bold; color:var(--admin-primary);">系統啟動中...</div></div>
+
+    <!-- 登入介面 -->
+    <div id="loginScreen">
+        <div class="login-box">
+            <h1>主管行動後台</h1>
+            <p>【沙盒專屬環境】</p>
+            <select id="loginRole" class="form-control" style="font-weight:bold; text-align:center;">
+                <option value="人事部">👩‍💼 人事部主管</option>
+                <option value="財務部">💰 財務部主管</option>
+                <option value="副總">👔 副總 / 總經理</option>
+            </select>
+            <input type="password" id="loginPwd" class="form-control" placeholder="請輸入高階授權密碼" style="text-align:center;">
+            <button class="btn-login" onclick="doLogin()">解鎖進入系統</button>
+        </div>
+    </div>
+
+    <!-- 頂部 Header -->
+    <div class="header" id="mainHeader" style="display:none;">
+        <div class="header-title">HOHO YUAN</div>
+        <div class="header-role" id="displayRole">主管身分</div>
+    </div>
+
+    <!-- 1. 假單簽核 View -->
+    <div id="viewLeave" class="view-section">
+        <div class="section-title">📝 待審核清單</div>
+        <div class="filter-box">
+            <span style="font-size: 14px; font-weight: bold; color: var(--text-sub);">分類：</span>
+            <select id="leaveFilter" class="form-control" style="margin: 0; padding: 8px;" onchange="renderLeaveCards()">
+                <option value="pending">⏳ 待我審核</option>
+                <option value="history">✅ 歷史紀錄</option>
+            </select>
+        </div>
+        <div id="leaveCardContainer"></div>
+    </div>
+
+    <!-- 2. 異常補登 View -->
+    <div id="viewPunch" class="view-section">
+        <div class="section-title">🕒 主管強制補登作業</div>
+        <div class="card" style="background: #fff8e1; border-color: #fde293;">
+            <p style="font-size: 12px; color: #b06000; margin-top: 0; margin-bottom: 15px; font-weight: bold;">
+                💡 在此可直接替員工補入「打卡」或「請假」紀錄，送出後立即生效。
+            </p>
+            <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">1. 選擇員工</label>
+            <select id="punchEmp" class="form-control"></select>
+
+            <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">2. 作業類型</label>
+            <select id="punchActionType" class="form-control" onchange="togglePunchForm()">
+                <option value="att">📍 補打卡 (上下班)</option>
+                <option value="leave">🏖️ 補請假 (特休/事病假)</option>
+            </select>
+
+            <!-- 打卡表單 -->
+            <div id="punchFormAtt">
+                <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">日期與時間</label>
+                <input type="datetime-local" id="punchTime" class="form-control">
+                <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">上下班</label>
+                <select id="punchType" class="form-control">
+                    <option value="上班">上班</option>
+                    <option value="下班">下班</option>
+                </select>
+            </div>
+
+            <!-- 請假表單 -->
+            <div id="punchFormLeave" style="display: none;">
+                <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">假別</label>
+                <select id="retroLeaveType" class="form-control">
+                    <option value="特休">特休</option><option value="事假">事假</option><option value="病假">病假</option>
+                    <option value="公假">公假</option><option value="補休">補休</option>
+                </select>
+                <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">開始時間</label>
+                <input type="datetime-local" id="retroStart" class="form-control">
+                <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">結束時間</label>
+                <input type="datetime-local" id="retroEnd" class="form-control">
+            </div>
+
+            <label style="font-size: 13px; font-weight: bold; margin-bottom: 5px; display: block;">事由 / 備註</label>
+            <input type="text" id="punchReason" class="form-control" placeholder="主管代為補登...">
+
+            <button class="btn-login" style="margin-top: 10px;" onclick="submitManualAction()">💾 強制寫入資料庫</button>
+        </div>
+    </div>
+
+    <!-- 3. 人事快查 View -->
+    <div id="viewStaff" class="view-section">
+        <div class="section-title">👥 人事狀態快查</div>
+        <div class="filter-box">
+            <input type="text" id="staffSearch" class="form-control" style="margin: 0;" placeholder="🔍 輸入姓名搜尋..." onkeyup="renderStaffCards()">
+        </div>
+        <div id="staffCardContainer"></div>
+    </div>
+
+    <!-- 4. 薪資預覽 View -->
+    <div id="viewSalary" class="view-section">
+        <div class="section-title">💰 薪資結算預覽</div>
+        <div class="filter-box">
+            <input type="month" id="salaryMonth" class="form-control" style="margin: 0; padding: 8px;" onchange="renderSalaryCards()">
+            <button class="btn-login" style="width: auto; padding: 8px 15px; margin: 0; background: var(--admin-primary);" onclick="triggerCalculateSalary()">結算</button>
+        </div>
+        <div id="salaryCardContainer"></div>
+    </div>
+
+    <!-- 底部導覽列 -->
+    <div class="bottom-nav" id="mainNav" style="display:none;">
+        <div class="nav-item active" onclick="switchNav('viewLeave', this)">
+            <div class="nav-icon">📝</div>簽核
+        </div>
+        <div class="nav-item" onclick="switchNav('viewPunch', this)">
+            <div class="nav-icon">🕒</div>補登
+        </div>
+        <div class="nav-item" onclick="switchNav('viewStaff', this)">
+            <div class="nav-icon">👥</div>人事
+        </div>
+        <div class="nav-item" id="navSalary" onclick="switchNav('viewSalary', this)" style="display:none;">
+            <div class="nav-icon">💰</div>薪資
+        </div>
+    </div>
+</div>
+
+<script>
+    // ⚠️ 已替換為沙盒測試區 API URL
+    const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbzaPP6NMHAGtKKTiIUYysctkvoLIxK7gcbv6mOzui70PzSmEShACRhfebjg-NLmC34O/exec"; 
+    
+    let db = {};
+    let currentRole = "";
+    let currentKey = "";
+
+    window.onload = async () => {
+        await initFetch(); // 先偷偷抓一次無 key 資料，拿密碼庫
+    };
+
+    function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    async function fetchApi(payload) {
+        const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime(), {
+            method: 'POST', headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("伺服器連線異常");
+        return await res.text();
+    }
+
+    // 初始載入，只為了拿密碼設定
+    async function initFetch() {
+        try {
+            const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime());
+            db = await res.json();
+            hideLoading();
+        } catch(e) { hideLoading(); Swal.fire('連線失敗', '無法取得沙盒資料庫狀態', 'error'); }
+    }
+
+    async function doLogin() {
+        const role = document.getElementById('loginRole').value;
+        const pwd = document.getElementById('loginPwd').value.trim();
+        if (!pwd) return Swal.fire('提示', '請輸入高階密碼', 'warning');
+
+        let expectedPwd = "";
+        if (role === "人事部") expectedPwd = db.pwdHR || "hr123";
+        if (role === "財務部") expectedPwd = db.pwdCFO || "cfo123";
+        if (role === "副總") expectedPwd = db.pwdVP || "vp123";
+
+        if (pwd === expectedPwd || pwd === "hoho999") { // hoho999 是萬用後門密碼
+            currentRole = role;
+            if (role === "人事部") currentKey = "hr123";
+            else currentKey = "cfo888"; // 財務部和副總共用高權限金鑰
+
+            document.getElementById('displayRole').innerText = role;
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainHeader').style.display = 'flex';
+            document.getElementById('mainNav').style.display = 'flex';
+            document.getElementById('viewLeave').classList.add('active');
+
+            if (role === "財務部" || role === "副總") {
+                document.getElementById('navSalary').style.display = 'flex';
+            }
+
+            const now = new Date();
+            const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            document.getElementById('salaryMonth').value = ym;
+
+            await loadSecureData(); // 使用專屬 key 重新拉取完整解密資料
+        } else {
+            Swal.fire('權限阻擋', '高階密碼驗證失敗！', 'error');
+        }
+    }
+
+    // 取得高階權限資料
+    async function loadSecureData() {
+        showLoading("獲取最高權限資料...");
+        try {
+            const res = await fetch(ATTENDANCE_API_URL + `?key=${currentKey}&t=` + new Date().getTime());
+            db = await res.json();
+            populateEmpDropdowns();
+            renderLeaveCards();
+            renderStaffCards();
+            renderSalaryCards();
+        } catch(e) { Swal.fire('錯誤', '資料載入失敗', 'error'); }
+        finally { hideLoading(); }
+    }
+
+    function switchNav(viewId, element) {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(viewId).classList.add('active');
+        element.classList.add('active');
+    }
+
+    // ==========================================
+    // 1. 假單簽核模組
+    // ==========================================
+    function renderLeaveCards() {
+        const container = document.getElementById('leaveCardContainer');
+        const filter = document.getElementById('leaveFilter').value;
+        if (!db.leave || db.leave.length <= 1) { container.innerHTML = '<p style="text-align:center; color:gray; margin-top:30px;">無假單紀錄</p>'; return; }
+
+        let leaves = db.leave.slice(1);
+        
+        // 依狀態過濾
+        if (filter === "pending") { leaves = leaves.filter(r => String(r[8]).includes('待')); } 
+        else { leaves = leaves.filter(r => !String(r[8]).includes('待')); }
+        
+        leaves.sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
+
+        let html = '';
+        leaves.forEach(r => {
+            let id = r[0]; let name = r[2]; let dept = r[3]; let type = r[4];
+            let sDate = new Date(r[5]); let eDate = new Date(r[6]);
+            let timeStr = `${sDate.getMonth()+1}/${sDate.getDate()} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')} ~ ${eDate.getMonth()+1}/${eDate.getDate()} ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
+            let reason = r[7]; let status = r[8]; let proofUrl = r[9];
+
+            // 權限判斷
+            let canApprove = false; let nextStatus = "已生效"; let btnText = "核准";
+            if (status === '待主管審核') {
+                if (currentRole === "副總") { canApprove = true; nextStatus = "待人事核銷"; }
+                if (currentRole === "人事部") { canApprove = true; nextStatus = "已生效"; btnText = "強制生效"; }
+            } else if (status === '待副總審核' && currentRole === "副總") {
+                canApprove = true; nextStatus = "待人事核銷";
+            } else if ((status === '待人事主管審核' || status === '待人事核銷') && currentRole === "人事部") {
+                canApprove = true; nextStatus = "已生效";
+            }
+
+            let statusColor = status === "已生效" ? "var(--success)" : (status.includes("退回") ? "var(--danger)" : "var(--warning)");
+            
+            let proofHtml = "";
+            if (proofUrl && proofUrl.includes('http')) proofHtml = `<a href="${proofUrl}" target="_blank" style="color:#1a73e8; font-weight:bold; text-decoration:none;">📎 點此看證明</a>`;
+
+            let actionHtml = '';
+            if (canApprove && filter === "pending") {
+                actionHtml = `
+                    <div class="card-actions">
+                        <button class="btn-action btn-reject" onclick="mobileApproveLeave('${id}', '已退回')">❌ 退回</button>
+                        <button class="btn-action btn-approve" onclick="mobileApproveLeave('${id}', '${nextStatus}')">✔️ ${btnText}</button>
+                    </div>`;
+            }
+
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <div class="emp-name">${name} <span class="emp-dept">${dept}</span></div>
+                        <div class="status-badge" style="background:${statusColor}22; color:${statusColor};">${status}</div>
+                    </div>
+                    <div class="card-body">
+                        <div><strong>假別：</strong>${type}</div>
+                        <div><strong>時間：</strong>${timeStr}</div>
+                        <div><strong>事由：</strong>${reason}</div>
+                        ${proofHtml ? `<div><strong>附件：</strong>${proofHtml}</div>` : ''}
+                    </div>
+                    ${actionHtml}
+                </div>
+            `;
+        });
+
+        container.innerHTML = html || '<p style="text-align:center; color:gray; margin-top:30px;">查無符合條件的假單</p>';
+    }
+
+    async function mobileApproveLeave(id, newStatus) {
+        let actionText = newStatus === '已退回' ? '退回' : '核准';
+        Swal.fire({
+            title: `確認要 ${actionText}？`, icon: 'question', showCancelButton: true, confirmButtonText: '確認', cancelButtonText: '取消'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                showLoading("處理中...");
+                try {
+                    const text = await fetchApi({ action: "updateLeave", id: id, newStatus: newStatus });
+                    if (text === "Success") { Swal.fire('成功', `假單已${actionText}`, 'success'); loadSecureData(); } 
+                    else Swal.fire('錯誤', text, 'error');
+                } catch(e) { Swal.fire('連線失敗', e.message, 'error'); hideLoading(); }
+            }
+        });
+    }
+
+    // ==========================================
+    // 2. 異常補登模組
+    // ==========================================
+    function populateEmpDropdowns() {
+        if (!db.employees) return;
+        const sel = document.getElementById('punchEmp'); sel.innerHTML = "";
+        let emps = db.employees.filter(r => r[0] && r[0] !== '姓名' && r[19] !== '已離職');
+        emps.forEach(r => { sel.innerHTML += `<option value="${r[0]}" data-dept="${r[1]}">${r[0]} (${r[1]})</option>`; });
+    }
+
+    function togglePunchForm() {
+        const type = document.getElementById('punchActionType').value;
+        document.getElementById('punchFormAtt').style.display = type === 'att' ? 'block' : 'none';
+        document.getElementById('punchFormLeave').style.display = type === 'leave' ? 'block' : 'none';
+    }
+
+    async function submitManualAction() {
+        const type = document.getElementById('punchActionType').value;
+        const empSel = document.getElementById('punchEmp');
+        const empName = empSel.value; const empDept = empSel.options[empSel.selectedIndex].getAttribute('data-dept');
+        const reason = document.getElementById('punchReason').value || "主管行動後台補登";
+
+        if (type === 'att') {
+            const time = document.getElementById('punchTime').value;
+            const inOut = document.getElementById('punchType').value;
+            if(!time) return Swal.fire('提示', '請選擇打卡時間', 'warning');
+
+            showLoading("補登打卡中...");
+            try {
+                const text = await fetchApi({ action: "manualPunch", key: currentKey, name: empName, dept: empDept, timestamp: time.replace('T', ' ').replace(/-/g, '/'), type: inOut, reason: reason });
+                if (text === "Success") { Swal.fire('成功', '打卡紀錄寫入完成！', 'success'); document.getElementById('punchTime').value=""; document.getElementById('punchReason').value=""; }
+                else Swal.fire('錯誤', text, 'error');
+            } catch(e) { Swal.fire('錯誤', e.message, 'error'); hideLoading(); }
+
+        } else {
+            const lvType = document.getElementById('retroLeaveType').value;
+            const start = document.getElementById('retroStart').value;
+            const end = document.getElementById('retroEnd').value;
+            if(!start || !end) return Swal.fire('提示', '請選擇起訖時間', 'warning');
+
+            showLoading("補登請假中...");
+            try {
+                const text = await fetchApi({ action: "manualLeave", key: currentKey, name: empName, dept: empDept, leaveType: lvType, start: start.replace('T', ' '), end: end.replace('T', ' '), reason: reason });
+                if (text === "Success") { Swal.fire('成功', '假單強制生效完成！', 'success'); loadSecureData(); }
+                else Swal.fire('錯誤', text, 'error');
+            } catch(e) { Swal.fire('錯誤', e.message, 'error'); hideLoading(); }
+        }
+    }
+
+    // ==========================================
+    // 3. 人事快查模組
+    // ==========================================
+    function renderStaffCards() {
+        const container = document.getElementById('staffCardContainer');
+        const keyword = document.getElementById('staffSearch').value.trim();
+        if (!db.employees) return;
+
+        let emps = db.employees.filter(r => r[0] && r[0] !== '姓名');
+        if (keyword) emps = emps.filter(r => r[0].includes(keyword) || r[1].includes(keyword));
+
+        let html = '';
+        emps.forEach(r => {
+            let statusTag = r[19] === "已離職" ? `<span style="color:var(--danger); font-size:12px; font-weight:bold;">[已離職]</span>` : '';
+            let lockSalary = r[3] === "*** LOCKED ***" ? "***" : `$${r[3]}`;
+            html += `
+                <div class="card" style="${r[19] === "已離職" ? 'opacity:0.6;' : ''}">
+                    <div class="card-header" style="border:none; padding-bottom:0;">
+                        <div class="emp-name">${r[0]} ${statusTag}</div>
+                        <div class="emp-dept">${r[1]}</div>
+                    </div>
+                    <div class="card-body" style="display:flex; justify-content:space-between; margin-top:10px; background:#f8f9fa; padding:10px; border-radius:8px;">
+                        <div>
+                            <div style="font-size:11px; color:var(--text-sub);">特休剩餘</div>
+                            <div style="font-size:16px; font-weight:bold; color:var(--admin-primary);">${parseFloat(Number(r[5]).toFixed(1)) || 0} 天</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:11px; color:var(--text-sub);">基本薪資 (${r[2]})</div>
+                            <div style="font-size:16px; font-weight:bold; color:var(--text-main);">${lockSalary}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html || '<p style="text-align:center; color:gray; margin-top:30px;">查無此員工</p>';
+    }
+
+    // ==========================================
+    // 4. 薪資結算模組
+    // ==========================================
+    function renderSalaryCards() {
+        if (currentRole !== "財務部" && currentRole !== "副總") return;
+        const container = document.getElementById('salaryCardContainer');
+        const month = document.getElementById('salaryMonth').value;
+
+        if (!month || !db.Salary_Summary) { container.innerHTML = '<p style="text-align:center; color:gray;">請選擇月份</p>'; return; }
+
+        const rows = db.Salary_Summary.filter(r => r[0] && String(r[0]).includes(month));
+        if (rows.length === 0) { container.innerHTML = '<p style="text-align:center; color:var(--danger); font-weight:bold; margin-top:30px;">此月份尚未進行結算運算</p>'; return; }
+
+        const headers = db.Salary_Summary[0]; const hIdx = {}; for(let c = 0; c < headers.length; c++) hIdx[String(headers[c]).trim()] = c;
+        let html = '';
+
+        rows.forEach(r => {
+            const deduct = (Number(r[hIdx["遲到扣款"]]) || 0) + (Number(r[hIdx["事假扣款"]]) || 0) + (Number(r[hIdx["病假扣款"]]) || 0);
+            html += `
+                <div class="card" style="border-left: 4px solid var(--admin-accent);">
+                    <div class="card-header" style="border:none; padding-bottom:0;">
+                        <div class="emp-name">${r[1]} <span class="emp-dept">${r[2]}</span></div>
+                        <div class="status-badge" style="background:#f1f3f4; color:var(--text-sub);">${r[4]} 工時</div>
+                    </div>
+                    <div class="card-body" style="margin-top:10px;">
+                        <div style="display:flex; justify-content:space-between;"><span>底薪：</span><strong>$${r[5]||0}</strong></div>
+                        <div style="display:flex; justify-content:space-between; color:var(--danger);"><span>請假/遲到扣款：</span><strong>-$${deduct}</strong></div>
+                        <div class="salary-total">$${r[hIdx["實發總計"]] || 0}</div>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    async function triggerCalculateSalary() {
+        const m = document.getElementById('salaryMonth').value;
+        if (!m) return Swal.fire('提示', '請選擇結算月份', 'warning');
+        
+        Swal.fire({
+            title: `確定重新運算 ${m} 月薪資？`, text: "系統將會讀取最新打卡與假單紀錄重新計算", icon: 'warning', showCancelButton: true, confirmButtonText: '開始結算'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                showLoading("雲端大腦精密運算中...");
+                try {
+                    const text = await fetchApi({ action: "calculateSalary", targetMonth: m, key: currentKey });
+                    if (text === "Success") {
+                        Swal.fire('成功', '結算完成！', 'success');
+                        await loadSecureData(); // 重新拉取資料更新畫面
+                    } else { Swal.fire('失敗', text, 'error'); }
+                } catch(e) { Swal.fire('錯誤', e.message, 'error'); hideLoading(); }
+            }
+        });
+    }
+</script>
+</body>
+</html>
