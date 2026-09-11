@@ -6,10 +6,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="禾禾園(測試區)">
+    <meta name="apple-mobile-web-app-title" content="禾禾園(正式版)">
     <meta name="theme-color" content="#f4f7f6">
 
-    <title>禾禾園 - 智能考勤 App (沙盒測試版)</title>
+    <title>禾禾園 - 智能考勤 App</title>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root { 
@@ -98,7 +98,6 @@
         .report-content { display: none; }
         .report-content.active { display: block; }
         
-        /* 表單區塊 */
         .report-block { background: #fff; border: 1px solid #e0e0e0; padding: 15px; border-radius: 12px; margin-bottom: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
         .card-danger { border-top: 4px solid var(--danger); background: #fce8e6; }
         .card-primary { border-top: 4px solid var(--primary); }
@@ -132,22 +131,22 @@
     <div id="loginScreen">
         <div class="logo-area">
             <h1>禾禾園</h1>
-            <p>【沙盒測試環境】</p>
+            <p>【正式出勤系統】</p>
         </div>
         <input type="text" id="loginName" class="login-input" placeholder="請輸入您的真實姓名">
         <input type="password" id="loginPwd" class="login-input" placeholder="請輸入密碼 (預設: 1234)">
-        <button class="btn-login" onclick="doLogin()">登入測試系統</button>
+        <button class="btn-login" onclick="doLogin()">登入系統</button>
     </div>
 
     <div id="mainScreen">
         <div class="header-bg">
             <div class="header-top">
-                <div class="app-title">HOHO YUAN (Sandbox)</div>
+                <div class="app-title">HOHO YUAN</div>
                 <div class="avatar" id="userAvatarBtn" onclick="showUserMenu()" title="設定">👤</div>
             </div>
             <div class="greeting">
                 <h2>Hello, <span id="displayUserName">員工</span></h2>
-                <p>歡迎來到沙盒測試環境！</p>
+                <p>歡迎回來！</p>
             </div>
         </div>
 
@@ -191,7 +190,6 @@
                     <div id="statusList" class="status-options" style="justify-content: center;"></div>
                 </div>
 
-                <!-- 🚀 喚醒：動態事由填寫區塊 -->
                 <div id="reasonBox" style="display: none; width: 100%; margin-top: 15px; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffe69c;">
                     <label style="color: #856404; font-size:13px; font-weight:bold; margin-bottom:5px; display:block;">📝 請填妥事由 (必填)</label>
                     <input type="text" id="punchReason" class="form-control" placeholder="例如：拜訪客戶、跨廠區支援..." style="border-color: #ffe69c; background:white;">
@@ -333,7 +331,7 @@
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
-                <label for="histAtt" style="flex:1; text-align:center; padding: 10px 5px;">近期出勤</label>
+                <label for="histAtt" id="lblHistAtt" style="flex:1; text-align:center; padding: 10px 5px;">近期出勤</label>
                 <input type="radio" name="historyType" id="histLeave" value="leave" onchange="renderHistory()">
                 <label for="histLeave" style="flex:1; text-align:center; padding: 10px 5px;">我的請假</label>
                 <input type="radio" name="historyType" id="histTeam" value="team" onchange="renderHistory()">
@@ -367,10 +365,10 @@
     // ==========================================
     // 🔗 API 網址設定區
     // ==========================================
-    // ✅ 統一對接到：正式上線的真實資料庫大腦
+    // ✅ 對接到：正式上線的真實資料庫大腦
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbwpBQWJQfEPSZlcglHakr4pV6QXWrhi5xTZQIKqNC-XjkgDzWbegRqy-B5ENm3zdGohDQ/exec"; 
     
-    // 報表用 API 保持不變
+    // 報表用 API 
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
 
     // ==========================================
@@ -464,7 +462,32 @@
             document.getElementById('lblHistTeam').style.display = 'block'; 
         } else {
             document.getElementById('lblHistTeam').style.display = 'none';
-            if (document.getElementById('histTeam').checked) { document.getElementById('histAtt').checked = true; }
+            if (document.getElementById('histTeam').checked) { document.getElementById('histLeave').checked = true; }
+        }
+    }
+
+    // 🌟 新增：依據部門與身分套用「近期出勤」的隱藏邏輯
+    function applyAttendanceHistoryPermission() {
+        if (!globalDB || !globalDB.employees) return;
+        let emp = globalDB.employees.find(r => r[0] === currentUser);
+        let myDept = emp ? emp[1] : "";
+        
+        // 只有生產部、倉儲部可以看，且不包含許哲瑋
+        let canSeeAtt = (myDept === "生產部" || myDept === "倉儲部") && currentUser !== "許哲瑋";
+        
+        let lblHistAtt = document.getElementById('lblHistAtt');
+        let inputHistAtt = document.getElementById('histAtt');
+        
+        if (!canSeeAtt) {
+            if (lblHistAtt) lblHistAtt.style.display = 'none';
+            if (inputHistAtt && inputHistAtt.checked) {
+                document.getElementById('histLeave').checked = true;
+                if(document.getElementById('viewHistory').classList.contains('active')){
+                    renderHistory(); // 重新渲染成請假紀錄
+                }
+            }
+        } else {
+            if (lblHistAtt) lblHistAtt.style.display = 'block';
         }
     }
 
@@ -742,6 +765,10 @@
             const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime()); 
             globalDB = await res.json();
             updateAnnualLeaveUI(); populateAgentDropdown(); loadPendingProofs();
+            
+            // 🌟 執行「近期出勤」的顯示與隱藏權限檢查
+            applyAttendanceHistoryPermission();
+
             if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
             renderHomeAlerts(); handleTypeChange();
         } catch (e) { console.error("資料載入失敗:", e); }
@@ -944,9 +971,18 @@
     }
 
     function renderHistory() {
-        const type = document.querySelector('input[name="historyType"]:checked').value; const container = document.getElementById('historyContent'); container.innerHTML = "";
+        const type = document.querySelector('input[name="historyType"]:checked').value; 
+        const container = document.getElementById('historyContent'); container.innerHTML = "";
 
         if (type === 'att') {
+            // 安全防護：不是生產部/倉儲部，或名字是許哲瑋，就不給看出勤紀錄
+            let emp = globalDB.employees ? globalDB.employees.find(r => r[0] === currentUser) : null;
+            let myDept = emp ? emp[1] : "";
+            if ((myDept !== "生產部" && myDept !== "倉儲部") || currentUser === "許哲瑋") {
+                container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>您無權限查看此紀錄。</div>";
+                return;
+            }
+
             if (!currentMonthAttData || currentMonthAttData.length <= 1) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
             let myAtts = currentMonthAttData.slice(1).filter(r => String(r[1]).trim() === currentUser); myAtts.sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
             if (myAtts.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
