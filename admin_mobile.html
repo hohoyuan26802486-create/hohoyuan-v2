@@ -68,7 +68,7 @@
         .interactive-row { cursor: pointer; transition: 0.2s; padding: 6px; border-radius: 8px; }
         .interactive-row:active { background: #eef2f5; }
         
-        /* 總覽 6 宮格 (加入點擊特效) */
+        /* 總覽 6 宮格 */
         .grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
         .stat-box { background: var(--card); border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center; align-items: center; transition: 0.2s; }
         .stat-box.clickable { cursor: pointer; }
@@ -91,10 +91,12 @@
         .anomaly-text { flex: 1; }
         .anomaly-title { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
         .anomaly-desc { font-size: 12px; color: var(--text-sub); }
+        .arrow { color: #CCC; font-size: 14px; }
 
         /* 部門出勤列表 */
-        .list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #F1F3F4; }
-        .list-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 8px; margin: 0 -8px; border-bottom: 1px solid #F1F3F4; transition: background-color 0.2s; border-radius: 8px;}
+        .list-row:last-child { border-bottom: none; }
+        .list-row:active { background-color: #f0f4f8; }
         .dept-name { font-size: 15px; font-weight: 700; width: 35%; }
         .dept-stat { font-size: 14px; color: var(--text-sub); width: 35%; text-align: center; }
         .dept-status { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px; width: 30%; text-align: center; }
@@ -117,7 +119,7 @@
         .btn-fill { flex: 1; padding: 10px; border: none; background: var(--success); color: white; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;}
         .btn-fill:active { opacity: 0.8; }
 
-        /* 模態彈窗 (Modal) - 更新關閉邏輯與熱區 */
+        /* 模態彈窗 (Modal) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; display: none; justify-content: center; align-items: flex-end; }
         .modal-content { background: white; width: 100%; max-width: 480px; max-height: 92vh; border-top-left-radius: 24px; border-top-right-radius: 24px; display: flex; flex-direction: column; overflow: hidden; animation: slideUp 0.25s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -159,7 +161,6 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:900; color:var(--navy);">啟動企業智庫...</div></div>
 
-    <!-- 隱藏的上傳元件 (大頭貼用) -->
     <input type="file" id="adminAvatarUpload" accept="image/*" style="display: none;" onchange="handleAdminAvatarUpload(event)">
 
     <!-- 登入介面 -->
@@ -181,7 +182,6 @@
     <div class="header" id="mainHeader" style="display:none;">
         <div class="header-title">HOHO YUAN</div>
         <div class="header-actions">
-            <!-- 通知鈴鐺 -->
             <div class="bell-icon" onclick="openNotificationCenter()">🔔<span class="badge" id="alertBadge">0</span></div>
             <div class="role-selector" onclick="doLogout()"><span id="displayRole">副總</span> ▼</div>
         </div>
@@ -190,10 +190,8 @@
     <!-- 視圖 1：首頁 Dashboard -->
     <div id="viewHome" class="view-section">
         
-        <!-- 大頭貼與動態重要任務提醒 -->
         <div class="greeting-area">
             <div class="profile-header">
-                <!-- 點擊更換大頭貼 -->
                 <div class="executive-avatar" id="executiveAvatar" onclick="document.getElementById('adminAvatarUpload').click()">副</div>
                 <div>
                     <h2 id="greetingRole" style="margin: 0; font-size: 20px; font-weight: 700;">副總經理</h2>
@@ -214,7 +212,6 @@
             <div class="grid-6">
                 <div class="stat-box"><div class="stat-label">應到人數</div><div class="stat-num" id="sTotal">-</div></div>
                 <div class="stat-box info"><div class="stat-label">實到人數</div><div class="stat-num" id="sActual">-</div></div>
-                <!-- 點擊鑽取名單熱區 -->
                 <div class="stat-box warning clickable" id="boxLeave"><div class="stat-label">請假人數</div><div class="stat-num" id="sLeave">-</div></div>
                 <div class="stat-box danger clickable" id="boxMiss"><div class="stat-label">未打卡</div><div class="stat-num" id="sMiss">-</div></div>
                 <div class="stat-box clickable" id="boxOT"><div class="stat-label">加班預估</div><div class="stat-num" id="sOT">-</div></div>
@@ -230,7 +227,7 @@
             <div class="section-header" style="margin-top: 24px;">
                 <h3 class="section-title">🏢 今日各部門出勤</h3>
             </div>
-            <div class="card" id="deptContainer" style="padding: 5px 16px;"></div>
+            <div class="card" id="deptContainer" style="padding: 10px 16px;"></div>
 
             <div class="section-header" style="margin-top: 24px;">
                 <h3 class="section-title">📝 待您處理</h3>
@@ -352,7 +349,9 @@
     let currentKey = "";
     let pendingApprovals = [];
 
-    // 鑽取名單用的全域變數
+    // 🌟 全域變數 (記錄今天與本月的狀態)
+    window.allValidEmps = [];
+    window.todayPresentSet = new Set();
     window.todayMissingList = [];
     window.todayLeaveList = [];
     window.todayOTList = [];
@@ -430,7 +429,6 @@
             document.getElementById('displayRole').innerText = role.substring(0, 2);
             document.getElementById('greetingRole').innerText = role;
             
-            // 載入大頭貼
             loadAdminAvatar();
 
             document.getElementById('loginScreen').style.opacity = '0';
@@ -467,12 +465,14 @@
     function analyzeDataAndRender() {
         let totalEmp = 0; let depts = {};
         
-        let allValidEmps = [];
+        window.allValidEmps = [];
+        window.todayPresentSet = new Set();
+        
         if (db.employees) {
             db.employees.forEach((r, i) => {
                 if (i===0 || !r[0] || r[19]==="已離職") return;
                 totalEmp++;
-                allValidEmps.push(r);
+                window.allValidEmps.push(r);
                 let dept = r[1] || "未分類";
                 if(!depts[dept]) depts[dept] = { total: 0, present: 0, leave: 0, missing: 0 };
                 depts[dept].total++;
@@ -483,7 +483,6 @@
         let todayT = new Date().setHours(0,0,0,0);
         let tomorrowT = todayT + 86400000;
         
-        let presentSet = new Set();
         pendingApprovals = [];
         window.todayLeaveList = [];
         window.todayOTList = [];
@@ -518,23 +517,23 @@
                 let t = new Date(r[0]);
                 let dStr = `${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')}`;
                 if (dStr === todayStr && String(r[3]).includes("上班")) {
-                    presentSet.add(r[1]);
-                    let emp = allValidEmps.find(e => e[0] === r[1]);
+                    window.todayPresentSet.add(r[1]);
+                    let emp = window.allValidEmps.find(e => e[0] === r[1]);
                     if (emp && depts[emp[1]]) depts[emp[1]].present++;
                 }
             });
         }
 
-        allValidEmps.forEach(emp => {
+        window.allValidEmps.forEach(emp => {
             let name = emp[0]; let dept = emp[1];
-            let isPresent = presentSet.has(name);
+            let isPresent = window.todayPresentSet.has(name);
             let isOnLeave = window.todayLeaveList.some(l => l.name === name);
             if (!isPresent && !isOnLeave) {
                 window.todayMissingList.push({ name: name, dept: dept });
             }
         });
 
-        let actualPresent = presentSet.size;
+        let actualPresent = window.todayPresentSet.size;
         let missing = window.todayMissingList.length;
 
         document.getElementById('sTotal').innerText = totalEmp;
@@ -584,6 +583,61 @@
         }
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉名單</button>`;
+        document.getElementById('globalModal').style.display = 'flex';
+    };
+
+    // 🌟 點選「部門」顯示部門出勤明細
+    window.showDeptDailyDetail = function(deptName) {
+        let deptEmps = window.allValidEmps.filter(e => e[1] === deptName);
+        let presentList = [];
+        let leaveList = [];
+        let missingList = [];
+
+        deptEmps.forEach(emp => {
+            let name = emp[0];
+            let isPresent = window.todayPresentSet.has(name);
+            let leaveRecord = window.todayLeaveList.find(l => l.name === name);
+
+            if (leaveRecord) {
+                leaveList.push(leaveRecord);
+            } else if (isPresent) {
+                presentList.push(name);
+            } else {
+                missingList.push(name);
+            }
+        });
+
+        document.getElementById('modalMainTitle').innerText = `${deptName} - 今日出勤明細`;
+
+        let html = '';
+
+        if (missingList.length > 0) {
+            html += `<div style="font-size:14px; font-weight:900; color:var(--danger); margin: 10px 0 5px 0;">🔴 未打卡 (${missingList.length} 人)</div>`;
+            missingList.forEach(name => {
+                html += `<div style="padding:10px; background:var(--danger-bg); border-radius:8px; margin-bottom:6px; font-size:14px; font-weight:bold; color:var(--text-main); border-left:3px solid var(--danger);">${name} <span style="font-size:12px; color:var(--danger); float:right;">缺勤</span></div>`;
+            });
+        }
+
+        if (leaveList.length > 0) {
+            html += `<div style="font-size:14px; font-weight:900; color:var(--warning); margin: 15px 0 5px 0;">🟡 請假 (${leaveList.length} 人)</div>`;
+            leaveList.forEach(item => {
+                html += `<div style="padding:10px; background:var(--warning-bg); border-radius:8px; margin-bottom:6px; font-size:14px; font-weight:bold; color:var(--text-main); border-left:3px solid var(--warning);">${item.name} <span style="font-size:12px; color:var(--text-sub); float:right;">${item.type}</span></div>`;
+            });
+        }
+
+        if (presentList.length > 0) {
+            html += `<div style="font-size:14px; font-weight:900; color:var(--success); margin: 15px 0 5px 0;">🟢 正常出勤 (${presentList.length} 人)</div>`;
+            presentList.forEach(name => {
+                html += `<div style="padding:10px; background:var(--success-bg); border-radius:8px; margin-bottom:6px; font-size:14px; font-weight:bold; color:var(--text-main); border-left:3px solid var(--success);">${name}</div>`;
+            });
+        }
+
+        if (deptEmps.length === 0) {
+            html = '<div style="text-align:center; padding:20px; color:var(--text-light); font-weight:bold;">此部門無員工</div>';
+        }
+
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉明細</button>`;
         document.getElementById('globalModal').style.display = 'flex';
     };
 
@@ -673,7 +727,7 @@
             else if (l > 0) statusHtml = `<div class="dept-status status-warn">🟡 休 ${l}</div>`;
 
             c.innerHTML += `
-                <div class="list-row">
+                <div class="list-row interactive-row" style="padding: 12px 8px; margin: 0 -8px;" onclick="showDeptDailyDetail('${d}')">
                     <div class="dept-name">${d}</div>
                     <div class="dept-stat">${act} / ${req}</div>
                     ${statusHtml}
@@ -837,7 +891,6 @@
         }
     }
 
-    // 關閉 Modal (共用函式)
     function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
     function calculateRealReportData() {
