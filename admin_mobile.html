@@ -47,15 +47,17 @@
         .header { background: var(--navy); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header-title { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
         .header-actions { display: flex; align-items: center; gap: 15px; }
-        .bell-icon { position: relative; font-size: 20px; cursor: pointer; }
+        .bell-icon { position: relative; font-size: 22px; cursor: pointer; transition: 0.2s; }
+        .bell-icon:active { transform: scale(0.9); }
         .badge { position: absolute; top: -5px; right: -8px; background: var(--danger); color: white; font-size: 10px; font-weight: 900; padding: 2px 5px; border-radius: 10px; border: 2px solid var(--navy); }
         .role-selector { background: var(--navy-light); color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; }
 
-        /* 歡迎區塊 */
-        .greeting-area { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%); color: white; padding: 20px 20px 30px 20px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; }
-        .greeting-area h2 { margin: 0; font-size: 22px; font-weight: 700; }
-        .greeting-area p { margin: 5px 0 0 0; font-size: 13px; opacity: 0.8; }
-        .alert-bar { background: rgba(255,255,255,0.15); margin-top: 15px; padding: 10px 15px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        /* 歡迎區塊 (更新為頭像版) */
+        .greeting-area { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%); color: white; padding: 15px 20px 30px 20px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; }
+        .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
+        .executive-avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--info); color: white; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 900; border: 2px solid rgba(255,255,255,0.4); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .alert-bar { background: rgba(255,255,255,0.15); margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+        .alert-bar:active { background: rgba(255,255,255,0.25); }
 
         /* 通用區塊與卡片 */
         .section-wrapper { padding: 20px; margin-top: -20px; position: relative; z-index: 10; }
@@ -175,18 +177,27 @@
     <div class="header" id="mainHeader" style="display:none;">
         <div class="header-title">HOHO YUAN</div>
         <div class="header-actions">
-            <div class="bell-icon">🔔<span class="badge" id="alertBadge">0</span></div>
+            <!-- 鈴鐺改為可點擊，開啟通知中心 -->
+            <div class="bell-icon" onclick="openNotificationCenter()">🔔<span class="badge" id="alertBadge">0</span></div>
             <div class="role-selector" onclick="doLogout()"><span id="displayRole">副總</span> ▼</div>
         </div>
     </div>
 
     <!-- 視圖 1：首頁 Dashboard -->
     <div id="viewHome" class="view-section">
+        
+        <!-- 🌟 更新版：大頭貼與動態重要任務提醒 -->
         <div class="greeting-area">
-            <h2 id="greetingText">早安，高階主管</h2>
-            <p id="currentDateText">2026/09/11 星期五</p>
-            <div class="alert-bar" onclick="switchNav('viewApproval', document.querySelectorAll('.nav-item')[1])">
-                <span>🔔 掌握團隊動態，讓管理更簡單</span>
+            <div class="profile-header">
+                <div class="executive-avatar" id="executiveAvatar">副</div>
+                <div>
+                    <h2 id="greetingRole" style="margin: 0; font-size: 20px; font-weight: 700;">副總經理</h2>
+                    <p id="currentDateText" style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">2026/09/11 星期五</p>
+                </div>
+            </div>
+            
+            <div class="alert-bar" onclick="openNotificationCenter()">
+                <span id="topAlertBarText">🔔 系統載入中...</span>
                 <span>></span>
             </div>
         </div>
@@ -206,7 +217,7 @@
 
             <div class="section-header">
                 <h3 class="section-title" style="color: var(--danger);">⚠️ 需要您注意</h3>
-                <a class="section-link" onclick="switchNav('viewApproval', document.querySelectorAll('.nav-item')[1])">查看全部 ></a>
+                <a class="section-link" onclick="openNotificationCenter()">查看全部 ></a>
             </div>
             <div class="anomaly-list" id="anomalyContainer"></div>
 
@@ -288,7 +299,6 @@
                 </div>
             </div>
 
-            <!-- 部門休假風險排行榜 -->
             <div class="card" id="rptDeptLeaveRatioCard">
                 <h4 style="margin:0 0 15px 0; color: var(--navy);">📊 異常：部門休假比例排行</h4>
                 <div style="font-size:12px; color:var(--text-sub); margin-bottom:15px;">( 依據：部門本月總請假天數 ÷ 部門總人數 )</div>
@@ -336,7 +346,6 @@
     let currentKey = "";
     let pendingApprovals = [];
 
-    // 用於報表鑽取的全球變數
     let globalReportOT = {}; 
     let globalReportLeave = { "病假": [], "事假": [], "特休": [] }; 
 
@@ -384,8 +393,11 @@
             currentRole = role;
             currentKey = role === "人事主管" ? "hr123" : "cfo888"; 
 
+            // 🌟 更新頂部大頭貼與文字
             document.getElementById('displayRole').innerText = role.substring(0, 2);
-            document.getElementById('greetingText').innerText = `早安，${role}`;
+            document.getElementById('greetingRole').innerText = role;
+            document.getElementById('executiveAvatar').innerText = role.substring(0, 1);
+
             document.getElementById('loginScreen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('loginScreen').style.display = 'none';
@@ -481,13 +493,7 @@
         document.getElementById('hrTotal').innerText = totalEmp;
         document.getElementById('hrRate').innerText = totalEmp > 0 ? Math.round(((totalEmp - leavesToday)/totalEmp)*100) + "%" : "-";
 
-        if (pendingApprovals.length > 0) {
-            document.getElementById('navApproveBadge').innerText = pendingApprovals.length;
-            document.getElementById('navApproveBadge').style.display = 'block';
-            document.getElementById('alertBadge').innerText = pendingApprovals.length;
-        } else {
-            document.getElementById('navApproveBadge').style.display = 'none';
-        }
+        updateTopAlertAndNotifications(missing, pendingApprovals, depts); // 🌟 呼叫通知中心更新
 
         renderHomeAlerts(missing, pendingApprovals);
         renderDeptStatus(depts);
@@ -495,6 +501,69 @@
         renderAllApprovals('all');
         renderHRList();
     }
+
+    // 🌟 通知中心與跑馬燈動態更新
+    function updateTopAlertAndNotifications(missingCount, pendings, depts) {
+        let badgeCount = 0;
+        let topMsg = "✅ 今日營運狀況良好";
+        let notifHtml = "";
+
+        if (pendings.length > 0) {
+            topMsg = `🔥 待處理：您有 ${pendings.length} 筆簽核需審批`;
+            badgeCount += pendings.length;
+            notifHtml += `<div style="padding:12px; background:var(--warning-bg); border-left:4px solid var(--warning); border-radius:8px; margin-bottom:10px; cursor:pointer;" onclick="closeModal(); switchNav('viewApproval', document.querySelectorAll('.nav-item')[1])">
+                <div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🟡 待簽核提醒</div>
+                <div style="font-size:12px; color:var(--text-sub);">目前有 ${pendings.length} 筆假單、補登或加班申請等待您的核准。點擊前往審核。</div>
+            </div>`;
+        } else if (missingCount > 0) {
+            topMsg = `⚠️ 提醒：今日有 ${missingCount} 人尚未打卡`;
+        }
+
+        if (missingCount > 0) {
+            badgeCount += 1; 
+            notifHtml += `<div style="padding:12px; background:var(--danger-bg); border-left:4px solid var(--danger); border-radius:8px; margin-bottom:10px;">
+                <div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🔴 出勤異常通報</div>
+                <div style="font-size:12px; color:var(--text-sub);">今日全公司共有 ${missingCount} 人尚未打卡上班，請確認是否為系統漏登或遲到。</div>
+            </div>`;
+        }
+        
+        for(let d in depts) {
+            let m = depts[d].total - depts[d].present - depts[d].leave;
+            if(m < 0) m=0;
+            if(m > 0) {
+                badgeCount++;
+                notifHtml += `<div style="padding:12px; background:var(--danger-bg); border-left:4px solid var(--danger); border-radius:8px; margin-bottom:10px;">
+                    <div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🚨 缺勤警戒：${d}</div>
+                    <div style="font-size:12px; color:var(--text-sub);">該部門今日異常缺勤 ${m} 人，請留意第一線人力調度是否受影響。</div>
+                </div>`;
+            }
+        }
+
+        if(notifHtml === "") {
+            notifHtml = `<div style="text-align:center; padding:30px; color:var(--text-light); font-weight:bold;">目前沒有任何異常通知</div>`;
+        }
+
+        document.getElementById('topAlertBarText').innerText = topMsg;
+        document.getElementById('alertBadge').innerText = badgeCount;
+        document.getElementById('alertBadge').style.display = badgeCount > 0 ? 'flex' : 'none';
+        
+        if (pendings.length > 0) {
+            document.getElementById('navApproveBadge').innerText = pendings.length;
+            document.getElementById('navApproveBadge').style.display = 'block';
+        } else {
+            document.getElementById('navApproveBadge').style.display = 'none';
+        }
+        
+        window.currentNotificationsHtml = notifHtml;
+    }
+
+    // 🌟 打開通知中心
+    window.openNotificationCenter = function() {
+        document.getElementById('modalMainTitle').innerText = "🔔 通知中心";
+        document.getElementById('modalBody').innerHTML = window.currentNotificationsHtml || `<div style="text-align:center; padding:30px; color:var(--text-light); font-weight:bold;">目前沒有新通知</div>`;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">我知道了</button>`;
+        document.getElementById('globalModal').style.display = 'flex';
+    };
 
     function renderHomeAlerts(missing, pendings) {
         const c = document.getElementById('anomalyContainer'); c.innerHTML = "";
@@ -651,7 +720,6 @@
 
         document.getElementById('modalBody').innerHTML = bodyHtml;
         
-        // 將 ID 與狀態透過 data- 屬性綁定到按鈕，避免引號出錯
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-outline" onclick="processApproval(this)" data-id="${id}" data-status="已退回">駁回申請</button>
             <button class="btn-fill" onclick="processApproval(this)" data-id="${id}" data-status="已生效">確認核准</button>
@@ -659,7 +727,6 @@
         document.getElementById('globalModal').style.display = 'flex';
     }
 
-    // 🌟 修正後的簽核資料傳送功能 (補上 key)
     async function processApproval(btn) {
         let id = btn.getAttribute('data-id');
         let status = btn.getAttribute('data-status');
@@ -672,13 +739,12 @@
 
         showLoading("決策同步中...");
         try {
-            // ✅ 補上 key: currentKey，讓資料庫知道是高階主管在操作，通過權限防護
             const text = await fetchApi({ action: "updateLeave", id: String(id).trim(), newStatus: status, key: currentKey });
             
             if (text === "Success" || text.includes("Success")) { 
                 Swal.fire('成功', `申請單${actionText}成功！`, 'success'); 
                 closeModal();
-                loadSecureData(); // 重抓資料以更新畫面
+                loadSecureData(); 
             } else {
                 Swal.fire('資料庫回報異常', text, 'error'); 
             }
@@ -689,7 +755,6 @@
         }
     }
 
-    // 🌟 計算真實報表數據
     function calculateRealReportData() {
         if (!db.leave || !db.employees) return;
         
@@ -955,8 +1020,6 @@
         document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉視窗</button>`;
         document.getElementById('globalModal').style.display = 'flex';
     }
-
-    function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
     function renderHRList() {
         const c = document.getElementById('hrListContainer');
