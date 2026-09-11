@@ -52,10 +52,10 @@
         .badge { position: absolute; top: -5px; right: -8px; background: var(--danger); color: white; font-size: 10px; font-weight: 900; padding: 2px 5px; border-radius: 10px; border: 2px solid var(--navy); }
         .role-selector { background: var(--navy-light); color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; }
 
-        /* 歡迎區塊 (更新為頭像版) */
+        /* 歡迎區塊 (動態大頭貼) */
         .greeting-area { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%); color: white; padding: 15px 20px 30px 20px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; }
         .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
-        .executive-avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--info); color: white; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: 900; border: 2px solid rgba(255,255,255,0.4); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .executive-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--info); color: white; display: flex; justify-content: center; align-items: center; font-size: 22px; font-weight: 900; border: 2px solid rgba(255,255,255,0.4); box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; overflow: hidden; }
         .alert-bar { background: rgba(255,255,255,0.15); margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
         .alert-bar:active { background: rgba(255,255,255,0.25); }
 
@@ -65,14 +65,14 @@
         .section-title { font-size: 18px; font-weight: 900; color: var(--navy); margin: 0; }
         .section-link { font-size: 13px; color: var(--info); font-weight: 700; text-decoration: none; cursor: pointer; }
         .card { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; transition: 0.15s ease; }
-        .card:active { transform: scale(0.99); }
         .interactive-row { cursor: pointer; transition: 0.2s; padding: 6px; border-radius: 8px; }
-        .interactive-row:hover { background: #f8f9fa; }
         .interactive-row:active { background: #eef2f5; }
         
-        /* 總覽 6 宮格 */
+        /* 總覽 6 宮格 (加入點擊特效) */
         .grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
-        .stat-box { background: var(--card); border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .stat-box { background: var(--card); border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center; align-items: center; transition: 0.2s; }
+        .stat-box.clickable { cursor: pointer; }
+        .stat-box.clickable:active { transform: scale(0.95); background: #f0f4f8; }
         .stat-num { font-size: 22px; font-weight: 900; color: var(--navy); margin: 4px 0; }
         .stat-label { font-size: 11px; color: var(--text-sub); font-weight: 700; }
         .stat-box.danger { background: var(--danger-bg); }
@@ -85,12 +85,12 @@
         /* 異常列表 */
         .anomaly-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
         .anomaly-item { display: flex; align-items: center; padding: 12px; border-radius: 12px; background: var(--card); border-left: 4px solid var(--danger); box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-        .anomaly-item.warning { border-left-color: var(--warning); }
+        .anomaly-item.warning { border-left-color: var(--warning); cursor: pointer;}
+        .anomaly-item.warning:active { background: #fdfbf7; }
         .anomaly-icon { font-size: 18px; margin-right: 12px; }
         .anomaly-text { flex: 1; }
         .anomaly-title { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
         .anomaly-desc { font-size: 12px; color: var(--text-sub); }
-        .arrow { color: #CCC; font-size: 14px; }
 
         /* 部門出勤列表 */
         .list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #F1F3F4; }
@@ -117,13 +117,14 @@
         .btn-fill { flex: 1; padding: 10px; border: none; background: var(--success); color: white; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;}
         .btn-fill:active { opacity: 0.8; }
 
-        /* 模態彈窗 (Modal) */
+        /* 模態彈窗 (Modal) - 更新關閉邏輯與熱區 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; display: none; justify-content: center; align-items: flex-end; }
         .modal-content { background: white; width: 100%; max-width: 480px; max-height: 92vh; border-top-left-radius: 24px; border-top-right-radius: 24px; display: flex; flex-direction: column; overflow: hidden; animation: slideUp 0.25s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .modal-header { padding: 18px 20px; border-bottom: 1px solid #EEE; display: flex; justify-content: space-between; align-items: center; }
         .modal-title { font-size: 18px; font-weight: 900; color: var(--navy); margin: 0; }
-        .modal-close { font-size: 26px; color: var(--text-light); cursor: pointer; line-height: 1; }
+        .modal-close { font-size: 28px; color: var(--text-sub); cursor: pointer; line-height: 1; padding: 10px; margin: -10px; transition: 0.2s; }
+        .modal-close:active { color: var(--danger); transform: scale(1.1); }
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
         .modal-footer { padding: 15px 20px 25px 20px; border-top: 1px solid #EEE; display: flex; gap: 10px; background: white; }
         
@@ -158,6 +159,9 @@
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:900; color:var(--navy);">啟動企業智庫...</div></div>
 
+    <!-- 隱藏的上傳元件 (大頭貼用) -->
+    <input type="file" id="adminAvatarUpload" accept="image/*" style="display: none;" onchange="handleAdminAvatarUpload(event)">
+
     <!-- 登入介面 -->
     <div id="loginScreen">
         <div class="login-box">
@@ -177,7 +181,7 @@
     <div class="header" id="mainHeader" style="display:none;">
         <div class="header-title">HOHO YUAN</div>
         <div class="header-actions">
-            <!-- 鈴鐺改為可點擊，開啟通知中心 -->
+            <!-- 通知鈴鐺 -->
             <div class="bell-icon" onclick="openNotificationCenter()">🔔<span class="badge" id="alertBadge">0</span></div>
             <div class="role-selector" onclick="doLogout()"><span id="displayRole">副總</span> ▼</div>
         </div>
@@ -186,10 +190,11 @@
     <!-- 視圖 1：首頁 Dashboard -->
     <div id="viewHome" class="view-section">
         
-        <!-- 🌟 更新版：大頭貼與動態重要任務提醒 -->
+        <!-- 大頭貼與動態重要任務提醒 -->
         <div class="greeting-area">
             <div class="profile-header">
-                <div class="executive-avatar" id="executiveAvatar">副</div>
+                <!-- 點擊更換大頭貼 -->
+                <div class="executive-avatar" id="executiveAvatar" onclick="document.getElementById('adminAvatarUpload').click()">副</div>
                 <div>
                     <h2 id="greetingRole" style="margin: 0; font-size: 20px; font-weight: 700;">副總經理</h2>
                     <p id="currentDateText" style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">2026/09/11 星期五</p>
@@ -209,10 +214,11 @@
             <div class="grid-6">
                 <div class="stat-box"><div class="stat-label">應到人數</div><div class="stat-num" id="sTotal">-</div></div>
                 <div class="stat-box info"><div class="stat-label">實到人數</div><div class="stat-num" id="sActual">-</div></div>
-                <div class="stat-box warning"><div class="stat-label">請假人數</div><div class="stat-num" id="sLeave">-</div></div>
-                <div class="stat-box danger"><div class="stat-label">未打卡</div><div class="stat-num" id="sMiss">-</div></div>
-                <div class="stat-box"><div class="stat-label">加班預估</div><div class="stat-num" id="sOT">-</div></div>
-                <div class="stat-box warning" onclick="switchNav('viewApproval', document.querySelectorAll('.nav-item')[1])"><div class="stat-label">待簽核</div><div class="stat-num" id="sPending">-</div></div>
+                <!-- 點擊鑽取名單熱區 -->
+                <div class="stat-box warning clickable" id="boxLeave"><div class="stat-label">請假人數</div><div class="stat-num" id="sLeave">-</div></div>
+                <div class="stat-box danger clickable" id="boxMiss"><div class="stat-label">未打卡</div><div class="stat-num" id="sMiss">-</div></div>
+                <div class="stat-box clickable" id="boxOT"><div class="stat-label">加班預估</div><div class="stat-num" id="sOT">-</div></div>
+                <div class="stat-box warning clickable" id="boxPending" onclick="switchNav('viewApproval', document.querySelectorAll('.nav-item')[1])"><div class="stat-label">待簽核</div><div class="stat-num" id="sPending">-</div></div>
             </div>
 
             <div class="section-header">
@@ -268,7 +274,7 @@
         </div>
     </div>
 
-    <!-- 視圖 4：管理決策報表 (鑽取分析功能) -->
+    <!-- 視圖 4：管理決策報表 -->
     <div id="viewReport" class="view-section">
         <div style="padding: 20px;">
             <div class="section-header">
@@ -325,8 +331,8 @@
     </div>
 </div>
 
-<!-- 共用模態彈窗 Modal -->
-<div class="modal-overlay" id="globalModal">
+<!-- 🌟 共用模態彈窗 Modal (新增點擊外部關閉功能) -->
+<div class="modal-overlay" id="globalModal" onclick="if(event.target===this) closeModal()">
     <div class="modal-content">
         <div class="modal-header">
             <h3 class="modal-title" id="modalMainTitle">詳細資訊</h3>
@@ -345,6 +351,11 @@
     let currentRole = "";
     let currentKey = "";
     let pendingApprovals = [];
+
+    // 鑽取名單用的全域變數
+    window.todayMissingList = [];
+    window.todayLeaveList = [];
+    window.todayOTList = [];
 
     let globalReportOT = {}; 
     let globalReportLeave = { "病假": [], "事假": [], "特休": [] }; 
@@ -379,6 +390,29 @@
         } catch(e) { hideLoading(); Swal.fire('連線失敗', '無法取得正式資料庫狀態', 'error'); }
     }
 
+    // 🌟 大頭貼處理功能
+    function handleAdminAvatarUpload(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const base64 = evt.target.result;
+            localStorage.setItem('hoho_admin_avatar_' + currentRole, base64);
+            loadAdminAvatar();
+            Swal.fire('成功', '專屬頭像已更新！', 'success');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function loadAdminAvatar() {
+        const saved = localStorage.getItem('hoho_admin_avatar_' + currentRole);
+        if(saved) {
+            document.getElementById('executiveAvatar').innerHTML = `<img src="${saved}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        } else {
+            document.getElementById('executiveAvatar').innerText = currentRole.substring(0, 1);
+        }
+    }
+
     async function doLogin() {
         const role = document.getElementById('loginRole').value;
         const pwd = document.getElementById('loginPwd').value.trim();
@@ -393,10 +427,11 @@
             currentRole = role;
             currentKey = role === "人事主管" ? "hr123" : "cfo888"; 
 
-            // 🌟 更新頂部大頭貼與文字
             document.getElementById('displayRole').innerText = role.substring(0, 2);
             document.getElementById('greetingRole').innerText = role;
-            document.getElementById('executiveAvatar').innerText = role.substring(0, 1);
+            
+            // 載入大頭貼
+            loadAdminAvatar();
 
             document.getElementById('loginScreen').style.opacity = '0';
             setTimeout(() => {
@@ -431,10 +466,13 @@
 
     function analyzeDataAndRender() {
         let totalEmp = 0; let depts = {};
+        
+        let allValidEmps = [];
         if (db.employees) {
             db.employees.forEach((r, i) => {
                 if (i===0 || !r[0] || r[19]==="已離職") return;
                 totalEmp++;
+                allValidEmps.push(r);
                 let dept = r[1] || "未分類";
                 if(!depts[dept]) depts[dept] = { total: 0, present: 0, leave: 0, missing: 0 };
                 depts[dept].total++;
@@ -442,26 +480,34 @@
         }
 
         let todayStr = new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Taipei'}).replace(/-/g, '/');
+        let todayT = new Date().setHours(0,0,0,0);
+        let tomorrowT = todayT + 86400000;
+        
         let presentSet = new Set();
-        let leavesToday = 0;
         pendingApprovals = [];
+        window.todayLeaveList = [];
+        window.todayOTList = [];
+        window.todayMissingList = [];
 
         if (db.leave) {
             db.leave.forEach((r, i) => {
                 if (i===0) return;
                 let status = r[8] || "";
+                let type = r[4] || "";
+                let sDate = new Date(r[5]).getTime();
+                let eDate = new Date(r[6]).getTime();
+
                 if (status.includes("待")) pendingApprovals.push(r);
                 
-                if (status === "已生效") {
-                    let s = new Date(r[5]); let e = new Date(r[6]);
-                    let todayT = new Date().setHours(0,0,0,0);
-                    if (s.setHours(0,0,0,0) <= todayT && e.setHours(0,0,0,0) >= todayT) {
-                        if (r[4] !== "打卡補登" && r[4] !== "加班申請") {
-                            leavesToday++;
-                            let empDept = r[3];
-                            if (depts[empDept]) depts[empDept].leave++;
-                        }
+                if (status === "已生效" && type !== "打卡補登" && type !== "加班申請") {
+                    if (sDate < tomorrowT && eDate >= todayT) {
+                        window.todayLeaveList.push({ name: r[2], dept: r[3], type: type, reason: r[7] });
+                        if (depts[r[3]]) depts[r[3]].leave++;
                     }
+                }
+
+                if (type.includes("加班") && sDate >= todayT && sDate < tomorrowT) {
+                    window.todayOTList.push({ name: r[2], dept: r[3], status: status, reason: r[7] });
                 }
             });
         }
@@ -473,27 +519,40 @@
                 let dStr = `${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')}`;
                 if (dStr === todayStr && String(r[3]).includes("上班")) {
                     presentSet.add(r[1]);
-                    let emp = db.employees.find(e => e[0] === r[1]);
+                    let emp = allValidEmps.find(e => e[0] === r[1]);
                     if (emp && depts[emp[1]]) depts[emp[1]].present++;
                 }
             });
         }
 
+        allValidEmps.forEach(emp => {
+            let name = emp[0]; let dept = emp[1];
+            let isPresent = presentSet.has(name);
+            let isOnLeave = window.todayLeaveList.some(l => l.name === name);
+            if (!isPresent && !isOnLeave) {
+                window.todayMissingList.push({ name: name, dept: dept });
+            }
+        });
+
         let actualPresent = presentSet.size;
-        let missing = totalEmp - actualPresent - leavesToday;
-        if(missing < 0) missing = 0;
+        let missing = window.todayMissingList.length;
 
         document.getElementById('sTotal').innerText = totalEmp;
         document.getElementById('sActual').innerText = actualPresent;
-        document.getElementById('sLeave').innerText = leavesToday;
+        document.getElementById('sLeave').innerText = window.todayLeaveList.length;
         document.getElementById('sMiss').innerText = missing;
         document.getElementById('sPending').innerText = pendingApprovals.length;
-        document.getElementById('sOT').innerText = Math.floor(Math.random() * 5) + 3;
+        document.getElementById('sOT').innerText = window.todayOTList.length;
 
         document.getElementById('hrTotal').innerText = totalEmp;
-        document.getElementById('hrRate').innerText = totalEmp > 0 ? Math.round(((totalEmp - leavesToday)/totalEmp)*100) + "%" : "-";
+        document.getElementById('hrRate').innerText = totalEmp > 0 ? Math.round(((totalEmp - window.todayLeaveList.length)/totalEmp)*100) + "%" : "-";
 
-        updateTopAlertAndNotifications(missing, pendingApprovals, depts); // 🌟 呼叫通知中心更新
+        updateTopAlertAndNotifications(missing, pendingApprovals, depts); 
+
+        // 綁定鑽取事件
+        document.getElementById('boxLeave').onclick = () => showDrillDown('今日請假名單', window.todayLeaveList, 'leave');
+        document.getElementById('boxMiss').onclick = () => showDrillDown('今日未打卡名單', window.todayMissingList, 'miss');
+        document.getElementById('boxOT').onclick = () => showDrillDown('今日加班預估', window.todayOTList, 'ot');
 
         renderHomeAlerts(missing, pendingApprovals);
         renderDeptStatus(depts);
@@ -502,7 +561,32 @@
         renderHRList();
     }
 
-    // 🌟 通知中心與跑馬燈動態更新
+    // 🌟 首頁六宮格點擊鑽取視窗
+    window.showDrillDown = function(title, list, type) {
+        document.getElementById('modalMainTitle').innerText = title;
+        let html = '';
+        if(list.length === 0) {
+            html = '<div style="text-align:center; padding:20px; color:var(--text-light); font-weight:bold;">目前無相關紀錄</div>';
+        } else {
+            list.forEach(item => {
+                let icon = type === 'miss' ? '🔴' : (type === 'leave' ? '🟡' : '🟣');
+                let desc = type === 'miss' ? '尚未打卡上班' : (type === 'leave' ? `${item.type} - ${item.reason}` : `${item.status} - ${item.reason}`);
+                html += `
+                    <div style="padding:12px; background:#F8F9FA; border-radius:10px; margin-bottom:8px; display:flex; align-items:center; gap:12px; border-left:4px solid ${type === 'miss' ? 'var(--danger)' : (type === 'leave' ? 'var(--warning)' : 'var(--navy)')};">
+                        <div style="font-size:22px;">${icon}</div>
+                        <div style="flex:1;">
+                            <div style="font-size:15px; font-weight:bold; color:var(--text-main);">${item.name} <span style="font-size:11px; color:var(--text-sub); background:#eef2f5; padding:2px 6px; border-radius:6px; margin-left:4px;">${item.dept}</span></div>
+                            <div style="font-size:12px; color:var(--text-sub); margin-top:4px;">${desc}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        document.getElementById('modalBody').innerHTML = html;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉名單</button>`;
+        document.getElementById('globalModal').style.display = 'flex';
+    };
+
     function updateTopAlertAndNotifications(missingCount, pendings, depts) {
         let badgeCount = 0;
         let topMsg = "✅ 今日營運狀況良好";
@@ -557,7 +641,6 @@
         window.currentNotificationsHtml = notifHtml;
     }
 
-    // 🌟 打開通知中心
     window.openNotificationCenter = function() {
         document.getElementById('modalMainTitle').innerText = "🔔 通知中心";
         document.getElementById('modalBody').innerHTML = window.currentNotificationsHtml || `<div style="text-align:center; padding:30px; color:var(--text-light); font-weight:bold;">目前沒有新通知</div>`;
@@ -568,7 +651,7 @@
     function renderHomeAlerts(missing, pendings) {
         const c = document.getElementById('anomalyContainer'); c.innerHTML = "";
         if (missing > 0) {
-            c.innerHTML += `<div class="anomaly-item"><div class="anomaly-icon">🔴</div><div class="anomaly-text"><div class="anomaly-title">${missing} 人尚未打卡上班</div><div class="anomaly-desc">請留意各部門早班出勤狀況</div></div><div class="arrow">></div></div>`;
+            c.innerHTML += `<div class="anomaly-item" onclick="showDrillDown('今日未打卡名單', window.todayMissingList, 'miss')"><div class="anomaly-icon">🔴</div><div class="anomaly-text"><div class="anomaly-title">${missing} 人尚未打卡上班</div><div class="anomaly-desc">點擊查看名單</div></div><div class="arrow">></div></div>`;
         }
         if (pendings.length > 0) {
             c.innerHTML += `<div class="anomaly-item warning" onclick="switchNav('viewApproval', document.querySelectorAll('.nav-item')[1])"><div class="anomaly-icon">🟡</div><div class="anomaly-text"><div class="anomaly-title">${pendings.length} 筆申請待您處理</div><div class="anomaly-desc">包含病假、加班與打卡補登</div></div><div class="arrow">></div></div>`;
@@ -673,7 +756,6 @@
         c.innerHTML = html;
     }
 
-    // 簽核評估彈窗
     function openApprovalModal(encodedData) {
         let r = JSON.parse(decodeURIComponent(encodedData));
         let id = r[0]; let name = r[2]; let dept = r[3]; let type = r[4];
@@ -754,6 +836,9 @@
             hideLoading(); 
         }
     }
+
+    // 關閉 Modal (共用函式)
+    function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
     function calculateRealReportData() {
         if (!db.leave || !db.employees) return;
