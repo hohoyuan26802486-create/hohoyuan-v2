@@ -692,7 +692,7 @@
                     addStatusBtn("外出回廠上班", false);
                     addStatusBtn("外勤/遠端打卡", false); 
                 }
-            } else {
+           } else {
                 if (isFlexWorker) { 
                     addStatusBtn("打卡紀錄 (彈性下班)", true); 
                     addStatusBtn("經主管核准加班", false);
@@ -1079,7 +1079,7 @@
         });
     }
 
-    async function submitAttendance() {
+ async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         const reasonInput = document.getElementById('punchReason');
