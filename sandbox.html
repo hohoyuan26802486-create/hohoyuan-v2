@@ -647,7 +647,8 @@
         if (!rb) return;
         
         if (txt.includes("外勤") || txt.includes("遠端") || txt.includes("加班") || txt.includes("值班")) {
-            if (txt === "勤務結束下班 (含保障加班)") {
+            // 已拿掉 (含保障加班) 字眼
+            if (txt === "勤務結束下班") {
                 rb.style.display = "none";
             } else {
                 rb.style.display = "block";
@@ -656,7 +657,6 @@
             rb.style.display = "none";
         }
     }
-
     function handleTypeChange() {
         try {
             if(!currentUser) return;
@@ -702,6 +702,7 @@
                 } else {
                     if (time >= 1010) { 
                         if (myDept === "運輸部") {
+                            // 🌟 這裡拿掉了 (含保障加班)
                             addStatusBtn("勤務結束下班", true); 
                             addStatusBtn("因個人因素延後下班", false); 
                         } else {
@@ -1086,7 +1087,8 @@
         let finalReason = (reasonInput && document.getElementById('reasonBox').style.display !== "none") ? reasonInput.value.trim() : ""; 
         let finalStatus = selectedStatus;
 
-        if (finalStatus.includes("外勤") || finalStatus.includes("遠端") || ((finalStatus.includes("加班") || finalStatus.includes("值班")) && finalStatus !== "勤務結束下班 (含保障加班)")) {
+        // 檢查如果不是勤務結束下班，且包含外勤/遠端/加班等，則必須填寫事由
+        if (finalStatus.includes("外勤") || finalStatus.includes("遠端") || ((finalStatus.includes("加班") || finalStatus.includes("值班")) && finalStatus !== "勤務結束下班")) {
             if (!finalReason) {
                 return Swal.fire('提示', '請務必填妥「事由」(例如：拜訪客戶、處理公務)！', 'warning');
             }
@@ -1109,12 +1111,20 @@
             else if (result === "Success") {
                 if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
                 
-                if (finalStatus.includes("加班") || finalStatus.includes("值班")) {
+                // 🌟 當按鈕是「勤務結束下班」或有加班/值班字眼時，生成加班單
+                if (finalStatus.includes("加班") || finalStatus.includes("值班") || finalStatus === "勤務結束下班") {
                     let n = new Date();
                     let pad = (num) => String(num).padStart(2, '0');
-                    let localTimeStr = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`;
+                    let localTimeStr = `\({n.getFullYear()}-\){pad(n.getMonth()+1)}-\({pad(n.getDate())}T\){pad(n.getHours())}:${pad(n.getMinutes())}`;
                     
-                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: finalReason, agent: "無", imageFile: "", managerOverride: false };
+                    let otReason = finalReason;
+                    // 🌟 特殊邏輯：替換事由為「運輸部勤務結束」，不含「自動」與「保障加班」字眼
+                    if (finalStatus === "勤務結束下班") {
+                        otReason = "運輸部勤務結束"; 
+                    }
+
+                    // 送出假單，系統後台預設會直接將狀態設為「待主管審核」，不會經過人事
+                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
                     await fetchApi(ATTENDANCE_API_URL, otPayload);
                 }
 
@@ -1122,6 +1132,7 @@
             } else { Swal.fire('失敗', result, 'error'); }
         } catch (e) { Swal.fire('跨域連線遭阻擋', '真實錯誤訊息：' + e.message, 'error'); } 
         finally { hideLoading(); }
+    }
     }
 
     function getBase64(file) {
