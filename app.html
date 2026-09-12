@@ -1116,7 +1116,20 @@
                 if (finalStatus.includes("加班") || finalStatus.includes("值班") || finalStatus === "勤務結束下班") {
                     let n = new Date();
                     let pad = (num) => String(num).padStart(2, '0');
-                    let localTimeStr = `\({n.getFullYear()}-\){pad(n.getMonth()+1)}-\({pad(n.getDate())}T\){pad(n.getHours())}:${pad(n.getMinutes())}`;
+                    
+                    // 🌟 修正點：改用最安全的加號 (+) 來串接時間，確保絕對不會再印出亂碼
+                    let localTimeStr = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()) + "T" + pad(n.getHours()) + ":" + pad(n.getMinutes());
+                    
+                    let otReason = finalReason;
+                    // 🌟 特殊邏輯：替換事由為「運輸部勤務結束」
+                    if (finalStatus === "勤務結束下班") {
+                        otReason = "運輸部勤務結束"; 
+                    }
+
+                    // 送出假單，系統後台預設會直接將狀態設為「待主管審核」，不會經過人事
+                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
+                    await fetchApi(ATTENDANCE_API_URL, otPayload);
+                }
                     
                     let otReason = finalReason;
                     // 🌟 特殊邏輯：替換事由為「運輸部勤務結束」，不含「自動」與「保障加班」字眼
