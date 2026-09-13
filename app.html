@@ -641,13 +641,12 @@
         else { compBox.style.display = 'none'; document.getElementById('compLeaveDate').value = ''; }
     }
 
-    // 🚀 喚醒動態理由框判定邏輯
+   // 🚀 喚醒動態理由框判定邏輯
     function toggleReasonBox(txt) {
         const rb = document.getElementById('reasonBox');
         if (!rb) return;
         
         if (txt.includes("外勤") || txt.includes("遠端") || txt.includes("加班") || txt.includes("值班")) {
-            // 已拿掉 (含保障加班) 字眼
             if (txt === "勤務結束下班") {
                 rb.style.display = "none";
             } else {
@@ -657,7 +656,6 @@
             rb.style.display = "none";
         }
     }
-
     function handleTypeChange() {
         try {
             if(!currentUser) return;
@@ -703,7 +701,6 @@
                 } else {
                     if (time >= 1010) { 
                         if (myDept === "運輸部") {
-                            // 🌟 這裡拿掉了 (含保障加班)
                             addStatusBtn("勤務結束下班", true); 
                             addStatusBtn("因個人因素延後下班", false); 
                         } else {
@@ -721,7 +718,6 @@
             updateGPSUI();
         } catch(e) { console.error(e); }
     }
-
     function addStatusBtn(txt, isSelected) {
         const div = document.createElement('div');
         div.className = isSelected ? "status-btn selected" : "status-btn";
@@ -1080,7 +1076,7 @@
         });
     }
 
-   async function submitAttendance() {
+  async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         const reasonInput = document.getElementById('punchReason');
@@ -1088,7 +1084,6 @@
         let finalReason = (reasonInput && document.getElementById('reasonBox').style.display !== "none") ? reasonInput.value.trim() : ""; 
         let finalStatus = selectedStatus;
 
-        // 檢查如果不是勤務結束下班，且包含外勤/遠端/加班等，則必須填寫事由
         if (finalStatus.includes("外勤") || finalStatus.includes("遠端") || ((finalStatus.includes("加班") || finalStatus.includes("值班")) && finalStatus !== "勤務結束下班")) {
             if (!finalReason) {
                 return Swal.fire('提示', '請務必填妥「事由」(例如：拜訪客戶、處理公務)！', 'warning');
@@ -1117,7 +1112,7 @@
                     let n = new Date();
                     let pad = (num) => String(num).padStart(2, '0');
                     
-                    // 🌟 修正點：改用最安全的加號 (+) 來串接時間，確保絕對不會再印出亂碼
+                    // 🌟 使用加號 (+) 串接時間，絕對不會跑版印出亂碼
                     let localTimeStr = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()) + "T" + pad(n.getHours()) + ":" + pad(n.getMinutes());
                     
                     let otReason = finalReason;
@@ -1126,18 +1121,6 @@
                         otReason = "運輸部勤務結束"; 
                     }
 
-                    // 送出假單，系統後台預設會直接將狀態設為「待主管審核」，不會經過人事
-                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
-                    await fetchApi(ATTENDANCE_API_URL, otPayload);
-                }
-                    
-                    let otReason = finalReason;
-                    // 🌟 特殊邏輯：替換事由為「運輸部勤務結束」，不含「自動」與「保障加班」字眼
-                    if (finalStatus === "勤務結束下班") {
-                        otReason = "運輸部勤務結束"; 
-                    }
-
-                    // 送出假單，系統後台預設會直接將狀態設為「待主管審核」，不會經過人事
                     const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
                     await fetchApi(ATTENDANCE_API_URL, otPayload);
                 }
@@ -1147,7 +1130,6 @@
         } catch (e) { Swal.fire('跨域連線遭阻擋', '真實錯誤訊息：' + e.message, 'error'); } 
         finally { hideLoading(); }
     }
-
     function getBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader(); reader.readAsDataURL(file);
