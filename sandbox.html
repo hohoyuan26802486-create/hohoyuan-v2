@@ -642,7 +642,7 @@
     }
 
    // 🚀 喚醒動態理由框判定邏輯
-    function toggleReasonBox(txt) {
+   function toggleReasonBox(txt) {
         const rb = document.getElementById('reasonBox');
         if (!rb) return;
         
@@ -651,6 +651,14 @@
                 rb.style.display = "none";
             } else {
                 rb.style.display = "block";
+                
+                // 🌟 新增防呆機制：如果是加班，動態更改輸入框的提示文字
+                const reasonInput = document.getElementById('punchReason');
+                if (txt === "經主管核准加班" && reasonInput) {
+                    reasonInput.placeholder = "請務必填寫：申請 X 小時 (例: 申請 2 小時)";
+                } else if (reasonInput) {
+                    reasonInput.placeholder = "例如：拜訪客戶、跨廠區支援...";
+                }
             }
         } else {
             rb.style.display = "none";
@@ -842,12 +850,21 @@
     }
 
     function handleLeaveTypeChange() {
-        const type = document.getElementById('lvType').value; const box = document.getElementById('annualLeaveBox');
+        const type = document.getElementById('lvType').value; 
+        const box = document.getElementById('annualLeaveBox');
+        const otHint = document.getElementById('otHintBox'); // 抓取加班提示框
         if(!box) return;
+        
+        // 處理特休餘額顯示
         if (type === '特休') { box.style.display = 'block'; updateAnnualLeaveUI(); } 
         else { box.style.display = 'none'; }
+        
+        // 🌟 處理加班申請的黃色提醒框顯示
+        if (otHint) {
+            if (type === '加班申請') { otHint.style.display = 'block'; }
+            else { otHint.style.display = 'none'; }
+        }
     }
-
     function updateAnnualLeaveUI() {
         if (!globalDB || !globalDB.employees) return;
         const emp = globalDB.employees.find(r => r[0] === currentUser);
