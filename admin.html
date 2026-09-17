@@ -623,10 +623,18 @@
                 let safeTime = String(r[0]).replace(/'/g, "\\'");
                 let delBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="delAtt('${safeTime}', '${r[1]}', '${r[3]}')">🗑️ 刪除</button>`;
                 htmlStr += `<tr><td><b>${timeStr}</b></td><td><b>${r[1]}</b></td><td>${r[2]}</td><td><span style="background:${typeColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${r[3]}</span>${warningHtml}</td><td>${r[4]}</td><td>${loc}</td><td>${delBtn}</td></tr>`;
-            } else if (item.type === 'leave') {
+          } else if (item.type === 'leave') {
                 let info = item.leaveInfo; let sStr = formatTimeWithDay(info.start); let eStr = formatTimeWithDay(info.end);
                 let timeDisplay = sStr === eStr ? sStr : `${sStr}<br>～<br>${eStr}`;
-                htmlStr += `<tr style="background-color: #fffde7; border-left: 4px solid #f4b400;"><td style="color:#b06000;">${timeDisplay}</td><td><b>${info.name}</b></td><td>${info.dept}</td><td><span style="background:#f4b400; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">休假</span></td><td style="color:#b06000;">【${info.lType}】${info.reason || ''}</td><td>免打卡</td><td>-</td></tr>`;
+                
+                // 🌟 新增：針對加班單與一般假單進行獨立的顏色排版區分
+                let isOT = String(info.lType).includes("加班");
+                let tagText = isOT ? "加班" : "休假";
+                let tagColor = isOT ? "#9c27b0" : "#f4b400"; // 加班用醒目紫色，休假維持黃色
+                let rowBg = isOT ? "#f3e5f5" : "#fffde7"; 
+                let textColor = isOT ? "#6a1b9a" : "#b06000";
+
+                htmlStr += `<tr style="background-color: ${rowBg}; border-left: 4px solid ${tagColor};"><td style="color:${textColor};">${timeDisplay}</td><td><b>${info.name}</b></td><td>${info.dept}</td><td><span style="background:${tagColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${tagText}</span></td><td style="color:${textColor};">【${info.lType}】${info.reason || ''}</td><td>免打卡</td><td>-</td></tr>`;
             }
         });
         tbody.innerHTML = htmlStr;
