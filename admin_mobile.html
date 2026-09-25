@@ -207,8 +207,18 @@
 
         <div class="section-wrapper">
             <div class="section-header">
-                <h3 class="section-title">📊 今日概況</h3>
-            </div>
+    <h3 class="section-title">管理決策報表</h3>
+</div>
+
+<!-- 🌟 新增：運輸部即時工時追蹤卡片 -->
+<div class="card" style="border-top: 4px solid var(--navy);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h4 style="margin:0; color: var(--navy);">🚛 運輸部即時工時追蹤</h4>
+        <span style="font-size:11px; color:white; background:var(--danger); padding:3px 6px; border-radius:6px; font-weight:bold;">即時打卡累計</span>
+    </div>
+    <div id="rptTransportHours">載入資料中...</div>
+</div>
+
             <div class="grid-6">
                 <div class="stat-box"><div class="stat-label">應到人數</div><div class="stat-num" id="sTotal">-</div></div>
                 <div class="stat-box info"><div class="stat-label">實到人數</div><div class="stat-num" id="sActual">-</div></div>
@@ -905,13 +915,87 @@
         let deptLeaveStats = {};
         let totalOTHours = 0;
 
-        db.employees.forEach((r, i) => {
-            if (i === 0 || !r[0] || r[19] === "已離職") return;
-            let dept = r[1] || "未分類";
-            if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
-            deptLeaveStats[dept].headcount++;
-            if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
-        });
+        // 🌟 新增：運輸部即時工時計算核心
+let transportHours = {};
+db.employees.forEach((r, i) => {
+    if (i === 0 || !r[0] || r[19] === "已離職") return;
+    let dept = r[1] || "未分類";
+    
+    if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
+    deptLeaveStats[dept].headcount++;
+    if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
+
+    if (dept === "運輸部") {
+        transportHours[r[0]] = { workHrs: 0, otHrs: 0, days: 0, records: {} };
+    }
+});
+
+// 撈出並整理運輸部當月每一天的打卡進出時間
+if (attDataThisMonth && attDataThisMonth.length > 1) {
+    attDataThisMonth.forEach((r, i) => {
+        if(i===0) return;
+        let empName = r[1];
+        let type = r[3];
+        let timeStr = r[0];
+        let tDate = new Date(timeStr);
+        
+        if (transportHours[empName] && !isNaN(tDate.getTime())) {
+            let dateKey = tDate.getFullYear() + "-" + (tDate.getMonth()+1) + "-" + tDate.getDate();
+            if (!transportHours[empName].records[dateKey]) transportHours[empName].records[dateKey] = { in: null, out: null };
+            if (String(type).includes("上班")) transportHours[empName].records[dateKey].in = tDate.getTime();
+            if (String(type).includes("下班")) transportHours[empName].records[dateKey].out = tDate.getTime();
+        }
+    });
+}
+
+// 計算工時與估算加班
+let thArr = [];
+for (let emp in transportHours) {
+    let totalW = 0;
+    let totalO = 0;
+    let daysCnt = 0;
+    for (let dKey in transportHours[emp].records) {
+        let rec = transportHours[emp].records[dKey];
+        if (rec.in && rec.out) {
+            let rawHrs = (rec.out - rec.in) / 3600000;
+            let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; // 自動扣掉 1 小時休息
+            actHrs = Math.max(0, actHrs);
+            totalW += actHrs;
+            if (actHrs > 8) totalO += (actHrs - 8);
+            daysCnt++;
+        }
+    }
+    if (totalW > 0 || daysCnt > 0) { 
+        thArr.push({ name: emp, workHrs: totalW, otHrs: totalO, days: daysCnt });
+    }
+}
+
+// 渲染運輸部工時畫面
+thArr.sort((a,b) => b.workHrs - a.workHrs);
+let thHtml = '';
+if (thArr.length === 0) {
+    thHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月尚無運輸部打卡紀錄</div>';
+} else {
+    thArr.forEach(t => {
+        let overWarning = t.workHrs >= 200 ? "color:var(--danger);" : "color:var(--text-main);";
+        thHtml += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee;">
+                <div>
+                    <div style="font-size:15px; font-weight:bold; ${overWarning}">${t.name}</div>
+                    <div style="font-size:11px; color:var(--text-sub); margin-top:4px;">出勤 ${t.days} 天</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:16px; font-weight:900; ${overWarning}">${t.workHrs.toFixed(1)} <span style="font-size:11px;">h</span></div>
+                    <div style="font-size:12px; font-weight:bold; color:var(--danger); margin-top:4px;">實際超時估算: ${t.otHrs.toFixed(1)} h</div>
+                </div>
+            </div>
+        `;
+    });
+}
+let rptTransportBox = document.getElementById('rptTransportHours');
+if (rptTransportBox) rptTransportBox.innerHTML = thHtml;
+// 🌟 運輸部邏輯結束
+
 
         db.leave.forEach((r, i) => {
             if (i === 0 || r[8] !== "已生效") return;
