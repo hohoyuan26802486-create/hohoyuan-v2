@@ -154,6 +154,16 @@
         #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
         .spinner { width: 45px; height: 45px; border: 4px solid var(--info-bg); border-top: 4px solid var(--navy); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 🌟 切換開關 CSS */
+        .switch { position: relative; display: inline-block; width: 42px; height: 24px; margin: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; }
+        .slider.round { border-radius: 24px; }
+        .slider.round:before { border-radius: 50%; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(18px); }
     </style>
 </head>
 <body>
@@ -206,19 +216,7 @@
         </div>
 
         <div class="section-wrapper">
-            <div class="section-header">
-    <h3 class="section-title">管理決策報表</h3>
-</div>
-
-<!-- 🌟 新增：運輸部即時工時追蹤卡片 -->
-<div class="card" style="border-top: 4px solid var(--navy);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h4 style="margin:0; color: var(--navy);">🚛 運輸部即時工時追蹤</h4>
-        <span style="font-size:11px; color:white; background:var(--danger); padding:3px 6px; border-radius:6px; font-weight:bold;">即時打卡累計</span>
-    </div>
-    <div id="rptTransportHours">載入資料中...</div>
-</div>
-
+            <div class="section-header"><h3 class="section-title">📊 今日概況</h3></div>
             <div class="grid-6">
                 <div class="stat-box"><div class="stat-label">應到人數</div><div class="stat-num" id="sTotal">-</div></div>
                 <div class="stat-box info"><div class="stat-label">實到人數</div><div class="stat-num" id="sActual">-</div></div>
@@ -338,7 +336,7 @@
     </div>
 </div>
 
-<!-- 🌟 共用模態彈窗 Modal (新增點擊外部關閉功能) -->
+<!-- 🌟 共用模態彈窗 Modal -->
 <div class="modal-overlay" id="globalModal" onclick="if(event.target===this) closeModal()">
     <div class="modal-content">
         <div class="modal-header">
@@ -359,7 +357,6 @@
     let currentKey = "";
     let pendingApprovals = [];
 
-    // 🌟 全域變數 (記錄今天與本月的狀態)
     window.allValidEmps = [];
     window.todayPresentSet = new Set();
     window.todayMissingList = [];
@@ -399,7 +396,6 @@
         } catch(e) { hideLoading(); Swal.fire('連線失敗', '無法取得正式資料庫狀態', 'error'); }
     }
 
-    // 🌟 大頭貼處理功能
     function handleAdminAvatarUpload(e) {
         const file = e.target.files[0];
         if(!file) return;
@@ -558,7 +554,6 @@
 
         updateTopAlertAndNotifications(missing, pendingApprovals, depts); 
 
-        // 綁定鑽取事件
         document.getElementById('boxLeave').onclick = () => showDrillDown('今日請假名單', window.todayLeaveList, 'leave');
         document.getElementById('boxMiss').onclick = () => showDrillDown('今日未打卡名單', window.todayMissingList, 'miss');
         document.getElementById('boxOT').onclick = () => showDrillDown('今日加班預估', window.todayOTList, 'ot');
@@ -570,7 +565,6 @@
         renderHRList();
     }
 
-    // 🌟 首頁六宮格點擊鑽取視窗
     window.showDrillDown = function(title, list, type) {
         document.getElementById('modalMainTitle').innerText = title;
         let html = '';
@@ -596,7 +590,6 @@
         document.getElementById('globalModal').style.display = 'flex';
     };
 
-    // 🌟 點選「部門」顯示部門出勤明細
     window.showDeptDailyDetail = function(deptName) {
         let deptEmps = window.allValidEmps.filter(e => e[1] === deptName);
         let presentList = [];
@@ -669,10 +662,7 @@
 
         if (missingCount > 0) {
             badgeCount += 1; 
-            notifHtml += `<div style="padding:12px; background:var(--danger-bg); border-left:4px solid var(--danger); border-radius:8px; margin-bottom:10px;">
-                <div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🔴 出勤異常通報</div>
-                <div style="font-size:12px; color:var(--text-sub);">今日全公司共有 ${missingCount} 人尚未打卡上班，請確認是否為系統漏登或遲到。</div>
-            </div>`;
+            notifHtml += `<div style="padding:12px; background:var(--danger-bg); border-left:4px solid var(--danger); border-radius:8px; margin-bottom:10px;" onclick="closeModal(); showDrillDown('今日未打卡名單', window.todayMissingList, 'miss')"><div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🔴 出勤異常通報</div><div style="font-size:12px; color:var(--text-sub);">今日全公司共有 ${missingCount} 人尚未打卡，點擊查看名單。</div></div>`;
         }
         
         for(let d in depts) {
@@ -680,10 +670,7 @@
             if(m < 0) m=0;
             if(m > 0) {
                 badgeCount++;
-                notifHtml += `<div style="padding:12px; background:var(--danger-bg); border-left:4px solid var(--danger); border-radius:8px; margin-bottom:10px;">
-                    <div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🚨 缺勤警戒：${d}</div>
-                    <div style="font-size:12px; color:var(--text-sub);">該部門今日異常缺勤 ${m} 人，請留意第一線人力調度是否受影響。</div>
-                </div>`;
+                notifHtml += `<div style="padding:12px; background:var(--danger-bg); border-left:4px solid var(--danger); border-radius:8px; margin-bottom:10px;" onclick="closeModal(); showDeptDailyDetail('${d}')"><div style="font-weight:bold; color:var(--text-main); font-size:14px; margin-bottom:4px;">🚨 缺勤警戒：${d}</div><div style="font-size:12px; color:var(--text-sub);">該部門今日異常缺勤 ${m} 人，點擊查看明細。</div></div>`;
             }
         }
 
@@ -802,9 +789,13 @@
             let sDate = new Date(r[5]); let eDate = new Date(r[6]);
             let dStr = `${String(sDate.getMonth()+1).padStart(2,'0')}/${String(sDate.getDate()).padStart(2,'0')} ${String(sDate.getHours()).padStart(2,'0')}:${String(sDate.getMinutes()).padStart(2,'0')} ~ ${String(eDate.getHours()).padStart(2,'0')}:${String(eDate.getMinutes()).padStart(2,'0')}`;
             let rowData = encodeURIComponent(JSON.stringify(r));
+            
+            let isSimpleApproval = (r[4] === "打卡補登" || r[4] === "加班申請" || r[4] === "補休");
+            let nextState = isSimpleApproval ? "已生效" : "待人事核銷";
+            let btnText = isSimpleApproval ? "確認核准" : "送人事核銷";
 
             html += `
-                <div class="card approval-card" onclick="openApprovalModal('${rowData}')">
+                <div class="card approval-card" onclick="openApprovalModal('${rowData}', '${nextState}', '${btnText}')">
                     <div class="ac-header">
                         <div class="ac-name">${r[2]} <span class="ac-dept">${r[3]}</span></div>
                         <div class="ac-type">${r[4]}</div>
@@ -820,7 +811,7 @@
         c.innerHTML = html;
     }
 
-    function openApprovalModal(encodedData) {
+    function openApprovalModal(encodedData, nextState = "已生效", btnText = "確認核准") {
         let r = JSON.parse(decodeURIComponent(encodedData));
         let id = r[0]; let name = r[2]; let dept = r[3]; let type = r[4];
         let sDate = new Date(r[5]); let eDate = new Date(r[6]);
@@ -832,6 +823,12 @@
         let leaveDays = Math.ceil((eDate - sDate) / 86400000);
         let riskHtml = "";
         
+        let isSimpleApproval = (type === "打卡補登" || type === "加班申請" || type === "補休");
+        if(isSimpleApproval) {
+            nextState = "已生效";
+            btnText = "確認核准";
+        }
+
         if (type.includes("病") || type.includes("事")) {
             riskHtml = `
                 <div class="risk-box">
@@ -868,7 +865,7 @@
         
         document.getElementById('modalFooter').innerHTML = `
             <button class="btn-outline" onclick="processApproval(this)" data-id="${id}" data-status="已退回">駁回申請</button>
-            <button class="btn-fill" onclick="processApproval(this)" data-id="${id}" data-status="已生效">確認核准</button>
+            <button class="btn-fill" onclick="processApproval(this)" data-id="${id}" data-status="${nextState}">${btnText}</button>
         `;
         document.getElementById('globalModal').style.display = 'flex';
     }
@@ -915,87 +912,13 @@
         let deptLeaveStats = {};
         let totalOTHours = 0;
 
-        // 🌟 新增：運輸部即時工時計算核心
-let transportHours = {};
-db.employees.forEach((r, i) => {
-    if (i === 0 || !r[0] || r[19] === "已離職") return;
-    let dept = r[1] || "未分類";
-    
-    if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
-    deptLeaveStats[dept].headcount++;
-    if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
-
-    if (dept === "運輸部") {
-        transportHours[r[0]] = { workHrs: 0, otHrs: 0, days: 0, records: {} };
-    }
-});
-
-// 撈出並整理運輸部當月每一天的打卡進出時間
-if (attDataThisMonth && attDataThisMonth.length > 1) {
-    attDataThisMonth.forEach((r, i) => {
-        if(i===0) return;
-        let empName = r[1];
-        let type = r[3];
-        let timeStr = r[0];
-        let tDate = new Date(timeStr);
-        
-        if (transportHours[empName] && !isNaN(tDate.getTime())) {
-            let dateKey = tDate.getFullYear() + "-" + (tDate.getMonth()+1) + "-" + tDate.getDate();
-            if (!transportHours[empName].records[dateKey]) transportHours[empName].records[dateKey] = { in: null, out: null };
-            if (String(type).includes("上班")) transportHours[empName].records[dateKey].in = tDate.getTime();
-            if (String(type).includes("下班")) transportHours[empName].records[dateKey].out = tDate.getTime();
-        }
-    });
-}
-
-// 計算工時與估算加班
-let thArr = [];
-for (let emp in transportHours) {
-    let totalW = 0;
-    let totalO = 0;
-    let daysCnt = 0;
-    for (let dKey in transportHours[emp].records) {
-        let rec = transportHours[emp].records[dKey];
-        if (rec.in && rec.out) {
-            let rawHrs = (rec.out - rec.in) / 3600000;
-            let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; // 自動扣掉 1 小時休息
-            actHrs = Math.max(0, actHrs);
-            totalW += actHrs;
-            if (actHrs > 8) totalO += (actHrs - 8);
-            daysCnt++;
-        }
-    }
-    if (totalW > 0 || daysCnt > 0) { 
-        thArr.push({ name: emp, workHrs: totalW, otHrs: totalO, days: daysCnt });
-    }
-}
-
-// 渲染運輸部工時畫面
-thArr.sort((a,b) => b.workHrs - a.workHrs);
-let thHtml = '';
-if (thArr.length === 0) {
-    thHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月尚無運輸部打卡紀錄</div>';
-} else {
-    thArr.forEach(t => {
-        let overWarning = t.workHrs >= 200 ? "color:var(--danger);" : "color:var(--text-main);";
-        thHtml += `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee;">
-                <div>
-                    <div style="font-size:15px; font-weight:bold; ${overWarning}">${t.name}</div>
-                    <div style="font-size:11px; color:var(--text-sub); margin-top:4px;">出勤 ${t.days} 天</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:16px; font-weight:900; ${overWarning}">${t.workHrs.toFixed(1)} <span style="font-size:11px;">h</span></div>
-                    <div style="font-size:12px; font-weight:bold; color:var(--danger); margin-top:4px;">實際超時估算: ${t.otHrs.toFixed(1)} h</div>
-                </div>
-            </div>
-        `;
-    });
-}
-let rptTransportBox = document.getElementById('rptTransportHours');
-if (rptTransportBox) rptTransportBox.innerHTML = thHtml;
-// 🌟 運輸部邏輯結束
-
+        db.employees.forEach((r, i) => {
+            if (i === 0 || !r[0] || r[19] === "已離職") return;
+            let dept = r[1] || "未分類";
+            if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
+            deptLeaveStats[dept].headcount++;
+            if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
+        });
 
         db.leave.forEach((r, i) => {
             if (i === 0 || r[8] !== "已生效") return;
@@ -1219,6 +1142,31 @@ if (rptTransportBox) rptTransportBox.innerHTML = thHtml;
 
         let remainAnnual = Math.max(0, totalAnnualLeave - stats["特休"].days);
 
+        // 🌟 新增：動態權限設定按鈕 (只有副總、人事主管可見)
+        let isManager = emp[22] === "Y" ? "checked" : "";
+        let isFlex = emp[23] === "Y" ? "checked" : "";
+        let isSpoof = emp[24] === "Y" ? "checked" : "";
+        let permHtml = "";
+        
+        if (currentRole === "副總經理" || currentRole === "人事主管") {
+            permHtml = `
+            <div style="font-size:14px; font-weight:900; color:var(--navy); margin-top:15px; margin-bottom:10px;">⚙️ 系統權限設定 (即時生效)</div>
+            <div style="background:#F8F9FA; padding:12px; border-radius:12px; border:1px solid #EEE;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div><div style="font-size:14px; font-weight:bold;">👑 部門主管權限</div><div style="font-size:11px; color:var(--text-sub);">允許審核部屬假單與報表</div></div>
+                    <label class="switch"><input type="checkbox" id="permManager" ${isManager} onchange="toggleEmpPermission('${empName}')"><span class="slider round"></span></label>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div><div style="font-size:14px; font-weight:bold;">📍 免定位與彈性打卡</div><div style="font-size:11px; color:var(--text-sub);">允許遠端打卡、無硬性遲到</div></div>
+                    <label class="switch"><input type="checkbox" id="permFlex" ${isFlex} onchange="toggleEmpPermission('${empName}')"><span class="slider round"></span></label>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div><div style="font-size:14px; font-weight:bold;">⏰ 下班時間強制鎖定</div><div style="font-size:11px; color:var(--text-sub);">攔截加班單並鎖死下班為16:30</div></div>
+                    <label class="switch"><input type="checkbox" id="permSpoof" ${isSpoof} onchange="toggleEmpPermission('${empName}')"><span class="slider round"></span></label>
+                </div>
+            </div>`;
+        }
+
         let bodyHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #EEE; padding-bottom:12px;">
                 <div><div style="font-size:20px; font-weight:900; color:var(--navy);">${empName}</div><div style="font-size:13px; color:var(--text-sub);">${emp[1]} ・ ${emp[2]}</div></div>
@@ -1234,13 +1182,41 @@ if (rptTransportBox) rptTransportBox.innerHTML = thHtml;
             </div>
             <div style="font-size:14px; font-weight:900; color:var(--navy); margin-bottom:10px;">📜 本年度明細</div>
             <div style="background:white; border:1px solid #EEE; border-radius:12px; padding:10px 14px; max-height:180px; overflow-y:auto;">
-                ${leaveRecords.length > 0 ? leaveRecords.map(item => `<div style="padding:8px 0; border-bottom:1px dashed #EEE; display:flex; justify-content:space-between; align-items:center;"><div><span style="font-weight:bold; font-size:13px; color:var(--navy);">${item.date}</span><span style="font-size:12px; background:#F1F3F4; padding:2px 6px; border-radius:4px; margin-left:6px;">${item.type}</span><div style="font-size:12px; color:var(--text-sub); margin-top:2px;">${item.reason}</div></div><div style="font-weight:900; font-size:13px;">${item.days.toFixed(1)} 天</div></div>`).join('') : '<div style="text-align:center; padding:15px; color:var(--text-light); font-size:13px;">無紀錄</div>'}
+                ${leaveRecords.length > 0 ? leaveRecords.map(item => `<div style="padding:8px 0; border-bottom:1px dashed #EEE; display:flex; justify-content:space-between; align-items:center;"><div><span style="font-weight:bold; font-size:13px; color:var(--navy);">\${item.date}</span><span style="font-size:12px; background:#F1F3F4; padding:2px 6px; border-radius:4px; margin-left:6px;">\${item.type}</span><div style="font-size:12px; color:var(--text-sub); margin-top:2px;">\${item.reason}</div></div><div style="font-weight:900; font-size:13px;">\${item.days.toFixed(1)} 天</div></div>`).join('') : '<div style="text-align:center; padding:15px; color:var(--text-light); font-size:13px;">無紀錄</div>'}
             </div>
+            ${permHtml}
         `;
 
         document.getElementById('modalBody').innerHTML = bodyHtml;
         document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉視窗</button>`;
         document.getElementById('globalModal').style.display = 'flex';
+    }
+
+    // 🌟 新增：更新動態權限
+    async function toggleEmpPermission(empName) {
+        let isM = document.getElementById('permManager').checked;
+        let isF = document.getElementById('permFlex').checked;
+        let isS = document.getElementById('permSpoof').checked;
+        
+        showLoading("更新權限中...");
+        try {
+            const res = await fetchApi({ action: "updatePermissions", empName: empName, isManager: isM, isFlex: isF, isSpoof: isS, key: currentKey });
+            hideLoading();
+            if (res === "Success") {
+                Swal.fire({ title: '成功', text: '員工權限已更新！', icon: 'success', timer: 1500, showConfirmButton: false });
+                let emp = db.employees.find(r => r[0] === empName);
+                if(emp) {
+                    emp[22] = isM ? "Y" : "";
+                    emp[23] = isF ? "Y" : "";
+                    emp[24] = isS ? "Y" : "";
+                }
+            } else {
+                Swal.fire('失敗', res, 'error');
+            }
+        } catch(e) {
+            hideLoading();
+            Swal.fire('錯誤', e.message, 'error');
+        }
     }
 
     function renderHRList() {
