@@ -168,6 +168,7 @@
         <div style="flex: 1; min-width: 200px;"><label style="font-weight:bold; color:#1a73e8; display:block; margin-bottom:5px;">2. 選擇員工 (細部微調)</label><select id="filterEmp" onchange="loadEmpDetails()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;"><option value="">請先選擇部門...</option></select></div>
         <div style="flex: 0.5; min-width: 120px; display: flex; align-items: flex-end;"><button class="btn btn-warning" onclick="clearForm()" style="width: 100%; height: 35px;">➕ 新增/清空</button></div>
     </div>
+    
     <div class="hr-form-grid">
         <div class="form-group"><label>員工姓名</label><input type="text" id="empName"></div>
         <div class="form-group"><label>所屬部門</label><select id="empDept"></select></div>
@@ -202,8 +203,28 @@
         <div class="form-group"><label>緊急聯絡電話</label><input type="text" id="emerPhone"></div>
         <div class="form-group"><label>出生年月日</label><input type="date" id="birthday"></div>
         <div class="form-group"><label>身分證字號</label><input type="text" id="idNumber"></div>
-        <div class="form-group" style="display:flex; align-items:flex-end;"><button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px;">💾 儲存修改</button></div>
     </div>
+
+    <!-- 🌟 動態權限管理區塊 -->
+    <div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #1a73e8;">
+        <div style="font-size:14px; font-weight:bold; color:var(--primary); margin-bottom:10px;">⚙️ 系統進階權限 (勾選後即時生效，不需按儲存)</div>
+        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+            <label style="cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                <input type="checkbox" id="permManager" onchange="updatePerms()" style="width:18px; height:18px;"> 👑 部門主管權限 (可審核假單)
+            </label>
+            <label style="cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                <input type="checkbox" id="permFlex" onchange="updatePerms()" style="width:18px; height:18px;"> 📍 免定位與彈性打卡
+            </label>
+            <label style="cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:5px; color:#d93025;">
+                <input type="checkbox" id="permSpoof" onchange="updatePerms()" style="width:18px; height:18px;"> ⏰ 強制鎖定下班(16:30)並攔截加班單
+            </label>
+        </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+        <button class="btn btn-success" onclick="saveEmployee()" style="width: 100%; height: 42px; font-size:16px;">💾 儲存基本資料修改</button>
+    </div>
+
     <div class="table-responsive">
         <table>
             <thead><tr><th>姓名</th><th>部門</th><th>計薪身分</th><th>薪資/類別</th><th>特休天數</th><th>操作</th></tr></thead>
@@ -265,7 +286,7 @@
             if (!res.ok) throw new Error("伺服器回應異常: " + res.status);
             return await res.text();
         } catch (err) {
-            alert("⚠️ 儲存異常：\n這通常是因為資料中含有「肉眼看不見的特殊字元或空白」導致伺服器無法解析。\n\n👉 建議作法：請將該員工（例如：林心評）的「姓名、身分證、住址」等欄位清空，用鍵盤重新手動輸入一次，不要用複製貼上的！\n\n錯誤細節：" + err.message);
+            alert("⚠️ 儲存異常：\n這通常是因為資料中含有「肉眼看不見的特殊字元或空白」導致伺服器無法解析。\n\n👉 建議作法：請將該員工的「姓名、身分證、住址」等欄位清空，用鍵盤重新手動輸入一次，不要用複製貼上的！\n\n錯誤細節：" + err.message);
             throw err;
         }
     }
@@ -627,10 +648,9 @@
                 let info = item.leaveInfo; let sStr = formatTimeWithDay(info.start); let eStr = formatTimeWithDay(info.end);
                 let timeDisplay = sStr === eStr ? sStr : `${sStr}<br>～<br>${eStr}`;
                 
-                // 🌟 新增：針對加班單與一般假單進行獨立的顏色排版區分
                 let isOT = String(info.lType).includes("加班");
                 let tagText = isOT ? "加班" : "休假";
-                let tagColor = isOT ? "#9c27b0" : "#f4b400"; // 加班用醒目紫色，休假維持黃色
+                let tagColor = isOT ? "#9c27b0" : "#f4b400";
                 let rowBg = isOT ? "#f3e5f5" : "#fffde7"; 
                 let textColor = isOT ? "#6a1b9a" : "#b06000";
 
@@ -721,7 +741,7 @@
             if(canApprove && currentLvTab === 'pending') { actionBtn = `<div class="action-group" style="display:flex; gap:5px;"><button class="btn ${btnClass}" onclick="updLv('${id}','${next}')">${btnText}</button><button class="btn btn-edit" style="color:#d93025 !important;" onclick="rejectLeave('${id}')">❌ 退件</button><button class="btn btn-danger" onclick="deleteLeave('${id}')">🗑️ 刪除</button></div>`; } 
             else { if (role === '人事部' || role === '副總' || role === '總經理') { actionBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteLeave('${id}')">🗑️ 刪除</button>`; } else { actionBtn = "-"; } }
 
-            htmlStr += `<tr><td><div class="main-info">${empName} <small>(${empDept})</small></div>${agentText}${reason ? `<div class="sub-info">📝 事由：${reason}</div>` : ''}</td><td><div style="font-size:13px; font-weight:bold;">${lStart}<br>~<br>${lEnd}</div></td><td><b>${lType}</b></td><td>${proofHtml}</td><td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td><td>${actionBtn}</td></tr>`;
+            htmlStr += `<tr><td><div class="main-info">${empName} <small>(${empDept})</small></div>${agentText}${reason ? `<div class="sub-info">📝 事由：\${reason}</div>` : ''}</td><td><div style="font-size:13px; font-weight:bold;">${lStart}<br>~<br>${lEnd}</div></td><td><b>${lType}</b></td><td>${proofHtml}</td><td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td><td>${actionBtn}</td></tr>`;
         });
         
         document.getElementById('leaveBody').innerHTML = htmlStr || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">無資料</td></tr>';
@@ -819,6 +839,11 @@
             }
             ['laborIns','healthIns','dependents','phone','address','homePhone','emerContact','emerRelation','emerPhone'].forEach((id, idx) => { document.getElementById(id).value = emp[7+idx] || (idx>2?"":"0"); }); 
             document.getElementById('birthday').value = emp[16] ? new Date(emp[16]).toISOString().split('T')[0] : ""; document.getElementById('idNumber').value = emp[17] || ""; 
+            
+            // 🌟 讀取動態權限
+            document.getElementById('permManager').checked = emp[22] === "Y";
+            document.getElementById('permFlex').checked = emp[23] === "Y";
+            document.getElementById('permSpoof').checked = emp[24] === "Y";
         } 
     }
 
@@ -831,8 +856,36 @@
         ['bonus','laborIns','healthIns','dependents'].forEach(id => document.getElementById(id).value = "0"); 
         document.getElementById('payType').value = "月薪"; document.getElementById('dutyType').value = "一般員工"; document.getElementById('empStatus').value = "在職"; 
         document.getElementById('empSalary').disabled = false; document.getElementById('bonus').disabled = false; document.getElementById('filterEmp').value = ""; 
+        
+        // 🌟 清空權限
+        document.getElementById('permManager').checked = false;
+        document.getElementById('permFlex').checked = false;
+        document.getElementById('permSpoof').checked = false;
     }
     
+    // 🌟 即時更新權限
+    async function updatePerms() {
+        const empName = document.getElementById('empName').value;
+        if(!empName) { alert("請先選擇或輸入員工姓名！"); return; }
+        
+        let isM = document.getElementById('permManager').checked;
+        let isF = document.getElementById('permFlex').checked;
+        let isS = document.getElementById('permSpoof').checked;
+        
+        showLoading("權限即時同步中...");
+        try {
+            const res = await fetchPost({ action: "updatePermissions", empName: empName, isManager: isM, isFlex: isF, isSpoof: isS, key: getCurrentKey() });
+            hideLoading();
+            if (res === "Success") {
+                let emp = db.employees.find(r => r[0] === empName);
+                if(emp) { emp[22] = isM ? "Y" : ""; emp[23] = isF ? "Y" : ""; emp[24] = isS ? "Y" : ""; }
+                console.log("✅ 權限更新成功！"); // 電腦版避免一直跳 Alert 影響操作，改用 console
+            } else {
+                alert("❌ 權限更新失敗: " + res);
+            }
+        } catch(e) { hideLoading(); }
+    }
+
     // 🚀 核心存檔邏輯
     async function saveEmployee() { 
         const p = { action: "saveEmployee", key: getCurrentKey() }; 
@@ -847,26 +900,26 @@
             const text = await fetchPost(p);
             if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
         } catch(e) { 
-            // 已在 fetchPost 攔截，不重複動作
+            // 已在 fetchPost 攔截
         } finally { hideLoading(); } 
     }
 
     async function updLv(id, s) { 
         showLoading("審核中..."); 
-        try { const text = await fetchPost({ action: "updateLeave", id: id, newStatus: s }); if(text === "Success"){ alert("✅ 審核完成"); fetchData(); } else alert(text); } 
+        try { const text = await fetchPost({ action: "updateLeave", id: id, newStatus: s, key: getCurrentKey() }); if(text === "Success"){ alert("✅ 審核完成"); fetchData(); } else alert(text); } 
         catch(e) { } finally { hideLoading(); }
     }
 
     async function rejectLeave(id) { 
         if(!confirm("確定要退件這張假單嗎？")) return; showLoading("退件處理中..."); 
-        try { const text = await fetchPost({ action: "updateLeave", id: id, newStatus: "已退回" }); if(text === "Success"){ alert("❌ 假單已退回！"); fetchData(); } else alert(text); } 
+        try { const text = await fetchPost({ action: "updateLeave", id: id, newStatus: "已退回", key: getCurrentKey() }); if(text === "Success"){ alert("❌ 假單已退回！"); fetchData(); } else alert(text); } 
         catch(e) { } finally { hideLoading(); }
     }
     
     async function deleteLeave(id) { 
         if(!confirm("⚠️ 確定要徹底刪除這筆假單嗎？\n刪除後資料將無法復原！")) return; showLoading("刪除中..."); 
         try { 
-            const text = await fetchPost({ action: "deleteLeave", id: id });
+            const text = await fetchPost({ action: "deleteLeave", id: id, key: getCurrentKey() });
             if(text === "Success"){ alert("✅ 假單已成功刪除！"); fetchData(); } else { alert("❌ 刪除失敗：" + text); }
         } catch(e) { } finally { hideLoading(); }
     }
@@ -874,7 +927,7 @@
     async function changeAdminPassword() { 
         const r = document.getElementById('adminRole').value; if (!['人事部', '財務部', '副總', '總經理'].includes(r)) return alert("⚠️ 無權限！"); 
         const newPwd = prompt(`設定專屬新密碼：`); if (!newPwd) return; showLoading("同步中..."); 
-        try { const text = await fetchPost({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd }); if(text==="Success"){ alert("✅ 更新成功！"); location.reload(); } else alert(text); } 
+        try { const text = await fetchPost({ action: "updatePassword", roleToUpdate: r, newPassword: newPwd, key: getCurrentKey() }); if(text==="Success"){ alert("✅ 更新成功！"); location.reload(); } else alert(text); } 
         catch (e) { } finally { hideLoading(); } 
     }
 
