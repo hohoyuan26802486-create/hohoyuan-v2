@@ -28,12 +28,10 @@
         }
         * { box-sizing: border-box; font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); margin: 0; padding: 0; display: flex; justify-content: center; height: 100vh; overflow: hidden; color: var(--text-main); }
-        
         .app-container { width: 100%; max-width: 480px; height: 100%; position: relative; display: flex; flex-direction: column; background: var(--bg); overflow-x: hidden; }
         .view-section { display: none; flex: 1; flex-direction: column; overflow-y: auto; padding-bottom: 90px; }
         .view-section.active { display: block; }
         
-        /* 登入畫面 */
         #loginScreen { position: absolute; top:0; left:0; width: 100%; height: 100%; background: var(--navy); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding: 30px; transition: 0.3s; }
         .login-box { background: var(--card); width: 100%; padding: 35px 25px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); text-align: center; }
         .login-box h1 { margin: 0 0 5px 0; color: var(--navy); font-size: 24px; font-weight: 900; letter-spacing: 1px;}
@@ -43,7 +41,6 @@
         .btn-primary { width: 100%; padding: 16px; background: var(--navy); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .btn-primary:active { transform: scale(0.98); }
 
-        /* Header */
         .header { background: var(--navy); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .header-title { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
         .header-actions { display: flex; align-items: center; gap: 15px; }
@@ -52,14 +49,12 @@
         .badge { position: absolute; top: -5px; right: -8px; background: var(--danger); color: white; font-size: 10px; font-weight: 900; padding: 2px 5px; border-radius: 10px; border: 2px solid var(--navy); }
         .role-selector { background: var(--navy-light); color: white; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; }
 
-        /* 歡迎區塊 (動態大頭貼) */
         .greeting-area { background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%); color: white; padding: 15px 20px 30px 20px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; }
         .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
         .executive-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--info); color: white; display: flex; justify-content: center; align-items: center; font-size: 22px; font-weight: 900; border: 2px solid rgba(255,255,255,0.4); box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; overflow: hidden; }
         .alert-bar { background: rgba(255,255,255,0.15); margin-top: 15px; padding: 12px 15px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
         .alert-bar:active { background: rgba(255,255,255,0.25); }
 
-        /* 通用區塊與卡片 */
         .section-wrapper { padding: 20px; margin-top: -20px; position: relative; z-index: 10; }
         .section-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
         .section-title { font-size: 18px; font-weight: 900; color: var(--navy); margin: 0; }
@@ -68,7 +63,6 @@
         .interactive-row { cursor: pointer; transition: 0.2s; padding: 6px; border-radius: 8px; }
         .interactive-row:active { background: #eef2f5; }
         
-        /* 總覽 6 宮格 */
         .grid-6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
         .stat-box { background: var(--card); border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center; align-items: center; transition: 0.2s; }
         .stat-box.clickable { cursor: pointer; }
@@ -82,18 +76,16 @@
         .stat-box.info { background: var(--info-bg); }
         .stat-box.info .stat-num { color: var(--info); }
 
-        /* 異常列表 */
         .anomaly-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-        .anomaly-item { display: flex; align-items: center; padding: 12px; border-radius: 12px; background: var(--card); border-left: 4px solid var(--danger); box-shadow: 0 2px 6px rgba(0,0,0,0.02); }
-        .anomaly-item.warning { border-left-color: var(--warning); cursor: pointer;}
-        .anomaly-item.warning:active { background: #fdfbf7; }
+        .anomaly-item { display: flex; align-items: center; padding: 12px; border-radius: 12px; background: var(--card); border-left: 4px solid var(--danger); box-shadow: 0 2px 6px rgba(0,0,0,0.02); cursor: pointer; }
+        .anomaly-item:active { background: #fdfbf7; }
+        .anomaly-item.warning { border-left-color: var(--warning); }
         .anomaly-icon { font-size: 18px; margin-right: 12px; }
         .anomaly-text { flex: 1; }
         .anomaly-title { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
         .anomaly-desc { font-size: 12px; color: var(--text-sub); }
         .arrow { color: #CCC; font-size: 14px; }
 
-        /* 部門出勤列表 */
         .list-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 8px; margin: 0 -8px; border-bottom: 1px solid #F1F3F4; transition: background-color 0.2s; border-radius: 8px;}
         .list-row:last-child { border-bottom: none; }
         .list-row:active { background-color: #f0f4f8; }
@@ -104,7 +96,6 @@
         .status-warn { background: var(--warning-bg); color: var(--warning); }
         .status-err { background: var(--danger-bg); color: var(--danger); }
 
-        /* 簽核卡片 */
         .approval-card { border-left: 4px solid var(--warning); cursor: pointer;}
         .approval-card.high-risk { border-left-color: var(--danger); }
         .ac-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; border-bottom: 1px dashed #E0E0E0; padding-bottom: 8px; }
@@ -119,7 +110,6 @@
         .btn-fill { flex: 1; padding: 10px; border: none; background: var(--success); color: white; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;}
         .btn-fill:active { opacity: 0.8; }
 
-        /* 模態彈窗 (Modal) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); z-index: 1000; display: none; justify-content: center; align-items: flex-end; }
         .modal-content { background: white; width: 100%; max-width: 480px; max-height: 92vh; border-top-left-radius: 24px; border-top-right-radius: 24px; display: flex; flex-direction: column; overflow: hidden; animation: slideUp 0.25s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
@@ -130,20 +120,17 @@
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
         .modal-footer { padding: 15px 20px 25px 20px; border-top: 1px solid #EEE; display: flex; gap: 10px; background: white; }
         
-        /* 診斷風險評估卡 */
         .risk-box { background: var(--warning-bg); border-radius: 12px; padding: 14px; margin-top: 12px; margin-bottom: 16px; border: 1px solid #FDE293; }
         .risk-box.danger { background: var(--danger-bg); border-color: #FAD2CF; }
         .risk-box.success { background: var(--success-bg); border-color: #CEEAD6; }
         .risk-title { font-size: 14px; font-weight: 900; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         .risk-item { font-size: 13px; color: var(--text-main); line-height: 1.5; }
 
-        /* 標籤分類 Tabs */
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
         .tabs::-webkit-scrollbar { display: none; }
         .tab { padding: 8px 16px; background: white; border: 1px solid #E0E0E0; border-radius: 20px; font-size: 13px; font-weight: 700; color: var(--text-sub); white-space: nowrap; cursor: pointer; }
         .tab.active { background: var(--navy); color: white; border-color: var(--navy); }
 
-        /* 底部導覽列 Navigation */
         .bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 480px; background: white; display: flex; justify-content: space-around; padding: 10px 0 20px 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.06); border-top-left-radius: 24px; border-top-right-radius: 24px; z-index: 50; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-light); font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; flex: 1; }
         .nav-icon { font-size: 22px; margin-bottom: 4px; transition: 0.2s; }
@@ -155,7 +142,6 @@
         .spinner { width: 45px; height: 45px; border: 4px solid var(--info-bg); border-top: 4px solid var(--navy); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* 🌟 切換開關 CSS */
         .switch { position: relative; display: inline-block; width: 42px; height: 24px; margin: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; }
@@ -199,7 +185,6 @@
 
     <!-- 視圖 1：首頁 Dashboard -->
     <div id="viewHome" class="view-section">
-        
         <div class="greeting-area">
             <div class="profile-header">
                 <div class="executive-avatar" id="executiveAvatar" onclick="document.getElementById('adminAvatarUpload').click()">副</div>
@@ -208,7 +193,6 @@
                     <p id="currentDateText" style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.8;">2026/09/11 星期五</p>
                 </div>
             </div>
-            
             <div class="alert-bar" onclick="openNotificationCenter()">
                 <span id="topAlertBarText">🔔 系統載入中...</span>
                 <span>></span>
@@ -216,7 +200,16 @@
         </div>
 
         <div class="section-wrapper">
-            <div class="section-header"><h3 class="section-title">📊 今日概況</h3></div>
+            <div class="section-header"><h3 class="section-title">管理決策報表</h3></div>
+
+            <div class="card" style="border-top: 4px solid var(--navy);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h4 style="margin:0; color: var(--navy);">🚛 運輸部即時工時追蹤</h4>
+                    <span style="font-size:11px; color:white; background:var(--danger); padding:3px 6px; border-radius:6px; font-weight:bold;">即時打卡累計</span>
+                </div>
+                <div id="rptTransportHours">載入資料中...</div>
+            </div>
+
             <div class="grid-6">
                 <div class="stat-box"><div class="stat-label">應到人數</div><div class="stat-num" id="sTotal">-</div></div>
                 <div class="stat-box info"><div class="stat-label">實到人數</div><div class="stat-num" id="sActual">-</div></div>
@@ -320,19 +313,12 @@
 
     <!-- 底部導覽列 -->
     <div class="bottom-nav" id="mainNav" style="display:none;">
-        <div class="nav-item active" onclick="switchNav('viewHome', this)">
-            <div class="nav-icon">🏠</div>首頁
-        </div>
+        <div class="nav-item active" onclick="switchNav('viewHome', this)"><div class="nav-icon">🏠</div>首頁</div>
         <div class="nav-item" onclick="switchNav('viewApproval', this)" style="position:relative;">
-            <div class="nav-icon">📝</div>簽核
-            <div class="nav-badge" id="navApproveBadge" style="display:none;">0</div>
+            <div class="nav-icon">📝</div>簽核<div class="nav-badge" id="navApproveBadge" style="display:none;">0</div>
         </div>
-        <div class="nav-item" onclick="switchNav('viewHR', this)">
-            <div class="nav-icon">👥</div>人事
-        </div>
-        <div class="nav-item" onclick="switchNav('viewReport', this)">
-            <div class="nav-icon">📊</div>報表
-        </div>
+        <div class="nav-item" onclick="switchNav('viewHR', this)"><div class="nav-icon">👥</div>人事</div>
+        <div class="nav-item" onclick="switchNav('viewReport', this)"><div class="nav-icon">📊</div>報表</div>
     </div>
 </div>
 
@@ -912,13 +898,81 @@
         let deptLeaveStats = {};
         let totalOTHours = 0;
 
+        let transportHours = {};
         db.employees.forEach((r, i) => {
             if (i === 0 || !r[0] || r[19] === "已離職") return;
             let dept = r[1] || "未分類";
+            
             if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
             deptLeaveStats[dept].headcount++;
             if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
+
+            if (dept === "運輸部") {
+                transportHours[r[0]] = { workHrs: 0, otHrs: 0, days: 0, records: {} };
+            }
         });
+
+        if (attDataThisMonth && attDataThisMonth.length > 1) {
+            attDataThisMonth.forEach((r, i) => {
+                if(i===0) return;
+                let empName = r[1];
+                let type = r[3];
+                let timeStr = r[0];
+                let tDate = new Date(timeStr);
+                
+                if (transportHours[empName] && !isNaN(tDate.getTime())) {
+                    let dateKey = tDate.getFullYear() + "-" + (tDate.getMonth()+1) + "-" + tDate.getDate();
+                    if (!transportHours[empName].records[dateKey]) transportHours[empName].records[dateKey] = { in: null, out: null };
+                    if (String(type).includes("上班")) transportHours[empName].records[dateKey].in = tDate.getTime();
+                    if (String(type).includes("下班")) transportHours[empName].records[dateKey].out = tDate.getTime();
+                }
+            });
+        }
+
+        let thArr = [];
+        for (let emp in transportHours) {
+            let totalW = 0;
+            let totalO = 0;
+            let daysCnt = 0;
+            for (let dKey in transportHours[emp].records) {
+                let rec = transportHours[emp].records[dKey];
+                if (rec.in && rec.out) {
+                    let rawHrs = (rec.out - rec.in) / 3600000;
+                    let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; 
+                    actHrs = Math.max(0, actHrs);
+                    totalW += actHrs;
+                    if (actHrs > 8) totalO += (actHrs - 8);
+                    daysCnt++;
+                }
+            }
+            if (totalW > 0 || daysCnt > 0) { 
+                thArr.push({ name: emp, workHrs: totalW, otHrs: totalO, days: daysCnt });
+            }
+        }
+
+        thArr.sort((a,b) => b.workHrs - a.workHrs);
+        let thHtml = '';
+        if (thArr.length === 0) {
+            thHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月尚無運輸部打卡紀錄</div>';
+        } else {
+            thArr.forEach(t => {
+                let overWarning = t.workHrs >= 200 ? "color:var(--danger);" : "color:var(--text-main);";
+                thHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee;">
+                        <div>
+                            <div style="font-size:15px; font-weight:bold; ${overWarning}">${t.name}</div>
+                            <div style="font-size:11px; color:var(--text-sub); margin-top:4px;">出勤 ${t.days} 天</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:16px; font-weight:900; ${overWarning}">${t.workHrs.toFixed(1)} <span style="font-size:11px;">h</span></div>
+                            <div style="font-size:12px; font-weight:bold; color:var(--danger); margin-top:4px;">實際超時估算: ${t.otHrs.toFixed(1)} h</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        let rptTransportBox = document.getElementById('rptTransportHours');
+        if (rptTransportBox) rptTransportBox.innerHTML = thHtml;
 
         db.leave.forEach((r, i) => {
             if (i === 0 || r[8] !== "已生效") return;
@@ -1142,7 +1196,6 @@
 
         let remainAnnual = Math.max(0, totalAnnualLeave - stats["特休"].days);
 
-        // 🌟 新增：動態權限設定按鈕 (只有副總、人事主管可見)
         let isManager = emp[22] === "Y" ? "checked" : "";
         let isFlex = emp[23] === "Y" ? "checked" : "";
         let isSpoof = emp[24] === "Y" ? "checked" : "";
@@ -1167,6 +1220,25 @@
             </div>`;
         }
 
+        // 🌟 修復明細字串亂碼：改為傳統組裝法，避免巢狀模板崩潰
+        let leaveRecordsHtml = '';
+        if (leaveRecords.length > 0) {
+            leaveRecords.forEach(item => {
+                leaveRecordsHtml += `
+                    <div style="padding:8px 0; border-bottom:1px dashed #EEE; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span style="font-weight:bold; font-size:13px; color:var(--navy);">${item.date}</span>
+                            <span style="font-size:12px; background:#F1F3F4; padding:2px 6px; border-radius:4px; margin-left:6px;">${item.type}</span>
+                            <div style="font-size:12px; color:var(--text-sub); margin-top:2px;">${item.reason}</div>
+                        </div>
+                        <div style="font-weight:900; font-size:13px;">${item.days.toFixed(1)} 天</div>
+                    </div>
+                `;
+            });
+        } else {
+            leaveRecordsHtml = '<div style="text-align:center; padding:15px; color:var(--text-light); font-size:13px;">無紀錄</div>';
+        }
+
         let bodyHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #EEE; padding-bottom:12px;">
                 <div><div style="font-size:20px; font-weight:900; color:var(--navy);">${empName}</div><div style="font-size:13px; color:var(--text-sub);">${emp[1]} ・ ${emp[2]}</div></div>
@@ -1182,7 +1254,7 @@
             </div>
             <div style="font-size:14px; font-weight:900; color:var(--navy); margin-bottom:10px;">📜 本年度明細</div>
             <div style="background:white; border:1px solid #EEE; border-radius:12px; padding:10px 14px; max-height:180px; overflow-y:auto;">
-                ${leaveRecords.length > 0 ? leaveRecords.map(item => `<div style="padding:8px 0; border-bottom:1px dashed #EEE; display:flex; justify-content:space-between; align-items:center;"><div><span style="font-weight:bold; font-size:13px; color:var(--navy);">\${item.date}</span><span style="font-size:12px; background:#F1F3F4; padding:2px 6px; border-radius:4px; margin-left:6px;">\${item.type}</span><div style="font-size:12px; color:var(--text-sub); margin-top:2px;">\${item.reason}</div></div><div style="font-weight:900; font-size:13px;">\${item.days.toFixed(1)} 天</div></div>`).join('') : '<div style="text-align:center; padding:15px; color:var(--text-light); font-size:13px;">無紀錄</div>'}
+                ${leaveRecordsHtml}
             </div>
             ${permHtml}
         `;
@@ -1192,7 +1264,6 @@
         document.getElementById('globalModal').style.display = 'flex';
     }
 
-    // 🌟 新增：更新動態權限
     async function toggleEmpPermission(empName) {
         let isM = document.getElementById('permManager').checked;
         let isF = document.getElementById('permFlex').checked;
