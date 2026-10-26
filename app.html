@@ -977,7 +977,7 @@
                 }
 
                 if (canApprove) {
-                    actionBtnsHTML = '<div class="action-btns"><button style="' + btnStyle + ' flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave(\'' + leaveId + '\', \'' + nextStatus + '\')">' + btnText + '</button><button style="' + rejectStyle + ' flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="mobileApproveLeave(\'' + leaveId + '\', \'已退回\')">❌ 退回</button></div>';
+                    actionBtnsHTML = '<div class="action-btns" style="display:flex; gap:10px; margin-top:10px;"><button style="' + btnStyle + ' flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="window.mobileApproveLeave(\'' + leaveId + '\', \'' + nextStatus + '\')">' + btnText + '</button><button style="' + rejectStyle + ' flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; transition: 0.2s;" onclick="window.mobileApproveLeave(\'' + leaveId + '\', \'已退回\')">❌ 退回</button></div>';
                 }
             }
         }
@@ -1084,47 +1084,38 @@
         }
     }
 
-    // 🌟 完全重構：使用傳統 Promise 語法，解決 iOS 阻斷問題
-    function mobileApproveLeave(leaveId, newStatus) {
+    // 🌟 全新重構：傳統 Promise 語法，解決 iOS 阻擋問題
+    window.mobileApproveLeave = async function(leaveId, newStatus) {
         let actionText = newStatus === '已退回' ? '退回' : '核准';
-        Swal.fire({
+        let result = await Swal.fire({
             title: '確認要 ' + actionText + ' 此假單？', 
             icon: 'question', 
             showCancelButton: true, 
             confirmButtonText: '確認', 
             cancelButtonText: '取消', 
             confirmButtonColor: newStatus === '已退回' ? '#d93025' : '#1a73e8'
-        }).then(function(result) {
-            if (result.isConfirmed) {
-                showLoading("處理中...");
-                fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime(), {
-                    method: 'POST',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "updateLeave", id: leaveId, newStatus: newStatus })
-                })
-                .then(function(res) {
-                    if (!res.ok) throw new Error("伺服器連線異常");
-                    return res.text();
-                })
-                .then(function(text) {
-                    hideLoading();
-                    if (text.includes("Success")) { 
-                        Swal.fire('成功', '假單已成功' + actionText + '！', 'success').then(function() {
-                            fetchBackendData();
-                        });
-                    } else { 
-                        Swal.fire('錯誤', text, 'error'); 
-                    }
-                })
-                .catch(function(e) {
-                    hideLoading();
-                    Swal.fire('連線失敗', e.message, 'error');
-                });
-            }
         });
-    }
 
-    function submitAttendance() {
+        if (result.isConfirmed) {
+            showLoading("處理中...");
+            try {
+                const text = await fetchApi(ATTENDANCE_API_URL, { action: "updateLeave", id: leaveId, newStatus: newStatus });
+                hideLoading();
+                if (text === "Success" || text.includes("Success")) { 
+                    Swal.fire('成功', '假單已成功' + actionText + '！', 'success').then(function() { 
+                        fetchBackendData(); 
+                    });
+                } else { 
+                    Swal.fire('錯誤', text, 'error'); 
+                }
+            } catch(e) {
+                hideLoading();
+                Swal.fire('連線失敗', e.message, 'error');
+            }
+        }
+    };
+
+    async function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         const reasonInput = document.getElementById('punchReason');
