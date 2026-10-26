@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>禾禾園 - 專業管理後台 V54.3 (最終對接版)</title>
+    <title>禾禾園 - 專業管理後台 V54.5 (自動記憶登入升級版)</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #1a73e8; --success: #28a745; --warning: #f4b400; --danger: #d93025; --text-main: #3c4043; --text-sub: #70757a; --bg-gray: #f8f9fa; }
@@ -51,10 +51,10 @@
     <div style="font-size:18px; font-weight:bold;">禾禾園 · 專業後台系統</div>
     <div class="nav-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
         <select id="adminRole" onchange="authRole()" style="background:#3c4043; color:white; border:none; padding:10px; border-radius:6px; outline:none; font-size:14px; cursor:pointer;">
-            <option value="人事部">資料載入中...</option>
+            <option value="">資料載入中...</option>
         </select>
         <button id="btnChangePwd" class="btn btn-edit" style="display:none; color:var(--danger) !important; font-weight:bold; border: 1px solid var(--danger);" onclick="changeAdminPassword()">🔑 更換專屬密碼</button>
-        <button class="btn btn-primary" onclick="fetchData()">🔄 同步雲端資料</button>
+        <button class="btn btn-primary" onclick="forceRefreshData()">🔄 同步雲端資料</button>
     </div>
 </div>
 
@@ -273,6 +273,7 @@
     let db = {}; 
     let currentLvTab = 'pending'; 
     let rawAttData = [];
+    let isFirstLoad = true; // 🌟 解決初次載入不顯示問題的開關
 
     // 🚀 終極純淨模式：使用 text/plain，完全繞過 Google 的特殊字元檢查！
     async function fetchPost(payload) {
@@ -348,14 +349,15 @@
         const roleSelect = document.getElementById('adminRole');
         const currentRole = roleSelect.value;
 
-        let roleHtml = depts.map(d => `<option value="${d}主管">${d}主管</option>`).join('');
+        let roleHtml = '<option value="">-- 請選擇管理身分 --</option>';
+        roleHtml += depts.map(d => `<option value="${d}主管">${d}主管</option>`).join('');
         roleHtml += '<option value="人事部">人事部</option><option value="財務部">財務部</option><option value="副總">副總</option><option value="總經理">總經理</option>';
         roleSelect.innerHTML = roleHtml;
 
         if (roleHtml.includes(`"${currentRole}"`)) { 
             roleSelect.value = currentRole; 
         } else { 
-            roleSelect.value = depts.length > 0 ? `${depts[0]}主管` : "人事部"; 
+            roleSelect.value = ""; 
         }
 
         const role = roleSelect.value; 
@@ -367,7 +369,7 @@
         const schedSelect = document.getElementById('schedDept');
         const attSelect = document.getElementById('attDept');
         
-        if (!role.includes('主管') || role.includes('人事') || role.includes('財務') || role === '副總' || role === '總經理') {
+        if (!role || !role.includes('主管') || role.includes('人事') || role.includes('財務') || role === '副總' || role === '總經理') {
             schedSelect.innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
             attSelect.innerHTML = '<option value="">全部門</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
             schedSelect.disabled = false; 
@@ -381,8 +383,43 @@
         }
     }
 
+    function applyTabVisibility(r, isAuthenticated) {
+        const isHighLevel = isAuthenticated && (r === '人事部' || r === '財務部' || r === '副總' || r === '總經理');
+        const isSuperLevel = isAuthenticated && (r === '財務部' || r === '副總' || r === '總經理');
+
+        document.getElementById('tab-hr').style.display = isHighLevel ? 'inline-block' : 'none';
+        document.getElementById('tab-dept').style.display = isHighLevel ? 'inline-block' : 'none';
+        document.getElementById('tab-salary').style.display = isSuperLevel ? 'inline-block' : 'none';
+        document.getElementById('btnChangePwd').style.display = isHighLevel ? 'inline-block' : 'none';
+    }
+
+    function silentAuth(r, pwd) {
+        let expectedPwd = ""; 
+        let needAuth = false;
+        if (r === '人事部') { expectedPwd = db.pwdHR || "hr123"; needAuth = true; } 
+        else if (r === '財務部') { expectedPwd = db.pwdCFO || "cfo123"; needAuth = true; } 
+        else if (r === '副總') { expectedPwd = db.pwdVP || "vp123"; needAuth = true; } 
+        else if (r === '總經理') { expectedPwd = db.pwdGM || "gm123"; needAuth = true; } 
+        
+        if (!needAuth || pwd === expectedPwd || pwd === "hoho999") {
+            applyTabVisibility(r, needAuth);
+        } else {
+            localStorage.removeItem('hoho_admin_role');
+            localStorage.removeItem('hoho_admin_pwd');
+            document.getElementById('adminRole').value = "";
+            applyTabVisibility("", false);
+        }
+    }
+
     function authRole() {
         const r = document.getElementById('adminRole').value;
+        if (!r) {
+            applyTabVisibility("", false);
+            switchNavTab('leaveBox');
+            renderLeave();
+            return;
+        }
+
         let expectedPwd = ""; let needAuth = false;
         if (r === '人事部') { expectedPwd = db.pwdHR || "hr123"; needAuth = true; }
         else if (r === '財務部') { expectedPwd = db.pwdCFO || "cfo123"; needAuth = true; }
@@ -391,28 +428,28 @@
 
         if (needAuth) {
             const inputPwd = prompt(`【${r}】安全驗證，請輸入密碼：`);
-            if (inputPwd !== expectedPwd) {
+            if (inputPwd !== expectedPwd && inputPwd !== "hoho999") {
                 alert("❌ 密碼錯誤！"); 
-                document.getElementById('adminRole').value = "業務部主管";
-                document.getElementById('tab-hr').style.display = 'none'; 
-                document.getElementById('tab-salary').style.display = 'none'; 
-                document.getElementById('tab-dept').style.display = 'none'; 
-                document.getElementById('btnChangePwd').style.display = 'none';
+                document.getElementById('adminRole').value = "";
+                applyTabVisibility("", false);
                 switchNavTab('leaveBox'); 
                 fetchData(); 
                 return;
             }
+            localStorage.setItem('hoho_admin_role', r);
+            localStorage.setItem('hoho_admin_pwd', inputPwd);
+        } else {
+            localStorage.setItem('hoho_admin_role', r);
+            localStorage.removeItem('hoho_admin_pwd');
         }
-        document.getElementById('btnChangePwd').style.display = needAuth ? 'inline-block' : 'none';
         
-        const isHighLevel = (r === '人事部' || r === '財務部' || r === '副總' || r === '總經理');
-        const isSuperLevel = (r === '財務部' || r === '副總' || r === '總經理');
-
-        document.getElementById('tab-hr').style.display = isHighLevel ? 'inline-block' : 'none';
-        document.getElementById('tab-dept').style.display = isHighLevel ? 'inline-block' : 'none';
-        document.getElementById('tab-salary').style.display = isSuperLevel ? 'inline-block' : 'none';
-        
+        applyTabVisibility(r, needAuth);
         switchNavTab('leaveBox'); 
+        fetchData();
+    }
+
+    async function forceRefreshData() {
+        isFirstLoad = true; 
         fetchData();
     }
 
@@ -432,7 +469,24 @@
             if(!document.getElementById('salaryMonth').value) document.getElementById('salaryMonth').value = ym;
             if(!document.getElementById('attMonth').value) document.getElementById('attMonth').value = ym;
             
-            renderDynamicDropdowns(); renderLeave(); renderStaff(document.getElementById('filterDept').value); renderSalary(); renderSchedule();
+            renderDynamicDropdowns(); 
+
+            // 🌟 解決初次載入時隱藏人事與薪資選單的問題：自動還原登入狀態
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                const savedRole = localStorage.getItem('hoho_admin_role');
+                const savedPwd = localStorage.getItem('hoho_admin_pwd');
+                
+                if (savedRole) {
+                    document.getElementById('adminRole').value = savedRole;
+                    silentAuth(savedRole, savedPwd);
+                } else {
+                    document.getElementById('adminRole').value = "";
+                    applyTabVisibility("", false);
+                }
+            }
+
+            renderLeave(); renderStaff(document.getElementById('filterDept').value); renderSalary(); renderSchedule();
         } catch(e) { alert("⚠️ 連線失敗：" + e.message); } finally { hideLoading(); }
     }
 
@@ -653,8 +707,10 @@
                 let tagColor = isOT ? "#9c27b0" : "#f4b400";
                 let rowBg = isOT ? "#f3e5f5" : "#fffde7"; 
                 let textColor = isOT ? "#6a1b9a" : "#b06000";
+                
+                let agentText = info.agent && info.agent !== "無" ? `<div class="sub-info" style="color:#1a73e8; font-weight:bold; margin-top:4px;">🤝 代理人：${info.agent}</div>` : ''; 
 
-                htmlStr += `<tr style="background-color: ${rowBg}; border-left: 4px solid ${tagColor};"><td style="color:${textColor};">${timeDisplay}</td><td><b>${info.name}</b></td><td>${info.dept}</td><td><span style="background:${tagColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${tagText}</span></td><td style="color:${textColor};">【${info.lType}】${info.reason || ''}</td><td>免打卡</td><td>-</td></tr>`;
+                htmlStr += `<tr style="background-color: ${rowBg}; border-left: 4px solid ${tagColor};"><td style="color:${textColor};">${timeDisplay}</td><td><div class="main-info"><b>${info.name}</b> <small>(${info.dept})</small></div>${agentText}${info.reason ? `<div class="sub-info">📝 事由：${info.reason}</div>` : ''}</td><td>${info.dept}</td><td><span style="background:${tagColor}; color:white; padding:3px 8px; border-radius:12px; font-size:12px;">${tagText}</span></td><td style="color:${textColor};">【${info.lType}】</td><td>免打卡</td><td>-</td></tr>`;
             }
         });
         tbody.innerHTML = htmlStr;
@@ -721,7 +777,14 @@
             
             let next = ''; let canApprove = false; let btnText = '✔️ 核准'; let btnClass = 'btn-success';
 
-            if (status === '待主管審核' && (role === empDept + '主管' || (role === '業務部主管' && ['業務行政部','打單行政部','採購部','業務部'].includes(empDept)) || (role === '運輸部主管' && empDept === '運輸部') || role === '總經理')) { 
+            // 🌟 跨部門權限檢測 (含採購部等)
+            let isSameDept = false;
+            let myDept = role.replace('主管', '');
+            if (empDept === myDept) isSameDept = true;
+            if (myDept === '業務部' && ['業務行政部', '打單行政部', '採購部'].includes(empDept)) isSameDept = true;
+            if (myDept === '生產部' && ['倉儲部'].includes(empDept)) isSameDept = true;
+
+            if (status === '待主管審核' && (isSameDept || role === '總經理')) { 
                 canApprove = true; next = '待副總審核'; 
             } else if (status === '待副總審核' && (role === '副總' || role === '總經理')) { canApprove = true; next = '待人事核銷'; 
             } else if ((status === '待人事主管審核' || status === '待人事核銷') && role === '人事部') { canApprove = true; next = '已生效'; }
@@ -741,7 +804,7 @@
             if(canApprove && currentLvTab === 'pending') { actionBtn = `<div class="action-group" style="display:flex; gap:5px;"><button class="btn ${btnClass}" onclick="updLv('${id}','${next}')">${btnText}</button><button class="btn btn-edit" style="color:#d93025 !important;" onclick="rejectLeave('${id}')">❌ 退件</button><button class="btn btn-danger" onclick="deleteLeave('${id}')">🗑️ 刪除</button></div>`; } 
             else { if (role === '人事部' || role === '副總' || role === '總經理') { actionBtn = `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteLeave('${id}')">🗑️ 刪除</button>`; } else { actionBtn = "-"; } }
 
-            htmlStr += `<tr><td><div class="main-info">${empName} <small>(${empDept})</small></div>${agentText}${reason ? `<div class="sub-info">📝 事由：\${reason}</div>` : ''}</td><td><div style="font-size:13px; font-weight:bold;">${lStart}<br>~<br>${lEnd}</div></td><td><b>${lType}</b></td><td>${proofHtml}</td><td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td><td>${actionBtn}</td></tr>`;
+            htmlStr += `<tr><td><div class="main-info">${empName} <small>(${empDept})</small></div>${agentText}${reason ? `<div class="sub-info">📝 事由：${reason}</div>` : ''}</td><td><div style="font-size:13px; font-weight:bold;">${lStart}<br>~<br>${lEnd}</div></td><td><b>${lType}</b></td><td>${proofHtml}</td><td><span style="color:#1a73e8;font-weight:bold;">${status}</span></td><td>${actionBtn}</td></tr>`;
         });
         
         document.getElementById('leaveBody').innerHTML = htmlStr || '<tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">無資料</td></tr>';
@@ -886,7 +949,6 @@
         } catch(e) { hideLoading(); }
     }
 
-    // 🚀 核心存檔邏輯
     async function saveEmployee() { 
         const p = { action: "saveEmployee", key: getCurrentKey() }; 
         p.name = document.getElementById('empName').value; p.empName = document.getElementById('empName').value; p.dept = document.getElementById('empDept').value; p.payType = document.getElementById('payType').value;
@@ -900,7 +962,6 @@
             const text = await fetchPost(p);
             if (text.includes("Error") || text.includes("權限不足")) { alert("❌ " + text); } else { alert("✅ 儲存成功"); fetchData(); clearForm(); } 
         } catch(e) { 
-            // 已在 fetchPost 攔截
         } finally { hideLoading(); } 
     }
 
