@@ -375,6 +375,7 @@
 
     var TOP_BOSSES = ["蔡政達", "楊盟吉", "范愛珠"]; 
     var HR_MANAGERS = ["姜道凌"]; 
+    var HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
     var COMPANY_LAT_1 = 24.956650267283113; 
     var COMPANY_LON_1 = 121.3938601653661;
@@ -401,7 +402,6 @@
     var reportBlockCount = 0;
     var errBlockCount = 0;
 
-    // 🌟 補回載入畫面控制函數
     function showLoading(text) { 
         var elText = document.getElementById('loadingText');
         if (elText) elText.innerText = text; 
@@ -464,15 +464,16 @@
         if (!globalDB || !globalDB.employees) return;
         var emp = null;
         for(var i = 0; i < globalDB.employees.length; i++){ if(globalDB.employees[i][0] === currentUser) { emp = globalDB.employees[i]; break; } }
+        
+        var isBoss = false; for(var b = 0; b < TOP_BOSSES.length; b++){ if(TOP_BOSSES[b] === currentUser) isBoss = true; }
+        var isHR = false; for(var h = 0; h < HR_MANAGERS.length; h++){ if(HR_MANAGERS[h] === currentUser) isHR = true; }
+
         if (emp) {
-            myIsManager = (emp[14] === "Y");
-            myIsFlex = (emp[15] === "Y");
+            myIsManager = (emp[14] === "Y") || isBoss || isHR; 
+            myIsFlex = (emp[15] === "Y") || isBoss; 
             myIsSpoof = (emp[16] === "Y");
 
-            var isBoss = false; for(var b = 0; b < TOP_BOSSES.length; b++){ if(TOP_BOSSES[b] === currentUser) isBoss = true; }
-            var isHR = false; for(var h = 0; h < HR_MANAGERS.length; h++){ if(HR_MANAGERS[h] === currentUser) isHR = true; }
-
-            if (myIsManager || isBoss || isHR) {
+            if (myIsManager) {
                 document.getElementById('lblHistTeam').style.display = 'block'; 
             } else {
                 document.getElementById('lblHistTeam').style.display = 'none';
