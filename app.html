@@ -1084,23 +1084,47 @@
         }
     }
 
-    async function mobileApproveLeave(leaveId, newStatus) {
+    // 🌟 完全重構：使用傳統 Promise 語法，解決 iOS 阻斷問題
+    function mobileApproveLeave(leaveId, newStatus) {
         let actionText = newStatus === '已退回' ? '退回' : '核准';
         Swal.fire({
-            title: '確認要 ' + actionText + ' 此假單？', icon: 'question', showCancelButton: true, confirmButtonText: '確認', cancelButtonText: '取消', confirmButtonColor: newStatus === '已退回' ? '#d93025' : '#1a73e8'
-        }).then(async function(result) {
+            title: '確認要 ' + actionText + ' 此假單？', 
+            icon: 'question', 
+            showCancelButton: true, 
+            confirmButtonText: '確認', 
+            cancelButtonText: '取消', 
+            confirmButtonColor: newStatus === '已退回' ? '#d93025' : '#1a73e8'
+        }).then(function(result) {
             if (result.isConfirmed) {
                 showLoading("處理中...");
-                try {
-                    const text = await fetchApi(ATTENDANCE_API_URL, { action: "updateLeave", id: leaveId, newStatus: newStatus });
-                    if (text === "Success") { Swal.fire('成功', '假單已成功' + actionText + '！', 'success'); fetchBackendData(); } 
-                    else { Swal.fire('錯誤', text, 'error'); }
-                } catch(e) { Swal.fire('連線失敗', e.message, 'error'); } finally { hideLoading(); }
+                fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime(), {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "updateLeave", id: leaveId, newStatus: newStatus })
+                })
+                .then(function(res) {
+                    if (!res.ok) throw new Error("伺服器連線異常");
+                    return res.text();
+                })
+                .then(function(text) {
+                    hideLoading();
+                    if (text.includes("Success")) { 
+                        Swal.fire('成功', '假單已成功' + actionText + '！', 'success').then(function() {
+                            fetchBackendData();
+                        });
+                    } else { 
+                        Swal.fire('錯誤', text, 'error'); 
+                    }
+                })
+                .catch(function(e) {
+                    hideLoading();
+                    Swal.fire('連線失敗', e.message, 'error');
+                });
             }
         });
     }
 
-    async function submitAttendance() {
+    function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
         const type = document.querySelector('input[name="attType"]:checked').value;
         const reasonInput = document.getElementById('punchReason');
@@ -1154,10 +1178,10 @@
     }
 
     function getBase64(file) {
-        return new Promise((resolve, reject) => {
+        return new Promise(function(resolve, reject) {
             const reader = new FileReader(); reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = error => reject(error);
+            reader.onload = function() { resolve(reader.result.split(',')[1]); };
+            reader.onerror = function(error) { reject(error); };
         });
     }
 
@@ -1172,15 +1196,15 @@
             if (fileInput.files.length > 0) { p.imageFile = await getBase64(fileInput.files[0]); p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name; }
             const text = await fetchApi(ATTENDANCE_API_URL, p); 
             hideLoading();
-            if (text === "Success") { Swal.fire('太棒了！', '假單 100% 成功送進資料庫！', 'success').then(() => location.reload()); } 
+            if (text === "Success") { Swal.fire('太棒了！', '假單 100% 成功送進資料庫！', 'success').then(function() { location.reload(); }); } 
             else if (text.includes("系統阻擋")) { Swal.fire('休假人數達上限', text, 'error'); } 
             else { Swal.fire('寫入失敗', text, 'error'); }
         } catch(e) { hideLoading(); Swal.fire('致命連線阻擋', e.message, 'error'); } 
     }
 
     function switchProofTab(tabId) {
-        document.querySelectorAll('#viewProof .report-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('#viewProof .report-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('#viewProof .report-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('#viewProof .report-content').forEach(function(c) { c.classList.remove('active'); });
         event.currentTarget.classList.add('active'); document.getElementById(tabId).classList.add('active');
     }
 
@@ -1193,7 +1217,7 @@
             const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
             const text = await fetchApi(ATTENDANCE_API_URL, p); 
             hideLoading();
-            if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(() => location.reload()); } 
+            if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(function() { location.reload(); }); } 
             else { Swal.fire('失敗', text, 'error'); }
         } catch (e) { hideLoading(); Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); } 
     }
@@ -1232,20 +1256,20 @@
         try {
             const text = await fetchApi(ATTENDANCE_API_URL, p);
             hideLoading();
-            if (text === "Success") { Swal.fire('成功', '補登申請已送出！請等待主管審核。', 'success').then(() => location.reload()); } 
+            if (text === "Success") { Swal.fire('成功', '補登申請已送出！請等待主管審核。', 'success').then(function() { location.reload(); }); } 
             else { Swal.fire('失敗', text, 'error'); }
         } catch(e) { hideLoading(); Swal.fire('錯誤', e.message, 'error'); }
     }
 
     function switchReportTab(tabId) {
-        document.querySelectorAll('#viewReport .report-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('#viewReport .report-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('#viewReport .report-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('#viewReport .report-content').forEach(function(c) { c.classList.remove('active'); });
         event.currentTarget.classList.add('active'); document.getElementById(tabId).classList.add('active');
     }
 
     function addReportBlock() { 
         if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成"); 
-        const empRecord = globalDB.employees.find(r => r[0] === currentUser); if (!empRecord) return; 
+        const empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (!empRecord) return; 
         const myDept = empRecord[1]; const isManager = myIsManager; 
         reportBlockCount++; const container = document.getElementById('dynamicReports'); let innerHtml = ''; 
         
@@ -1289,10 +1313,10 @@
     
     async function submitDailyReport() { 
         if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成"); 
-        const empRecord = globalDB.employees.find(r => r[0] === currentUser); if (!empRecord) return; 
+        const empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (!empRecord) return; 
         const myDept = empRecord[1]; const isManager = myIsManager; const myRole = isManager ? "部門主管" : "一般員工"; const blocks = document.querySelectorAll('#dailyTab .report-block'); let contentsArray = []; let hasContent = false; 
-        blocks.forEach(block => { 
-            let text = ""; const getVal = (selector) => { const node = block.querySelector(selector); let val = node ? node.value.trim() : ""; if(val) hasContent = true; return val; }; 
+        blocks.forEach(function(block) { 
+            let text = ""; const getVal = function(selector) { const node = block.querySelector(selector); let val = node ? node.value.trim() : ""; if(val) hasContent = true; return val; }; 
             if (isManager) { 
                 text = '【團隊狀態】' + getVal('.m-status') + '\n【問題排除】\n' + getVal('.m-issue') + '\n【跨部協調】\n' + getVal('.m-coord') + '\n【明日戰略】\n' + getVal('.m-plan') + '\n【人員觀察】\n' + getVal('.m-advice'); 
             } else { 
@@ -1318,17 +1342,17 @@
         try { 
             const result = await fetchApi(REPORT_API_URL, { action: "saveReport", userDept: myDept, userName: currentUser, userRole: myRole, contents: contentsArray }); 
             hideLoading(); 
-            if(result.includes("✅")) { Swal.fire('成功', result, 'success').then(() => { document.getElementById('dynamicReports').innerHTML = ''; reportBlockCount = 0; addReportBlock(); }); } 
+            if(result.includes("✅")) { Swal.fire('成功', result, 'success').then(function() { document.getElementById('dynamicReports').innerHTML = ''; reportBlockCount = 0; addReportBlock(); }); } 
             else { Swal.fire('失敗', result, 'error'); } 
         } catch(e) { hideLoading(); Swal.fire('錯誤', '系統失敗: ' + e.message, 'error'); } 
     }
     
     async function submitErrorReport() { 
         if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成"); 
-        const empRecord = globalDB.employees.find(r => r[0] === currentUser); if (!empRecord) return; const myDept = empRecord[1]; 
+        const empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (!empRecord) return; const myDept = empRecord[1]; 
         const blocks = document.querySelectorAll('.err-block'); let errorsArray = []; let isValid = true; 
-        blocks.forEach(block => { 
-            const getVal = (selector) => { const node = block.querySelector(selector); return node ? node.value.trim() : ""; }; 
+        blocks.forEach(function(block) { 
+            const getVal = function(selector) { const node = block.querySelector(selector); return node ? node.value.trim() : ""; }; 
             const client = getVal('.err-client'); const type = getVal('.err-type'); const details = getVal('.err-details'); const responsible = getVal('.err-responsible'); const loss = getVal('.err-loss'); 
             if (!client || !details || !responsible) isValid = false; errorsArray.push({ client, errorType: type, details, responsible, loss }); 
         }); 
@@ -1337,7 +1361,7 @@
         try { 
             const result = await fetchApi(REPORT_API_URL, { action: "submitLogisticsError", reporter: myDept + " - " + currentUser, errors: errorsArray }); 
             hideLoading(); 
-            if(result.includes("✅")) { Swal.fire('通報成功', result, 'success').then(() => { document.getElementById('dynamicErrors').innerHTML = ''; errBlockCount = 0; addErrorBlock(); }); } 
+            if(result.includes("✅")) { Swal.fire('通報成功', result, 'success').then(function() { document.getElementById('dynamicErrors').innerHTML = ''; errBlockCount = 0; addErrorBlock(); }); } 
             else { Swal.fire('失敗', result, 'error'); } 
         } catch(e) { hideLoading(); Swal.fire('錯誤', '系統失敗: ' + e.message, 'error'); } 
     }
