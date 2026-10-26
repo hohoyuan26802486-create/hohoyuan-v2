@@ -401,6 +401,19 @@
     var reportBlockCount = 0;
     var errBlockCount = 0;
 
+    // 🌟 補回載入畫面控制函數
+    function showLoading(text) { 
+        var elText = document.getElementById('loadingText');
+        if (elText) elText.innerText = text; 
+        var elOverlay = document.getElementById('loadingOverlay');
+        if (elOverlay) elOverlay.style.display = 'flex'; 
+    }
+    
+    function hideLoading() { 
+        var elOverlay = document.getElementById('loadingOverlay');
+        if (elOverlay) elOverlay.style.display = 'none'; 
+    }
+
     function showAlert(title, text, icon) {
         if (typeof Swal !== "undefined") { Swal.fire(title, text, icon); } 
         else { alert(title + "\n\n" + text); }
@@ -495,7 +508,6 @@
     }
 
     window.onload = function() {
-        // 特別針對舊版 iOS 加入強制清理機制與綁定修正
         console.log("App Starting...");
         var savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
@@ -1296,6 +1308,14 @@
         }).catch(function(e) {
             hideLoading();
             showAlert('網路錯誤', '無法傳送打卡：' + e.message, 'error');
+        });
+    }
+
+    function getBase64(file) {
+        return new Promise(function(resolve, reject) {
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = function() { resolve(reader.result.split(',')[1]); };
+            reader.onerror = function(error) { reject(error); };
         });
     }
 
