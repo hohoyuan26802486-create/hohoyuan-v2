@@ -395,14 +395,16 @@
     let reportBlockCount = 0;
     let errBlockCount = 0;
 
-    async function fetchApi(url, payload) {
-        const res = await fetch(url + "?t=" + new Date().getTime(), {
+    // 🌟 傳統 Promise，確保 iOS 完全相容
+    function fetchApi(url, payload) {
+        return fetch(url + "?t=" + new Date().getTime(), {
             method: 'POST',
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload)
+        }).then(function(res) {
+            if (!res.ok) throw new Error("伺服器連線異常");
+            return res.text();
         });
-        if (!res.ok) throw new Error("伺服器連線異常");
-        return await res.text();
     }
 
     function getDistance(lat1, lon1, lat2, lon2) {
@@ -423,6 +425,15 @@
         const days = ['日', '一', '二', '三', '四', '五', '六'];
         const pad = function(n) { return n.toString().padStart(2, '0'); };
         return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' (' + days[d.getDay()] + ') ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+    
+    // 🌟 強健的假日判定，避免 Safari Crash
+    function isHolidayToday() {
+        var now = new Date();
+        var day = now.getDay();
+        var pad = function(n) { return n.toString().padStart(2, '0'); };
+        var dateStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+        return (day === 0 || day === 6 || HOLIDAYS_2026.indexOf(dateStr) !== -1);
     }
 
     function parsePermissions() {
@@ -491,29 +502,31 @@
         } else { updateGPSUI(); }
     };
 
-    async function doLogin() {
+    function doLogin() {
         const nameInput = document.getElementById('loginName').value.trim();
         const pwdInput = document.getElementById('loginPwd').value.trim();
         if (!nameInput || !pwdInput) return Swal.fire('提示', '請輸入姓名與密碼！', 'warning');
         
         showLoading("安全驗證中...");
-        try {
-            const text = await fetchApi(ATTENDANCE_API_URL, { action: "loginVerify", name: nameInput, pwd: pwdInput });
+        fetchApi(ATTENDANCE_API_URL, { action: "loginVerify", name: nameInput, pwd: pwdInput })
+        .then(function(text) {
             hideLoading();
-
-            if (text.startsWith("Success")) {
+            if (text.indexOf("Success") === 0) {
                 currentUser = nameInput; localStorage.setItem('hohoyuan_user', currentUser);
                 const parts = text.split('|'); if (parts[1]) localStorage.setItem('hohoyuan_avatar_' + currentUser, parts[1]);
                 showMainScreen(); fetchBackendData(); checkTodayAttendance(); 
                 Swal.fire({ title: '登入成功', text: '歡迎，' + currentUser + '！', icon: 'success', timer: 1500, showConfirmButton: false });
             } else { Swal.fire('登入失敗', text, 'error'); }
-        } catch (e) { hideLoading(); Swal.fire('網路錯誤', '無法連線到資料庫：' + e.message, 'error'); }
+        })
+        .catch(function(e) {
+            hideLoading(); Swal.fire('網路錯誤', '無法連線到資料庫：' + e.message, 'error');
+        });
     }
 
     function loadAvatar() {
         const savedAvatar = localStorage.getItem('hohoyuan_avatar_' + currentUser);
         const avatarDiv = document.getElementById('userAvatarBtn');
-        if (savedAvatar && savedAvatar !== "undefined" && savedAvatar.trim() !== "" && (savedAvatar.startsWith("http") || savedAvatar.startsWith("data:image"))) {
+        if (savedAvatar && savedAvatar !== "undefined" && savedAvatar.trim() !== "" && (savedAvatar.indexOf("http") === 0 || savedAvatar.indexOf("data:image") === 0)) {
             avatarDiv.innerHTML = '<img src="' + savedAvatar + '" style="width:100%; height:100%; object-fit:cover;">';
         } else { avatarDiv.innerHTML = '👤'; }
     }
@@ -556,32 +569,39 @@
         reader.readAsDataURL(file);
     });
 
-    async function uploadAvatarToBackend(base64Data) {
+    function uploadAvatarToBackend(base64Data) {
         showLoading("頭像更新中...");
-        try {
-            const text = await fetchApi(ATTENDANCE_API_URL, { action: "updateAvatar", name: currentUser, imageFile: base64Data });
+        fetchApi(ATTENDANCE_API_URL, { action: "updateAvatar", name: currentUser, imageFile: base64Data })
+        .then(function(text) {
             hideLoading();
-            if (text.startsWith("Success")) {
+            if (text.indexOf("Success") === 0) {
                 const newUrl = text.split('|')[1]; localStorage.setItem('hohoyuan_avatar_' + currentUser, newUrl);
                 loadAvatar(); Swal.fire('成功', '大頭照已成功更換！', 'success');
             } else { Swal.fire('失敗', text, 'error'); }
-        } catch(e) { hideLoading(); Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); }
+        })
+        .catch(function(e) {
+            hideLoading(); Swal.fire('錯誤', '網路連線異常：' + e.message, 'error');
+        });
     }
 
-    async function changeMyPassword() {
-        const { value: newPwd } = await Swal.fire({
+    function changeMyPassword() {
+        Swal.fire({
             title: '修改登入密碼', input: 'password', inputLabel: '請輸入您的新密碼', inputPlaceholder: '至少 4 個字元', showCancelButton: true,
             inputValidator: function(value) { if (!value || value.length < 4) return '密碼太短囉，為了安全請輸入 4 個字以上！' }
+        }).then(function(result) {
+            if (result.value) {
+                showLoading("密碼更新中...");
+                fetchApi(ATTENDANCE_API_URL, { action: "changeEmpPassword", name: currentUser, newPwd: result.value })
+                .then(function(text) {
+                    hideLoading();
+                    if (text === "Success") Swal.fire('成功', '密碼已更新！下次登入請使用新密碼。', 'success');
+                    else Swal.fire('失敗', text, 'error');
+                })
+                .catch(function(e) {
+                    hideLoading(); Swal.fire('錯誤', '網路異常: ' + e.message, 'error');
+                });
+            }
         });
-        if (newPwd) {
-            showLoading("密碼更新中...");
-            try {
-                const text = await fetchApi(ATTENDANCE_API_URL, { action: "changeEmpPassword", name: currentUser, newPwd: newPwd });
-                hideLoading();
-                if (text === "Success") Swal.fire('成功', '密碼已更新！下次登入請使用新密碼。', 'success');
-                else Swal.fire('失敗', text, 'error');
-            } catch(e) { hideLoading(); Swal.fire('錯誤', '網路異常: ' + e.message, 'error'); }
-        }
     }
 
     function doLogout() { localStorage.removeItem('hohoyuan_user'); location.reload(); }
@@ -605,7 +625,7 @@
 
             for (let i=1; i<globalDB.leave.length; i++) {
                 let r = globalDB.leave[i]; let status = r[8];
-                if (status && status.includes("待")) {
+                if (status && status.indexOf("待") !== -1) {
                     let empDept = r[3]; let isSameDept = isManagedBy(empDept, myDept); let isNotMe = (r[2] !== currentUser);
                     let hasPermission = false;
                     
@@ -623,7 +643,8 @@
         }
 
         let now = new Date(); let hour = now.getHours();
-        let holidayObj = globalDB && globalDB.schedule ? globalDB.schedule.find(function(s) { return s[0] === (now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0')) && s[1] === currentUser; }) : null;
+        let pad = function(n) { return n.toString().padStart(2, '0'); };
+        let holidayObj = globalDB && globalDB.schedule ? globalDB.schedule.find(function(s) { return s[0] === (now.getFullYear() + '-' + pad(now.getMonth()+1)) && s[1] === currentUser; }) : null;
         let isHol = holidayObj && holidayObj[2 + now.getDate()] === "排休";
         
         if (!isHol) {
@@ -651,7 +672,7 @@
         const rb = document.getElementById('reasonBox');
         if (!rb) return;
         
-        if (txt.includes("外勤") || txt.includes("遠端") || txt.includes("加班") || txt.includes("值班") || txt === "勤務結束下班") {
+        if (txt.indexOf("外勤") !== -1 || txt.indexOf("遠端") !== -1 || txt.indexOf("加班") !== -1 || txt.indexOf("值班") !== -1 || txt === "勤務結束下班") {
             if (txt === "勤務結束下班") { rb.style.display = "none"; } 
             else { rb.style.display = "block"; }
         } else {
@@ -673,7 +694,8 @@
             let isHol = false;
             if (globalDB && globalDB.schedule) {
                 let now = new Date();
-                let monthStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+                let pad = function(n) { return n.toString().padStart(2, '0'); };
+                let monthStr = now.getFullYear() + '-' + pad(now.getMonth()+1);
                 let sched = globalDB.schedule.find(function(s) { return s[0] === monthStr && s[1] === currentUser; });
                 if (sched && (sched[2 + now.getDate()] === "排休" || sched[2 + now.getDate()] === "假日值班" || sched[2 + now.getDate()] === "假日加班")) {
                     isHol = true;
@@ -682,8 +704,8 @@
             
             if(holidayBox) { holidayBox.style.display = isHol ? "flex" : "none"; handleHolidayTypeChange(); }
 
-            const typeInput = document.querySelector('input[name="attType"]:checked');
-            if(!typeInput) return; const type = typeInput.value;
+            let typeInput = document.querySelector('input[name="attType"]:checked');
+            if(!typeInput) return; let type = typeInput.value;
             const list = document.getElementById('statusList'); 
 
             const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
@@ -761,7 +783,7 @@
         if (myIsFlex) { box.innerText = "✅ 免定位模式已啟動"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; return; }
         if (userLat === null || userLon === null) { box.innerText = "📍 獲取定位中... (請允許權限)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; } 
         
-        const isRemote = selectedStatus.includes("外勤") || selectedStatus.includes("遠端");
+        const isRemote = selectedStatus.indexOf("外勤") !== -1 || selectedStatus.indexOf("遠端") !== -1;
 
         if (isWithinRange) { 
             box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
@@ -772,31 +794,36 @@
         }
     }
 
-    async function fetchBackendData() {
-        try {
-            const res = await fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime()); 
-            globalDB = await res.json();
-            
+    function fetchBackendData() {
+        fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: "", key: "" })
+        .then(function() {
+            return fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime());
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            globalDB = data;
             parsePermissions(); 
-
             updateAnnualLeaveUI(); populateAgentDropdown(); loadPendingProofs();
             
             if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
             renderHomeAlerts(); handleTypeChange();
-        } catch (e) { console.error("資料載入失敗:", e); }
+        })
+        .catch(function(e) { console.error("資料載入失敗:", e); });
     }
 
-    async function checkTodayAttendance() {
-        try {
-            const now = new Date();
-            const currMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-            const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const prevMonth = prevMonthDate.getFullYear() + '-' + String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+    function checkTodayAttendance() {
+        const now = new Date();
+        let pad = function(n) { return String(n).padStart(2, '0'); };
+        const currMonth = now.getFullYear() + '-' + pad(now.getMonth() + 1);
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonth = prevMonthDate.getFullYear() + '-' + pad(prevMonthDate.getMonth() + 1);
 
-            const [currText, prevText] = await Promise.all([
-                fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" }),
-                fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(function() { return "[]"; })
-            ]);
+        let p1 = fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" });
+        let p2 = fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(function() { return "[]"; });
+
+        Promise.all([p1, p2]).then(function(results) {
+            let currText = results[0];
+            let prevText = results[1];
 
             let currData = []; try { currData = JSON.parse(currText); } catch(e){}
             let prevData = []; try { prevData = JSON.parse(prevText); } catch(e){}
@@ -817,20 +844,20 @@
             currentMonthAttData = Array.from(uniqueRecords.values());
 
             let hasIn = false; let hasOut = false; let inTime = ""; let outTime = "";
-            let dailyPunches = {}; let todayDayStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+            let dailyPunches = {}; let todayDayStr = now.getFullYear() + '/' + pad(now.getMonth()+1) + '/' + pad(now.getDate());
             
-            let currentMonthPrefix = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0');
+            let currentMonthPrefix = now.getFullYear() + '/' + pad(now.getMonth()+1);
 
             for (let i = 1; i < currentMonthAttData.length; i++) {
                 let rowName = String(currentMonthAttData[i][1]).trim(); let rowType = String(currentMonthAttData[i][3]).trim(); let rowDate = new Date(currentMonthAttData[i][0]);
                 if (rowName === currentUser && !isNaN(rowDate.getTime())) {
-                    let dStr = rowDate.getFullYear() + '/' + String(rowDate.getMonth()+1).padStart(2,'0') + '/' + String(rowDate.getDate()).padStart(2,'0');
+                    let dStr = rowDate.getFullYear() + '/' + pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate());
                     if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
-                    if (rowType.includes("上班")) dailyPunches[dStr].in = true; if (rowType.includes("下班")) dailyPunches[dStr].out = true;
+                    if (rowType.indexOf("上班") !== -1) dailyPunches[dStr].in = true; if (rowType.indexOf("下班") !== -1) dailyPunches[dStr].out = true;
                     if (dStr === todayDayStr) {
-                        let shortTime = String(rowDate.getHours()).padStart(2, '0') + ':' + String(rowDate.getMinutes()).padStart(2, '0');
-                        if (rowType.includes("上班")) { hasIn = true; inTime = shortTime; }
-                        if (rowType.includes("下班")) { hasOut = true; outTime = shortTime; }
+                        let shortTime = pad(rowDate.getHours()) + ':' + pad(rowDate.getMinutes());
+                        if (rowType.indexOf("上班") !== -1) { hasIn = true; inTime = shortTime; }
+                        if (rowType.indexOf("下班") !== -1) { hasOut = true; outTime = shortTime; }
                     }
                 }
             }
@@ -838,7 +865,7 @@
             let mCount = 0; let missingDates = []; let sortedDays = Object.keys(dailyPunches).sort();
             for (let i = 0; i < sortedDays.length; i++) {
                 let d = sortedDays[i];
-                if (d !== todayDayStr && d.startsWith(currentMonthPrefix)) { 
+                if (d !== todayDayStr && d.indexOf(currentMonthPrefix) === 0) { 
                     if ((dailyPunches[d].in && !dailyPunches[d].out) || (!dailyPunches[d].in && dailyPunches[d].out)) {
                         mCount++; let parts = d.split('/'); let typeMissing = !dailyPunches[d].in ? '缺上班' : '缺下班';
                         missingDates.push(parts[1] + '/' + parts[2] + ' (' + typeMissing + ')');
@@ -853,7 +880,9 @@
             else { statusCard.innerHTML = '<span style="color:var(--text-sub);">尚未打卡</span>'; }
             if(document.getElementById('viewHistory').classList.contains('active')) renderHistory();
             renderHomeAlerts();
-        } catch (e) { document.getElementById('cardAttStatus').innerText = "無法載入"; }
+        }).catch(function(e){
+            document.getElementById('cardAttStatus').innerText = "無法載入";
+        });
     }
 
     function handleLeaveTypeChange() {
@@ -925,13 +954,14 @@
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         let leaveId = r[0]; let empName = r[2]; let empDept = r[3]; let typeStr = r[4]; 
         let sDate = new Date(r[5]); let eDate = new Date(r[6]);
-        let sStr = isNaN(sDate.getTime()) ? r[5] : (sDate.getMonth()+1) + '/' + sDate.getDate() + ' ' + String(sDate.getHours()).padStart(2,'0') + ':' + String(sDate.getMinutes()).padStart(2,'0');
-        let eStr = isNaN(eDate.getTime()) ? r[6] : (eDate.getMonth()+1) + '/' + eDate.getDate() + ' ' + String(eDate.getHours()).padStart(2,'0') + ':' + String(eDate.getMinutes()).padStart(2,'0');
+        let pad = function(n) { return n.toString().padStart(2, '0'); };
+        let sStr = isNaN(sDate.getTime()) ? r[5] : (sDate.getMonth()+1) + '/' + sDate.getDate() + ' ' + pad(sDate.getHours()) + ':' + pad(sDate.getMinutes());
+        let eStr = isNaN(eDate.getTime()) ? r[6] : (eDate.getMonth()+1) + '/' + eDate.getDate() + ' ' + pad(eDate.getHours()) + ':' + pad(eDate.getMinutes());
         let status = r[8]; let reason = r[7];
         
         let statusColor = "#1a73e8"; 
-        if(status.includes("退回") || status.includes("撤銷")) statusColor = "#d93025";
-        else if(status.includes("待")) statusColor = "#f4b400";
+        if(status.indexOf("退回") !== -1 || status.indexOf("撤銷") !== -1) statusColor = "#d93025";
+        else if(status.indexOf("待") !== -1) statusColor = "#f4b400";
         else if(status === "已生效") statusColor = "#28a745";
 
         let actionBtnsHTML = '';
@@ -940,7 +970,7 @@
             let isBoss = TOP_BOSSES.includes(currentUser);
             let isHR = HR_MANAGERS.includes(currentUser);
             
-            if (status.includes("待")) {
+            if (status.indexOf("待") !== -1) {
                 let nextStatus = "已生效"; let canApprove = false;
                 let btnText = "✔️ 核准"; let btnStyle = "background: var(--primary-light); color: var(--primary);"; let rejectStyle = "background: #fce8e6; color: var(--danger);";
                 
@@ -1002,7 +1032,7 @@
             if (myAtts.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>近期尚無您的打卡紀錄喔！</div>"; return; }
             myAtts.forEach(function(r) {
                 let timeStr = formatTimeWithDay(r[0]); let typeStr = r[3]; let status = r[4];
-                let colorClass = 'history-card'; if(status.includes('遲到') || status.includes('早退') || status.includes('異常')) colorClass += ' error';
+                let colorClass = 'history-card'; if(status.indexOf('遲到') !== -1 || status.indexOf('早退') !== -1 || status.indexOf('異常') !== -1) colorClass += ' error';
                 container.innerHTML += '<div class="' + colorClass + '"><div class="hist-content"><div><div class="hist-title">' + typeStr + '</div><div class="hist-sub">' + timeStr + '</div></div><div class="hist-status" style="color:var(--primary);">' + status + '</div></div></div>';
             });
         } else if (type === 'leave') {
@@ -1010,8 +1040,8 @@
             let myLeaves = globalDB.leave.slice(1).filter(function(r) { return String(r[2]).trim() === currentUser; });
             if (myLeaves.length === 0) { container.innerHTML = "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>您目前沒有任何請假紀錄喔！</div>"; return; }
 
-            let pendingMy = myLeaves.filter(function(r) { return String(r[8]).includes('待'); }).sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); });
-            let historyMy = myLeaves.filter(function(r) { return !String(r[8]).includes('待'); }).sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); });
+            let pendingMy = myLeaves.filter(function(r) { return String(r[8]).indexOf('待') !== -1; }).sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); });
+            let historyMy = myLeaves.filter(function(r) { return String(r[8]).indexOf('待') === -1; }).sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); });
 
             let htmlStr = '';
             if (pendingMy.length > 0) { htmlStr += '<div style="font-size: 13px; font-weight: bold; color: #b06000; margin: 5px 0 10px 0; border-bottom: 1px dashed #fde293; padding-bottom: 5px;">⏳ 待處理進度</div>'; pendingMy.forEach(function(r) { htmlStr += generateLeaveCardHTML(r, false, ""); }); }
@@ -1020,8 +1050,10 @@
         } else if (type === 'team') {
             let myDept = ""; let empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (empRecord) myDept = empRecord[1];
             let todayTime = new Date(); todayTime.setHours(0,0,0,0);
-            let today = new Date(); let todayStrYMD = today.getFullYear() + String(today.getMonth()+1).padStart(2,'0') + String(today.getDate()).padStart(2,'0');
-            let todayMonthStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0'); let dayNum = today.getDate();
+            let today = new Date(); 
+            let pad = function(n) { return n.toString().padStart(2, '0'); };
+            let todayStrYMD = today.getFullYear() + pad(today.getMonth()+1) + pad(today.getDate());
+            let todayMonthStr = today.getFullYear() + '-' + pad(today.getMonth()+1); let dayNum = today.getDate();
             let todayLeaveList = []; 
             let isBoss = TOP_BOSSES.includes(currentUser);
             let isHR = HR_MANAGERS.includes(currentUser);
@@ -1029,14 +1061,14 @@
             if (globalDB.leave && globalDB.leave.length > 1) {
                 for (let i=1; i<globalDB.leave.length; i++) {
                     let r = globalDB.leave[i]; let status = r[8] || "";
-                    if (status === "已生效" || status.includes("待")) {
+                    if (status === "已生效" || status.indexOf("待") !== -1) {
                         let isSameDept = isManagedBy(r[3], myDept);
                         if ((isSameDept && myIsManager) || isBoss || isHR) {
                             let sDate = new Date(r[5]); let eDate = new Date(r[6]);
                             if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
-                                let sStr = sDate.getFullYear() + String(sDate.getMonth()+1).padStart(2,'0') + String(sDate.getDate()).padStart(2,'0'); 
-                                let eStr = eDate.getFullYear() + String(eDate.getMonth()+1).padStart(2,'0') + String(eDate.getDate()).padStart(2,'0');
-                                if (todayStrYMD >= sStr && todayStrYMD <= eStr) { let pendingTag = status.includes("待") ? ' <span style="color:#f4b400; font-size:11px; font-weight:bold;">(待審核)</span>' : ""; todayLeaveList.push('• ' + r[2] + ' (' + r[3] + ') - ' + r[4] + pendingTag); }
+                                let sStr = sDate.getFullYear() + pad(sDate.getMonth()+1) + pad(sDate.getDate()); 
+                                let eStr = eDate.getFullYear() + pad(eDate.getMonth()+1) + pad(eDate.getDate());
+                                if (todayStrYMD >= sStr && todayStrYMD <= eStr) { let pendingTag = status.indexOf("待") !== -1 ? ' <span style="color:#f4b400; font-size:11px; font-weight:bold;">(待審核)</span>' : ""; todayLeaveList.push('• ' + r[2] + ' (' + r[3] + ') - ' + r[4] + pendingTag); }
                             }
                         }
                     }
@@ -1048,7 +1080,7 @@
                     let r = globalDB.schedule[i];
                     if (r[0] === todayMonthStr && r[2 + dayNum] === "排休") {
                         let isSameDept = isManagedBy(r[2], myDept);
-                        if ((isSameDept && myIsManager) || isBoss || isHR) { if (!todayLeaveList.some(function(item) { return item.includes(r[1]); })) todayLeaveList.push('• ' + r[1] + ' (' + r[2] + ') - 排休'); }
+                        if ((isSameDept && myIsManager) || isBoss || isHR) { if (!todayLeaveList.some(function(item) { return item.indexOf(r[1]) !== -1; })) todayLeaveList.push('• ' + r[1] + ' (' + r[2] + ') - 排休'); }
                     }
                 }
             }
@@ -1063,8 +1095,8 @@
             
             if (teamLeaves.length === 0) { container.innerHTML = todayHTML + "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>"; return; }
 
-            let pendingTeam = teamLeaves.filter(function(r) { return String(r[8]).includes('待'); }).sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); });
-            let nonPendingTeam = teamLeaves.filter(function(r) { return !String(r[8]).includes('待'); });
+            let pendingTeam = teamLeaves.filter(function(r) { return String(r[8]).indexOf('待') !== -1; }).sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); });
+            let nonPendingTeam = teamLeaves.filter(function(r) { return String(r[8]).indexOf('待') === -1; });
             let upcomingTeam = nonPendingTeam.filter(function(r) { return String(r[8]) === '已生效' && new Date(r[5]).getTime() > todayTime.getTime(); }); upcomingTeam.sort(function(a,b) { return new Date(a[5]).getTime() - new Date(b[5]).getTime(); }); 
             let historyTeam = nonPendingTeam.filter(function(r) { return !(String(r[8]) === '已生效' && new Date(r[5]).getTime() > todayTime.getTime()); }); historyTeam.sort(function(a,b) { return new Date(b[5]).getTime() - new Date(a[5]).getTime(); }); 
 
@@ -1084,46 +1116,47 @@
         }
     }
 
-    // 🌟 全新重構：傳統 Promise 語法，解決 iOS 阻擋問題
-    window.mobileApproveLeave = async function(leaveId, newStatus) {
+    window.mobileApproveLeave = function(leaveId, newStatus) {
         let actionText = newStatus === '已退回' ? '退回' : '核准';
-        let result = await Swal.fire({
+        Swal.fire({
             title: '確認要 ' + actionText + ' 此假單？', 
             icon: 'question', 
             showCancelButton: true, 
             confirmButtonText: '確認', 
             cancelButtonText: '取消', 
             confirmButtonColor: newStatus === '已退回' ? '#d93025' : '#1a73e8'
-        });
-
-        if (result.isConfirmed) {
-            showLoading("處理中...");
-            try {
-                const text = await fetchApi(ATTENDANCE_API_URL, { action: "updateLeave", id: leaveId, newStatus: newStatus });
-                hideLoading();
-                if (text === "Success" || text.includes("Success")) { 
-                    Swal.fire('成功', '假單已成功' + actionText + '！', 'success').then(function() { 
-                        fetchBackendData(); 
-                    });
-                } else { 
-                    Swal.fire('錯誤', text, 'error'); 
-                }
-            } catch(e) {
-                hideLoading();
-                Swal.fire('連線失敗', e.message, 'error');
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                showLoading("處理中...");
+                fetchApi(ATTENDANCE_API_URL, { action: "updateLeave", id: leaveId, newStatus: newStatus })
+                .then(function(text) {
+                    hideLoading();
+                    if (text.indexOf("Success") === 0) { 
+                        Swal.fire('成功', '假單已成功' + actionText + '！', 'success').then(function() { 
+                            fetchBackendData(); 
+                        });
+                    } else { 
+                        Swal.fire('錯誤', text, 'error'); 
+                    }
+                })
+                .catch(function(e) {
+                    hideLoading();
+                    Swal.fire('連線失敗', e.message, 'error');
+                });
             }
-        }
+        });
     };
 
-    async function submitAttendance() {
+    function submitAttendance() {
         if (!isMobileDevice) { return Swal.fire({ icon: 'error', title: '打卡失敗', text: '系統偵測您並非使用行動裝置。' }); }
-        const type = document.querySelector('input[name="attType"]:checked').value;
+        let typeObj = document.querySelector('input[name="attType"]:checked');
+        if(!typeObj) return; let type = typeObj.value;
         const reasonInput = document.getElementById('punchReason');
         
         let finalReason = (reasonInput && document.getElementById('reasonBox').style.display !== "none") ? reasonInput.value.trim() : ""; 
         let finalStatus = selectedStatus;
 
-        if (finalStatus.includes("外勤") || finalStatus.includes("遠端") || ((finalStatus.includes("加班") || finalStatus.includes("值班")) && finalStatus !== "勤務結束下班")) {
+        if (finalStatus.indexOf("外勤") !== -1 || finalStatus.indexOf("遠端") !== -1 || ((finalStatus.indexOf("加班") !== -1 || finalStatus.indexOf("值班") !== -1) && finalStatus !== "勤務結束下班")) {
             if (!finalReason) {
                 return Swal.fire('提示', '請務必填妥「事由」(例如：拜訪客戶、處理公務)！', 'warning');
             }
@@ -1134,38 +1167,38 @@
         const isSpoofTarget = myIsSpoof && type === '下班';
 
         showLoading("打卡資料傳送中...");
-        try {
-            fetch(ATTENDANCE_API_URL, { 
-                method: 'POST', headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({ action: "write", sheetName: "attendance", name: currentUser, type: type, status: finalStatus, reason: finalReason, lat: userLat || "", lon: userLon || "" }) 
-            }).then(async function(res) {
-                const result = await res.text();
-                hideLoading();
-                if (result === "Error_TooFast") { Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning'); } 
-                else if (result === "Error_MissingIn") { Swal.fire({ icon: 'error', title: '未偵測到上班紀錄', text: '系統找不到您今天的上班打卡紀錄，請尋找主管進行補登作業！' }); } 
-                else if (result === "Error_MissingOut") { Swal.fire({ icon: 'error', title: '前次下班未打卡', text: '系統發現您前一次出勤忘記打下班卡，請尋找主管進行補登作業！' }); } 
-                else if (result === "Duplicate") { Swal.fire('注意', '您剛剛已經打過卡了喔！請勿連續重複點擊！', 'warning'); } 
-                else if (result === "Success") {
-                    if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
+        fetch(ATTENDANCE_API_URL, { 
+            method: 'POST', headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "write", sheetName: "attendance", name: currentUser, type: type, status: finalStatus, reason: finalReason, lat: userLat || "", lon: userLon || "" }) 
+        }).then(function(res) {
+            if (!res.ok) throw new Error("網路連線異常");
+            return res.text();
+        }).then(function(result) {
+            hideLoading();
+            if (result === "Error_TooFast") { Swal.fire('打卡太頻繁', '您在 1 分鐘內已經成功送出過打卡紀錄了，請勿連續點擊喔！', 'warning'); } 
+            else if (result === "Error_MissingIn") { Swal.fire({ icon: 'error', title: '未偵測到上班紀錄', text: '系統找不到您今天的上班打卡紀錄，請尋找主管進行補登作業！' }); } 
+            else if (result === "Error_MissingOut") { Swal.fire({ icon: 'error', title: '前次下班未打卡', text: '系統發現您前一次出勤忘記打下班卡，請尋找主管進行補登作業！' }); } 
+            else if (result === "Duplicate") { Swal.fire('注意', '您剛剛已經打過卡了喔！請勿連續重複點擊！', 'warning'); } 
+            else if (result === "Success") {
+                if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
+                
+                if (!isSpoofTarget && (finalStatus.indexOf("加班") !== -1 || finalStatus.indexOf("值班") !== -1 || finalStatus === "勤務結束下班")) {
+                    let n = new Date();
+                    let pad = function(num) { return String(num).padStart(2, '0'); };
+                    let localTimeStr = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()) + "T" + pad(n.getHours()) + ":" + pad(n.getMinutes());
                     
-                    if (!isSpoofTarget && (finalStatus.includes("加班") || finalStatus.includes("值班") || finalStatus === "勤務結束下班")) {
-                        let n = new Date();
-                        let pad = function(num) { return String(num).padStart(2, '0'); };
-                        let localTimeStr = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()) + "T" + pad(n.getHours()) + ":" + pad(n.getMinutes());
-                        
-                        let otReason = finalReason || "勤務加班"; 
-                        if (finalStatus === "勤務結束下班") { otReason = "運輸部勤務結束"; }
-                        
-                        const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
-                        fetchApi(ATTENDANCE_API_URL, otPayload); 
-                    }
-                    Swal.fire('成功', '打卡成功！', 'success').then(function() { location.reload(); });
-                } else { Swal.fire('失敗', result, 'error'); }
-            }).catch(function(e) {
-                hideLoading();
-                Swal.fire('網路錯誤', '無法傳送打卡：' + e.message, 'error');
-            });
-        } catch (e) { hideLoading(); Swal.fire('跨域連線遭阻擋', '真實錯誤訊息：' + e.message, 'error'); } 
+                    let otReason = finalReason || "勤務加班"; 
+                    if (finalStatus === "勤務結束下班") { otReason = "運輸部勤務結束"; }
+                    
+                    const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
+                    fetchApi(ATTENDANCE_API_URL, otPayload); 
+                }
+                Swal.fire('成功', '打卡成功！', 'success').then(function() { location.reload(); });
+            } else { Swal.fire('失敗', result, 'error'); }
+        }).catch(function(e) {
+            hideLoading();
+            Swal.fire('網路錯誤', '無法傳送打卡：' + e.message, 'error');
+        });
     }
 
     function getBase64(file) {
@@ -1176,21 +1209,30 @@
         });
     }
 
-    async function submitLeave() {
+    function submitLeave() {
         const type = document.getElementById('lvType').value; const start = document.getElementById('lvStart').value; const end = document.getElementById('lvEnd').value; const reason = document.getElementById('lvReason').value; const agent = document.getElementById('lvAgent').value; const fileInput = document.getElementById('lvFile'); const isOverride = document.getElementById('managerOverride').checked; 
 
         if (!start || !end) return Swal.fire('提示', '請選擇開始與結束時間！', 'warning');
         showLoading("假單真實上傳中...");
         const p = { action: "write", sheetName: "leave", name: currentUser, leaveType: type, start: start, end: end, reason: reason, agent: agent, imageFile: "", managerOverride: isOverride };
         
-        try {
-            if (fileInput.files.length > 0) { p.imageFile = await getBase64(fileInput.files[0]); p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name; }
-            const text = await fetchApi(ATTENDANCE_API_URL, p); 
+        if (fileInput.files.length > 0) {
+            getBase64(fileInput.files[0]).then(function(base64) {
+                p.imageFile = base64; p.mimeType = fileInput.files[0].type; p.fileName = fileInput.files[0].name;
+                executeSubmitLeave(p);
+            }).catch(function(err) { hideLoading(); Swal.fire('錯誤', '照片處理失敗', 'error'); });
+        } else {
+            executeSubmitLeave(p);
+        }
+    }
+    
+    function executeSubmitLeave(payload) {
+        fetchApi(ATTENDANCE_API_URL, payload).then(function(text) {
             hideLoading();
             if (text === "Success") { Swal.fire('太棒了！', '假單 100% 成功送進資料庫！', 'success').then(function() { location.reload(); }); } 
-            else if (text.includes("系統阻擋")) { Swal.fire('休假人數達上限', text, 'error'); } 
+            else if (text.indexOf("系統阻擋") !== -1) { Swal.fire('休假人數達上限', text, 'error'); } 
             else { Swal.fire('寫入失敗', text, 'error'); }
-        } catch(e) { hideLoading(); Swal.fire('致命連線阻擋', e.message, 'error'); } 
+        }).catch(function(e) { hideLoading(); Swal.fire('致命連線阻擋', e.message, 'error'); });
     }
 
     function switchProofTab(tabId) {
@@ -1199,21 +1241,23 @@
         event.currentTarget.classList.add('active'); document.getElementById(tabId).classList.add('active');
     }
 
-    async function submitProof() {
+    function submitProof() {
         const rowIdx = document.getElementById('prfSelect').value; const fileInput = document.getElementById('prfFile');
         if (!rowIdx) return Swal.fire('提示', '沒有需要補件的紀錄', 'warning');
         if (fileInput.files.length === 0) return Swal.fire('提示', '請選擇要上傳的照片！', 'warning');
         showLoading("照片上傳中...");
-        try {
-            const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: await getBase64(fileInput.files[0]), mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
-            const text = await fetchApi(ATTENDANCE_API_URL, p); 
+        
+        getBase64(fileInput.files[0]).then(function(base64) {
+            const p = { action: "uploadLeaveProof", id: rowIdx, imageFile: base64, mimeType: fileInput.files[0].type, fileName: fileInput.files[0].name };
+            return fetchApi(ATTENDANCE_API_URL, p);
+        }).then(function(text) {
             hideLoading();
             if (text === "Success") { Swal.fire('成功', '補件成功！', 'success').then(function() { location.reload(); }); } 
             else { Swal.fire('失敗', text, 'error'); }
-        } catch (e) { hideLoading(); Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); } 
+        }).catch(function(e) { hideLoading(); Swal.fire('錯誤', '網路連線異常：' + e.message, 'error'); }); 
     }
 
-    async function submitPunchCorrection() {
+    function submitPunchCorrection() {
         const pDate = document.getElementById('pcDate').value; 
         const pTime = document.getElementById('pcTime').value; 
         const pType = document.getElementById('pcType').value; 
@@ -1223,19 +1267,11 @@
         const hourSelected = parseInt(pTime.split(':')[0], 10);
         
         if (pType === "上班" && hourSelected >= 12) {
-            return Swal.fire(
-                '時段錯誤 ⚠️', 
-                '您選擇的上班時間是 下午 ' + pTime + '！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！', 
-                'error'
-            );
+            return Swal.fire('時段錯誤 ⚠️', '您選擇的上班時間是 下午 ' + pTime + '！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！', 'error');
         }
         
         if (pType === "下班" && hourSelected < 12 && hourSelected > 4) { 
-            return Swal.fire(
-                '時段錯誤 ⚠️', 
-                '您選擇的下班時間是 上午 ' + pTime + '！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！', 
-                'error'
-            );
+            return Swal.fire('時段錯誤 ⚠️', '您選擇的下班時間是 上午 ' + pTime + '！\n\n系統偵測異常，請檢查手機時間滾輪的「上午(AM) / 下午(PM)」是不是選錯了喔！', 'error');
         }
 
         showLoading("申請送出中...");
@@ -1244,12 +1280,11 @@
         const combinedReason = '【補登' + pType + '卡】' + pReason;
         const p = { action: "write", sheetName: "leave", name: currentUser, leaveType: "打卡補登", start: dateTimeStr, end: dateTimeStr, reason: combinedReason, agent: "無", imageFile: "", managerOverride: false };
         
-        try {
-            const text = await fetchApi(ATTENDANCE_API_URL, p);
+        fetchApi(ATTENDANCE_API_URL, p).then(function(text) {
             hideLoading();
             if (text === "Success") { Swal.fire('成功', '補登申請已送出！請等待主管審核。', 'success').then(function() { location.reload(); }); } 
             else { Swal.fire('失敗', text, 'error'); }
-        } catch(e) { hideLoading(); Swal.fire('錯誤', e.message, 'error'); }
+        }).catch(function(e) { hideLoading(); Swal.fire('錯誤', e.message, 'error'); });
     }
 
     function switchReportTab(tabId) {
@@ -1302,7 +1337,7 @@
     
     function removeErrBlock(id) { document.getElementById('err-block-' + id).remove(); }
     
-    async function submitDailyReport() { 
+    function submitDailyReport() { 
         if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成"); 
         const empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (!empRecord) return; 
         const myDept = empRecord[1]; const isManager = myIsManager; const myRole = isManager ? "部門主管" : "一般員工"; const blocks = document.querySelectorAll('#dailyTab .report-block'); let contentsArray = []; let hasContent = false; 
@@ -1330,15 +1365,15 @@
         }); 
         if (!hasContent) return Swal.fire('提示', '工作內容不能空白喔！', 'warning'); 
         showLoading("報表送出中..."); 
-        try { 
-            const result = await fetchApi(REPORT_API_URL, { action: "saveReport", userDept: myDept, userName: currentUser, userRole: myRole, contents: contentsArray }); 
+        fetchApi(REPORT_API_URL, { action: "saveReport", userDept: myDept, userName: currentUser, userRole: myRole, contents: contentsArray })
+        .then(function(result) {
             hideLoading(); 
-            if(result.includes("✅")) { Swal.fire('成功', result, 'success').then(function() { document.getElementById('dynamicReports').innerHTML = ''; reportBlockCount = 0; addReportBlock(); }); } 
-            else { Swal.fire('失敗', result, 'error'); } 
-        } catch(e) { hideLoading(); Swal.fire('錯誤', '系統失敗: ' + e.message, 'error'); } 
+            if(result.indexOf("✅") !== -1) { Swal.fire('成功', result, 'success').then(function() { document.getElementById('dynamicReports').innerHTML = ''; reportBlockCount = 0; addReportBlock(); }); } 
+            else { Swal.fire('失敗', result, 'error'); }
+        }).catch(function(e) { hideLoading(); Swal.fire('錯誤', '系統失敗: ' + e.message, 'error'); });
     }
     
-    async function submitErrorReport() { 
+    function submitErrorReport() { 
         if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成"); 
         const empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (!empRecord) return; const myDept = empRecord[1]; 
         const blocks = document.querySelectorAll('.err-block'); let errorsArray = []; let isValid = true; 
@@ -1349,12 +1384,12 @@
         }); 
         if (!isValid) return Swal.fire('提示', '客戶、狀況詳情、責任歸屬為必填！', 'warning'); 
         showLoading("異常建檔中..."); 
-        try { 
-            const result = await fetchApi(REPORT_API_URL, { action: "submitLogisticsError", reporter: myDept + " - " + currentUser, errors: errorsArray }); 
+        fetchApi(REPORT_API_URL, { action: "submitLogisticsError", reporter: myDept + " - " + currentUser, errors: errorsArray })
+        .then(function(result) {
             hideLoading(); 
-            if(result.includes("✅")) { Swal.fire('通報成功', result, 'success').then(function() { document.getElementById('dynamicErrors').innerHTML = ''; errBlockCount = 0; addErrorBlock(); }); } 
+            if(result.indexOf("✅") !== -1) { Swal.fire('通報成功', result, 'success').then(function() { document.getElementById('dynamicErrors').innerHTML = ''; errBlockCount = 0; addErrorBlock(); }); } 
             else { Swal.fire('失敗', result, 'error'); } 
-        } catch(e) { hideLoading(); Swal.fire('錯誤', '系統失敗: ' + e.message, 'error'); } 
+        }).catch(function(e) { hideLoading(); Swal.fire('錯誤', '系統失敗: ' + e.message, 'error'); });
     }
 </script>
 </body>
