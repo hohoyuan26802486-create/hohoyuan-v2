@@ -364,13 +364,8 @@
 </div>
 
 <script>
-    // ==========================================
-    // 🔗 API 網址設定區
-    // ==========================================
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbwpBQWJQfEPSZlcglHakr4pV6QXWrhi5xTZQIKqNC-XjkgDzWbegRqy-B5ENm3zdGohDQ/exec"; 
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec"; 
-
-    const HOLIDAYS_2026 = ["2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-27", "2026-02-28", "2026-04-03", "2026-04-04", "2026-05-01", "2026-06-19", "2026-09-25", "2026-10-09", "2026-10-10"];
 
     const COMPANY_LAT_1 = 24.956650267283113; 
     const COMPANY_LON_1 = 121.3938601653661;
@@ -428,6 +423,52 @@
         return `${pad(d.getMonth() + 1)}/${pad(d.getDate())} (${days[d.getDay()]}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
+    // 🌟 動態權限核心：解決壓縮陣列造成的座標偏移
+    function parsePermissions() {
+        if (!globalDB || !globalDB.employees) return;
+        let emp = globalDB.employees.find(r => r[0] === currentUser);
+        if (emp) {
+            // 在一般員工的 App 內，機密欄位被後台去除了，因此權限欄位位在第 14, 15, 16 格！
+            myIsManager = (emp[14] === "Y");
+            myIsFlex = (emp[15] === "Y");
+            myIsSpoof = (emp[16] === "Y");
+
+            if (myIsManager) {
+                document.getElementById('lblHistTeam').style.display = 'block'; 
+            } else {
+                document.getElementById('lblHistTeam').style.display = 'none';
+                if (document.getElementById('histTeam').checked) document.getElementById('histLeave').checked = true;
+            }
+
+            let myDept = emp[1];
+            let canSeeAtt = (myDept === "生產部" || myDept === "倉儲部") && currentUser !== "許哲瑋";
+            let lblHistAtt = document.getElementById('lblHistAtt');
+            let inputHistAtt = document.getElementById('histAtt');
+            
+            if (!canSeeAtt) {
+                if (lblHistAtt) lblHistAtt.style.display = 'none';
+                if (inputHistAtt && inputHistAtt.checked) {
+                    document.getElementById('histLeave').checked = true;
+                    if(document.getElementById('viewHistory').classList.contains('active')){
+                        renderHistory(); 
+                    }
+                }
+            } else {
+                if (lblHistAtt) lblHistAtt.style.display = 'block';
+            }
+        }
+    }
+
+    // 🌟 部門權限管理：讓高階主管能跨部門審核，同時精準綁定同部門
+    function isManagedBy(empDept, myDept) {
+        let e = String(empDept).trim();
+        let m = String(myDept).trim();
+        if (e === m) return true; 
+        if (m === '業務部' && ['業務行政部', '打單行政部', '採購部'].includes(e)) return true;
+        if (m === '生產部' && ['倉儲部'].includes(e)) return true;
+        return false;
+    }
+
     window.onload = () => {
         const savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
@@ -447,47 +488,6 @@
             }, { enableHighAccuracy: true });
         } else { updateGPSUI(); }
     };
-
-    function showLoading(text) { document.getElementById('loadingText').innerText = text; document.getElementById('loadingOverlay').style.display = 'flex'; }
-    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
-    function isHolidayToday() { const now = new Date(); const day = now.getDay(); const dateStr = now.toLocaleDateString('sv-SE'); return (day === 0 || day === 6 || HOLIDAYS_2026.includes(dateStr)); }
-
-    // 🌟 解析權限並控制畫面
-    function parsePermissions() {
-        if (!globalDB || !globalDB.employees) return;
-        let emp = globalDB.employees.find(r => r[0] === currentUser);
-        if (emp) {
-            myIsManager = (emp[22] === "Y");
-            myIsFlex = (emp[23] === "Y");
-            myIsSpoof = (emp[24] === "Y");
-
-            // 主管才顯示部屬假單
-            if (myIsManager) {
-                document.getElementById('lblHistTeam').style.display = 'block'; 
-            } else {
-                document.getElementById('lblHistTeam').style.display = 'none';
-                if (document.getElementById('histTeam').checked) document.getElementById('histLeave').checked = true;
-            }
-
-            // 出勤明細：僅生產/倉儲能看，許哲瑋除外
-            let myDept = emp[1];
-            let canSeeAtt = (myDept === "生產部" || myDept === "倉儲部") && currentUser !== "許哲瑋";
-            let lblHistAtt = document.getElementById('lblHistAtt');
-            let inputHistAtt = document.getElementById('histAtt');
-            
-            if (!canSeeAtt) {
-                if (lblHistAtt) lblHistAtt.style.display = 'none';
-                if (inputHistAtt && inputHistAtt.checked) {
-                    document.getElementById('histLeave').checked = true;
-                    if(document.getElementById('viewHistory').classList.contains('active')){
-                        renderHistory(); 
-                    }
-                }
-            } else {
-                if (lblHistAtt) lblHistAtt.style.display = 'block';
-            }
-        }
-    }
 
     async function doLogin() {
         const nameInput = document.getElementById('loginName').value.trim();
@@ -601,8 +601,8 @@
 
             for (let i=1; i<globalDB.leave.length; i++) {
                 let r = globalDB.leave[i]; let status = r[8];
-                if (status && status.includes("待")) {
-                    let empDept = r[3]; let isSameDept = (empDept === myDept); let isNotMe = (r[2] !== currentUser);
+                if (status === "待主管審核") {
+                    let empDept = r[3]; let isSameDept = isManagedBy(empDept, myDept); let isNotMe = (r[2] !== currentUser);
                     if (isSameDept && isNotMe) pendingCount++;
                 }
             }
@@ -613,7 +613,10 @@
         }
 
         let now = new Date(); let hour = now.getHours();
-        if (!isHolidayToday()) {
+        let holidayObj = globalDB && globalDB.schedule ? globalDB.schedule.find(s => s[0] === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}` && s[1] === currentUser) : null;
+        let isHol = holidayObj && holidayObj[2 + now.getDate()] === "排休";
+        
+        if (!isHol) {
             if (hour >= 9 && !todayHasIn) { alertsHTML += `<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px solid #fad2cf; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><span style="font-size: 18px;">⚠️</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">注意：您今日尚未打「上班卡」！</span></div>`; } 
             else if (hour >= 17 && todayHasIn && !todayHasOut) { alertsHTML += `<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px solid #fad2cf; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><span style="font-size: 18px;">⚠️</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">注意：您今日尚未打「下班卡」！</span></div>`; }
         }
@@ -649,8 +652,25 @@
     function handleTypeChange() {
         try {
             if(!currentUser) return;
+            
+            let myDept = "";
+            if (globalDB && globalDB.employees) {
+                let emp = globalDB.employees.find(r => r[0] === currentUser);
+                if (emp) myDept = emp[1];
+            }
+
             const holidayBox = document.getElementById('holidayTypeBox');
-            if(holidayBox) { holidayBox.style.display = isHolidayToday() ? "flex" : "none"; handleHolidayTypeChange(); }
+            let isHol = false;
+            if (globalDB && globalDB.schedule) {
+                let now = new Date();
+                let monthStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+                let sched = globalDB.schedule.find(s => s[0] === monthStr && s[1] === currentUser);
+                if (sched && (sched[2 + now.getDate()] === "排休" || sched[2 + now.getDate()] === "假日值班" || sched[2 + now.getDate()] === "假日加班")) {
+                    isHol = true;
+                }
+            }
+            
+            if(holidayBox) { holidayBox.style.display = isHol ? "flex" : "none"; handleHolidayTypeChange(); }
 
             const typeInput = document.querySelector('input[name="attType"]:checked');
             if(!typeInput) return; const type = typeInput.value;
@@ -658,12 +678,6 @@
 
             const now = new Date(); const time = now.getHours() * 60 + now.getMinutes();
             if(list) list.innerHTML = "";
-
-            let myDept = "";
-            if (globalDB && globalDB.employees) {
-                let emp = globalDB.employees.find(r => r[0] === currentUser);
-                if (emp) myDept = emp[1];
-            }
 
             if (type === "上班") {
                 if (myIsFlex) { 
@@ -912,7 +926,9 @@
 
         let actionBtnsHTML = '';
         if (isTeamView) {
-            let isSameDept = (empDept === myDept); 
+            // 🌟 嚴格綁定：只有管理同部門（包含跨部門設定）才能核准
+            let isSameDept = isManagedBy(empDept, myDept); 
+            
             if (status.includes("待")) {
                 let nextStatus = "已生效"; let canApprove = false;
                 let btnText = "✔️ 核准"; let btnStyle = "background: var(--primary-light); color: var(--primary);"; let rejectStyle = "background: #fce8e6; color: var(--danger);";
@@ -923,7 +939,7 @@
                 let isLongLeave = leaveDays >= 3;
 
                 if (status === "待主管審核") {
-                    if (isSameDept) { 
+                    if (isSameDept && myIsManager) { 
                         canApprove = true; 
                         if (isSimpleApproval) {
                             nextStatus = "已生效";
@@ -987,8 +1003,8 @@
                 for (let i=1; i<globalDB.leave.length; i++) {
                     let r = globalDB.leave[i]; let status = r[8] || "";
                     if (status === "已生效" || status.includes("待")) {
-                        let isSameDept = (r[3] === myDept);
-                        if (isSameDept || myIsManager) {
+                        let isSameDept = isManagedBy(r[3], myDept);
+                        if (isSameDept && myIsManager) {
                             let sDate = new Date(r[5]); let eDate = new Date(r[6]);
                             if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
                                 let sStr = `${sDate.getFullYear()}${String(sDate.getMonth()+1).padStart(2,'0')}${String(sDate.getDate()).padStart(2,'0')}`; let eStr = `${eDate.getFullYear()}${String(eDate.getMonth()+1).padStart(2,'0')}${String(eDate.getDate()).padStart(2,'0')}`;
@@ -1003,15 +1019,21 @@
                 for (let i=1; i<globalDB.schedule.length; i++) {
                     let r = globalDB.schedule[i];
                     if (r[0] === todayMonthStr && r[2 + dayNum] === "排休") {
-                        let isSameDept = (r[2] === myDept);
-                        if (isSameDept || myIsManager) { if (!todayLeaveList.some(item => item.includes(r[1]))) todayLeaveList.push(`• ${r[1]} (${r[2]}) - 排休`); }
+                        let isSameDept = isManagedBy(r[2], myDept);
+                        if (isSameDept && myIsManager) { if (!todayLeaveList.some(item => item.includes(r[1]))) todayLeaveList.push(`• ${r[1]} (${r[2]}) - 排休`); }
                     }
                 }
             }
 
             let todayHTML = `<div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;"><div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">🏝️ 今日休假人員</div><div style="font-size: 13px; color: var(--text-main); line-height: 1.6; padding-left: 5px;">${todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>"}</div></div>`;
 
-            let teamLeaves = globalDB.leave.slice(1).filter(r => { let isSameDept = (r[3] === myDept); let isNotMe = (r[2] !== currentUser); return (isSameDept || myIsManager) && isNotMe; });
+            // 🌟 嚴格綁定：主管只能看見「歸屬自己管理」且「不是自己」的部屬假單
+            let teamLeaves = globalDB.leave.slice(1).filter(r => { 
+                let isSameDept = isManagedBy(r[3], myDept); 
+                let isNotMe = (r[2] !== currentUser); 
+                return isSameDept && isNotMe && myIsManager; 
+            });
+            
             if (teamLeaves.length === 0) { container.innerHTML = todayHTML + "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>"; return; }
 
             let pendingTeam = teamLeaves.filter(r => String(r[8]).includes('待')).sort((a,b) => new Date(b[5]).getTime() - new Date(a[5]).getTime());
@@ -1086,7 +1108,7 @@
                 else if (result === "Success") {
                     if (!localStorage.getItem('bound_user')) localStorage.setItem('bound_user', currentUser);
                     
-                    // 🌟 一般人正常生成加班單 (確保事由乾淨)
+                    // 一般人正常生成加班單 (確保事由乾淨)
                     if (!isSpoofTarget && (finalStatus.includes("加班") || finalStatus.includes("值班") || finalStatus === "勤務結束下班")) {
                         let n = new Date();
                         let pad = (num) => String(num).padStart(2, '0');
@@ -1097,7 +1119,7 @@
                             otReason = "運輸部勤務結束"; // 乾淨事由
                         }
                         const otPayload = { action: "write", sheetName: "leave", name: currentUser, leaveType: "加班申請", start: localTimeStr, end: localTimeStr, reason: otReason, agent: "無", imageFile: "", managerOverride: false };
-                        fetchApi(ATTENDANCE_API_URL, otPayload); // 也是丟後台不等待
+                        fetchApi(ATTENDANCE_API_URL, otPayload); 
                     }
                     Swal.fire('成功', '打卡成功！', 'success').then(() => location.reload());
                 } else { Swal.fire('失敗', result, 'error'); }
@@ -1204,6 +1226,7 @@
         const myDept = empRecord[1]; const isManager = myIsManager; 
         reportBlockCount++; const container = document.getElementById('dynamicReports'); let innerHtml = ''; 
         
+        // 🌟 依照主管權限自動派發報表格式
         if (isManager) { 
             innerHtml = `<label class="rpt-label">團隊今日狀態：</label><select class="rpt-select m-status"><option value="🟢 正常">🟢 正常</option><option value="🟡 追趕中">🟡 追趕中</option><option value="🔴 發生異常">🔴 發生異常</option></select><label class="rpt-label">今日重大問題排除：</label><textarea class="rpt-textarea m-issue" placeholder="解決了哪些下屬無法解決的難題？"></textarea><label class="rpt-label">跨部門協調事項：</label><textarea class="rpt-textarea m-coord" placeholder="今天與誰對接、溝通結果？"></textarea><label class="rpt-label">明日重點戰略：</label><textarea class="rpt-textarea m-plan" placeholder="明天部門的核心目標？"></textarea><label class="rpt-label">人員觀察與建議：</label><textarea class="rpt-textarea m-advice" placeholder="誰表現好？誰需要輔導？"></textarea>`; 
         } else { 
@@ -1226,12 +1249,12 @@
                 } 
             } 
         } 
-        const blockHtml = `<div class="report-block card-primary" id="rpt-block-${reportBlockCount}"><div class="block-header"><span class="block-title">📌 填寫項目 #${reportBlockCount}</span>${reportBlockCount > 1 ? `<span class="remove-btn" onclick="removeReportBlock(\${reportBlockCount})">❌ 刪除</span>` : ''}</div>${innerHtml}</div>`; container.insertAdjacentHTML('beforeend', blockHtml); 
+        const blockHtml = `<div class="report-block card-primary" id="rpt-block-${reportBlockCount}"><div class="block-header"><span class="block-title">📌 填寫項目 #${reportBlockCount}</span>${reportBlockCount > 1 ? `<span class="remove-btn" onclick="removeReportBlock(${reportBlockCount})">❌ 刪除</span>` : ''}</div>${innerHtml}</div>`; container.insertAdjacentHTML('beforeend', blockHtml); 
     }
     
     function removeReportBlock(id) { document.getElementById(`rpt-block-${id}`).remove(); }
     
-    function addErrorBlock() { errBlockCount++; const container = document.getElementById('dynamicErrors'); const blockHtml = `<div class="report-block card-danger err-block" id="err-block-${errBlockCount}"><div class="block-header"><span class="block-title" style="color: var(--danger);">🚨 異常項目 #${errBlockCount}</span>${errBlockCount > 1 ? `<span class="remove-btn" onclick="removeErrBlock(\${errBlockCount})">❌ 刪除</span>` : ''}</div><label class="rpt-label">🏢 受影響客戶：</label><input type="text" class="rpt-input err-client" placeholder="例: 海底撈、大三元..."><label class="rpt-label">⚠️ 錯誤類型 (核心原因)：</label><select class="rpt-select err-type"><option value="數量錯誤 (少給/多給)">數量錯誤 (少給/多給)</option><option value="品項撿錯 (A拿成B)">品項撿錯 (A拿成B)</option><option value="漏撿 (完全沒拿到)">漏撿 (完全沒拿到)</option><option value="司機搬錯車/送錯點">司機搬錯車/送錯點</option><option value="對點員未確實核對">對點員未確實核對</option><option value="其他">其他</option></select><label class="rpt-label">📝 狀況詳情：</label><textarea class="rpt-textarea err-details" placeholder="例：客戶要10包青花椒，現場點交只剩8包，且有一包拿成大紅袍。"></textarea><label class="rpt-label">👉 追究責任歸屬：</label><div style="font-size:11px; color:#999;">請填寫應負責的同仁姓名 (可複填)</div><input type="text" class="rpt-input err-responsible" placeholder="例：揀貨員(王小明)、對點員(陳大山)"><label class="rpt-label">💸 造成損失與浪費時間評估：</label><textarea class="rpt-textarea err-loss" placeholder="例：司機折返浪費1.5小時，油錢與客戶扣款約 800 元。"></textarea></div>`; container.insertAdjacentHTML('beforeend', blockHtml); }
+    function addErrorBlock() { errBlockCount++; const container = document.getElementById('dynamicErrors'); const blockHtml = `<div class="report-block card-danger err-block" id="err-block-${errBlockCount}"><div class="block-header"><span class="block-title" style="color: var(--danger);">🚨 異常項目 #${errBlockCount}</span>${errBlockCount > 1 ? `<span class="remove-btn" onclick="removeErrBlock(${errBlockCount})">❌ 刪除</span>` : ''}</div><label class="rpt-label">🏢 受影響客戶：</label><input type="text" class="rpt-input err-client" placeholder="例: 海底撈、大三元..."><label class="rpt-label">⚠️ 錯誤類型 (核心原因)：</label><select class="rpt-select err-type"><option value="數量錯誤 (少給/多給)">數量錯誤 (少給/多給)</option><option value="品項撿錯 (A拿成B)">品項撿錯 (A拿成B)</option><option value="漏撿 (完全沒拿到)">漏撿 (完全沒拿到)</option><option value="司機搬錯車/送錯點">司機搬錯車/送錯點</option><option value="對點員未確實核對">對點員未確實核對</option><option value="其他">其他</option></select><label class="rpt-label">📝 狀況詳情：</label><textarea class="rpt-textarea err-details" placeholder="例：客戶要10包青花椒，現場點交只剩8包，且有一包拿成大紅袍。"></textarea><label class="rpt-label">👉 追究責任歸屬：</label><div style="font-size:11px; color:#999;">請填寫應負責的同仁姓名 (可複填)</div><input type="text" class="rpt-input err-responsible" placeholder="例：揀貨員(王小明)、對點員(陳大山)"><label class="rpt-label">💸 造成損失與浪費時間評估：</label><textarea class="rpt-textarea err-loss" placeholder="例：司機折返浪費1.5小時，油錢與客戶扣款約 800 元。"></textarea></div>`; container.insertAdjacentHTML('beforeend', blockHtml); }
     
     function removeErrBlock(id) { document.getElementById(`err-block-${id}`).remove(); }
     
