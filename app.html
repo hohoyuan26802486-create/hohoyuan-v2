@@ -111,11 +111,11 @@
         .rpt-textarea { height: 70px; resize: vertical; }
 
         /* 績效看板專用 CSS */
-        .perf-summary { display: flex; gap: 10px; margin-bottom: 15px; text-align: center; }
-        .perf-box { flex: 1; background: #f8f9fa; padding: 12px; border-radius: 10px; border: 1px solid #eee; }
-        .perf-num { font-size: 20px; font-weight: 900; color: var(--primary); margin-top: 5px; }
+        .perf-summary { display: flex; gap: 8px; margin-bottom: 15px; text-align: center; }
+        .perf-box { flex: 1; background: #f8f9fa; padding: 12px 5px; border-radius: 10px; border: 1px solid #eee; }
+        .perf-num { font-size: 18px; font-weight: 900; color: var(--primary); margin-top: 5px; }
         .perf-num.err { color: var(--danger); }
-        .perf-label { font-size: 12px; color: var(--text-sub); font-weight: bold; }
+        .perf-label { font-size: 11px; color: var(--text-sub); font-weight: bold; }
         .err-list { font-size: 13px; color: #d93025; background: #fff0f0; padding: 10px; border-radius: 8px; margin-top: 10px; line-height: 1.6; border: 1px dashed #fad2cf; }
         .team-perf-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 13px;}
         .team-perf-row:last-child { border-bottom: none; }
@@ -337,7 +337,7 @@
             </div>
         </div>
         
-        <!-- 📈 績效戰情室區塊 (新增) -->
+        <!-- 📈 績效戰情室區塊 -->
         <div id="viewPerformance" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">📈 績效戰情室 (本月)</h3>
             
@@ -345,7 +345,11 @@
                 <div style="font-size:14px; font-weight:bold; color:var(--primary); margin-bottom:10px;">👤 我的當月表現</div>
                 <div class="perf-summary">
                     <div class="perf-box">
-                        <div class="perf-label">平均日送點數</div>
+                        <div class="perf-label">總送點數</div>
+                        <div class="perf-num" id="perfMyTotalPts">-</div>
+                    </div>
+                    <div class="perf-box">
+                        <div class="perf-label">日均點數</div>
                         <div class="perf-num" id="perfMyAvgPts">-</div>
                     </div>
                     <div class="perf-box" style="background:#fff0f0; border-color:#fad2cf;">
@@ -364,7 +368,7 @@
                 <div style="font-size:14px; font-weight:bold; color:#0f9d58; margin-bottom:10px;">📊 團隊管理看板</div>
                 <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px; border-bottom:1px dashed #ccc; padding-bottom:5px; display:flex; justify-content:space-between;">
                     <span style="flex:2;">同仁</span>
-                    <span style="flex:1; text-align:center;">日均點</span>
+                    <span style="flex:1.5; text-align:center;">總送/日均</span>
                     <span style="flex:1; text-align:center;">出錯</span>
                     <span style="flex:1; text-align:right;">出錯率</span>
                 </div>
@@ -446,6 +450,7 @@
     var todayHasOut = false;
     var monthlyMissingCount = 0;
     var monthlyMissingDates = [];
+    var globalMissingReports = []; // 💡 用來存放缺交報表的日期
 
     var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     var reportBlockCount = 0;
@@ -567,6 +572,7 @@
             showMainScreen();
             fetchBackendData(); 
             checkTodayAttendance(); 
+            fetchPerformanceData(); // 💡 載入戰情數據，用以提示未寫報表
         }
         
         if(navigator.geolocation) {
@@ -592,7 +598,7 @@
             if (text.indexOf("Success") === 0) {
                 currentUser = nameInput; localStorage.setItem('hohoyuan_user', currentUser);
                 var parts = text.split('|'); if (parts[1]) localStorage.setItem('hohoyuan_avatar_' + currentUser, parts[1]);
-                showMainScreen(); fetchBackendData(); checkTodayAttendance(); 
+                showMainScreen(); fetchBackendData(); checkTodayAttendance(); fetchPerformanceData();
                 showAlert('登入成功', '歡迎，' + currentUser + '！', 'success');
             } else { showAlert('登入失敗', text, 'error'); }
         })
@@ -695,36 +701,33 @@
         
         if (viewId === 'viewHistory') renderHistory();
         else if (viewId === 'viewReport' && reportBlockCount === 0) { addReportBlock(); addErrorBlock(); }
-        else if (viewId === 'viewPerformance') fetchPerformanceData(); // 💡 觸發載入戰情室數據
+        else if (viewId === 'viewPerformance' && document.getElementById('perfMyAvgPts').innerText === "-") fetchPerformanceData();
     }
     
-    // 💡 抓取與渲染戰情室數據
+    // 💡 抓取與渲染戰情室數據 (包含未寫報表警示)
     function fetchPerformanceData() {
-        showLoading("讀取戰情數據...");
         var isManager = myIsManager;
-        
-        // 呼叫 REPORT_API_URL 裡面的 getPerformance
         fetchApi(REPORT_API_URL, { action: "getPerformance", userName: currentUser, isManager: isManager })
         .then(function(res) {
-            hideLoading();
             var data = JSON.parse(res);
             if (data.status === "Success") {
                 renderPerformanceUI(data);
-            } else {
-                showAlert("資料錯誤", data.message, "error");
             }
-        }).catch(function(e) {
-            hideLoading();
-            showAlert("網路錯誤", e.message, "error");
-        });
+        }).catch(function(e) { console.error("戰情室連線錯誤", e); });
     }
     
     function renderPerformanceUI(data) {
         var myStats = data.myStats;
+        
+        // 更新未交報表資料並刷新首頁警告
+        globalMissingReports = myStats.missingReports || [];
+        renderHomeAlerts(); 
+
         var myAvg = myStats.days > 0 ? Math.round(myStats.points / myStats.days) : 0;
         var myRate = myStats.points > 0 ? ((myStats.errors / myStats.points) * 100).toFixed(1) + "%" : (myStats.errors > 0 ? "100%" : "0%");
         
-        document.getElementById('perfMyAvgPts').innerText = myAvg;
+        document.getElementById('perfMyTotalPts').innerText = myStats.points; // 💡 總點數
+        document.getElementById('perfMyAvgPts').innerText = myAvg;            // 💡 日均點數
         document.getElementById('perfMyErrCnt').innerText = myStats.errors;
         document.getElementById('perfMyRate').innerText = myRate;
         
@@ -743,7 +746,7 @@
                 var isWarning = member.errors > 0 ? 'color:var(--danger); font-weight:bold;' : 'color:var(--text-main);';
                 teamListHTML += '<div class="team-perf-row">' +
                                 '<span style="flex:2; font-weight:bold;">' + member.name + '</span>' +
-                                '<span style="flex:1; text-align:center;">' + member.avgPoints + '</span>' +
+                                '<span style="flex:1.5; text-align:center;">' + member.points + ' / ' + member.avgPoints + '</span>' +
                                 '<span style="flex:1; text-align:center; ' + isWarning + '">' + member.errors + '</span>' +
                                 '<span style="flex:1; text-align:right; ' + isWarning + '">' + member.rate + '</span>' +
                                 '</div>';
@@ -796,6 +799,15 @@
         if (monthlyMissingCount > 0) {
             var datesStr = monthlyMissingDates.join(', ');
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📅</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ' + monthlyMissingCount + ' 筆漏打卡</span></div><span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewProof\', document.querySelectorAll(\'.nav-item\')[2]); document.querySelectorAll(\'.report-tab\')[1].click();">前往補登 ➔</span></div><div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺卡明細：</strong> ' + datesStr + '</div></div>';
+        }
+
+        // 💡 渲染「未交報表」警告
+        if (typeof globalMissingReports !== "undefined" && globalMissingReports.length > 0) {
+            alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">' +
+                          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">' +
+                          '<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📝</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">您有 ' + globalMissingReports.length + ' 天未交報表</span></div>' +
+                          '<span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewReport\', document.querySelectorAll(\'.nav-item\')[3]); document.querySelectorAll(\'.report-tab\')[0].click();">前往補寫 ➔</span></div>' +
+                          '<div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺交明細：</strong> ' + globalMissingReports.join(', ') + '</div></div>';
         }
 
         var alertContainer = document.getElementById('homeAlerts');
@@ -1571,7 +1583,7 @@
         var blocks = document.querySelectorAll('#dailyTab .report-block'); 
         var contentsArray = []; 
         var hasContent = false; 
-        var totalDeliveryPoints = 0; // 💡 新增：用來加總每日送貨點數
+        var totalDeliveryPoints = 0; 
 
         blocks.forEach(function(block) { 
             var text = ""; var getVal = function(selector) { var node = block.querySelector(selector); var val = node ? node.value.trim() : ""; if(val) hasContent = true; return val; }; 
@@ -1589,7 +1601,7 @@
                         case "倉儲部": text = '【進貨】\n' + getVal('.wh-in') + '\n🚛【退廠】\n' + getVal('.wh-return') + '\n⚠️【誤差】\n' + getVal('.wh-diff') + '\n⏳【效期】\n' + getVal('.wh-expire') + '\n🏭【空間】\n' + getVal('.wh-space'); break; 
                         case "運輸部": 
                             var pts = getVal('.trans-points');
-                            if (pts && !isNaN(pts)) totalDeliveryPoints += parseInt(pts, 10); // 💡 獨立抓取數字
+                            if (pts && !isNaN(pts)) totalDeliveryPoints += parseInt(pts, 10); 
                             text = '【送貨】' + pts + '點\n🚛【車號】' + getVal('.trans-plate') + '\n🚗【里程】' + getVal('.trans-km') + '\n⛽【車況】' + getVal('.trans-car') + '\n🔄【退貨】' + getVal('.trans-return') + ' (' + getVal('.trans-action') + ')\n🛑【反映】\n' + getVal('.trans-delay'); break; 
                         case "業務部": text = '【亮點】' + getVal('.sales-type') + ' (' + getVal('.sales-target') + ')\n📝【情報】\n' + getVal('.sales-info') + '\n🏆【貢獻】\n' + getVal('.sales-value'); break; 
                         default: text = '【工作內容】\n' + getVal('.default-content'); break; 
@@ -1601,7 +1613,6 @@
         if (!hasContent) return showAlert('提示', '工作內容不能空白喔！', 'warning'); 
         showLoading("報表送出中..."); 
         
-        // 💡 寫入 deliveryPoints 傳遞給後台
         fetchApi(REPORT_API_URL, { action: "saveReport", userDept: myDept, userName: currentUser, userRole: myRole, contents: contentsArray, deliveryPoints: totalDeliveryPoints })
         .then(function(result) {
             hideLoading(); 
