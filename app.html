@@ -405,7 +405,6 @@
             <div class="nav-item" onclick="switchNav('viewReport', this)">
                 <div class="nav-icon">📊</div>報表
             </div>
-            <!-- 新增戰情室按鈕 -->
             <div class="nav-item" onclick="switchNav('viewPerformance', this)">
                 <div class="nav-icon">📈</div>績效
             </div>
@@ -450,7 +449,7 @@
     var todayHasOut = false;
     var monthlyMissingCount = 0;
     var monthlyMissingDates = [];
-    var globalMissingReports = []; // 💡 用來存放缺交報表的日期
+    var globalMissingReports = [];
 
     var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     var reportBlockCount = 0;
@@ -529,7 +528,7 @@
 
             if (myIsManager) {
                 document.getElementById('lblHistTeam').style.display = 'block'; 
-                document.getElementById('perfTeamBoard').style.display = 'block'; // 打開團隊管理看板
+                document.getElementById('perfTeamBoard').style.display = 'block'; 
             } else {
                 document.getElementById('lblHistTeam').style.display = 'none';
                 document.getElementById('perfTeamBoard').style.display = 'none';
@@ -564,15 +563,15 @@
         return false;
     }
 
+    // 💡 已修正：非同步請求排序，確保主管權限確認後才抓取戰情室
     window.onload = function() {
         console.log("App Starting...");
         var savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
-            fetchBackendData(); 
             checkTodayAttendance(); 
-            fetchPerformanceData(); // 💡 載入戰情數據，用以提示未寫報表
+            fetchBackendData(); 
         }
         
         if(navigator.geolocation) {
@@ -598,13 +597,33 @@
             if (text.indexOf("Success") === 0) {
                 currentUser = nameInput; localStorage.setItem('hohoyuan_user', currentUser);
                 var parts = text.split('|'); if (parts[1]) localStorage.setItem('hohoyuan_avatar_' + currentUser, parts[1]);
-                showMainScreen(); fetchBackendData(); checkTodayAttendance(); fetchPerformanceData();
+                showMainScreen(); checkTodayAttendance(); fetchBackendData();
                 showAlert('登入成功', '歡迎，' + currentUser + '！', 'success');
             } else { showAlert('登入失敗', text, 'error'); }
         })
         .catch(function(e) {
             hideLoading(); showAlert('網路錯誤', '無法連線到資料庫：' + e.message, 'error');
         });
+    }
+
+    function fetchBackendData() {
+        fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: "", key: "" })
+        .then(function() {
+            return fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime());
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            globalDB = data;
+            parsePermissions(); 
+            updateAnnualLeaveUI(); populateAgentDropdown(); loadPendingProofs();
+            
+            if(document.getElementById('viewHistory').className.indexOf('active') !== -1) renderHistory();
+            renderHomeAlerts(); handleTypeChange();
+
+            // 💡 確保 parsePermissions 跑完，系統知道你是主管後，再抓取戰情室資料
+            fetchPerformanceData(); 
+        })
+        .catch(function(e) { console.error("資料載入失敗:", e); });
     }
 
     function loadAvatar() {
@@ -704,7 +723,7 @@
         else if (viewId === 'viewPerformance' && document.getElementById('perfMyAvgPts').innerText === "-") fetchPerformanceData();
     }
     
-    // 💡 抓取與渲染戰情室數據 (包含未寫報表警示)
+    // 💡 戰情室渲染邏輯
     function fetchPerformanceData() {
         var isManager = myIsManager;
         fetchApi(REPORT_API_URL, { action: "getPerformance", userName: currentUser, isManager: isManager })
@@ -719,15 +738,14 @@
     function renderPerformanceUI(data) {
         var myStats = data.myStats;
         
-        // 更新未交報表資料並刷新首頁警告
         globalMissingReports = myStats.missingReports || [];
         renderHomeAlerts(); 
 
         var myAvg = myStats.days > 0 ? Math.round(myStats.points / myStats.days) : 0;
         var myRate = myStats.points > 0 ? ((myStats.errors / myStats.points) * 100).toFixed(1) + "%" : (myStats.errors > 0 ? "100%" : "0%");
         
-        document.getElementById('perfMyTotalPts').innerText = myStats.points; // 💡 總點數
-        document.getElementById('perfMyAvgPts').innerText = myAvg;            // 💡 日均點數
+        document.getElementById('perfMyTotalPts').innerText = myStats.points; 
+        document.getElementById('perfMyAvgPts').innerText = myAvg;            
         document.getElementById('perfMyErrCnt').innerText = myStats.errors;
         document.getElementById('perfMyRate').innerText = myRate;
         
@@ -801,7 +819,6 @@
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📅</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ' + monthlyMissingCount + ' 筆漏打卡</span></div><span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewProof\', document.querySelectorAll(\'.nav-item\')[2]); document.querySelectorAll(\'.report-tab\')[1].click();">前往補登 ➔</span></div><div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺卡明細：</strong> ' + datesStr + '</div></div>';
         }
 
-        // 💡 渲染「未交報表」警告
         if (typeof globalMissingReports !== "undefined" && globalMissingReports.length > 0) {
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">' +
                           '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">' +
@@ -812,158 +829,6 @@
 
         var alertContainer = document.getElementById('homeAlerts');
         if (alertContainer) { alertContainer.innerHTML = alertsHTML; alertContainer.style.display = alertsHTML ? "flex" : "none"; }
-    }
-
-    function handleHolidayTypeChange() {
-        var type = document.getElementById('holidayType').value;
-        var compBox = document.getElementById('compLeaveDateBox');
-        if (type === '假日值班 (擇日補休)') { compBox.style.display = 'block'; } 
-        else { compBox.style.display = 'none'; document.getElementById('compLeaveDate').value = ''; }
-    }
-
-    function toggleReasonBox(txt) {
-        var rb = document.getElementById('reasonBox');
-        if (!rb) return;
-        
-        if (txt.indexOf("外勤") !== -1 || txt.indexOf("遠端") !== -1 || txt.indexOf("加班") !== -1 || txt.indexOf("值班") !== -1 || txt === "勤務結束下班") {
-            if (txt === "勤務結束下班") { rb.style.display = "none"; } 
-            else { rb.style.display = "block"; }
-        } else {
-            rb.style.display = "none";
-        }
-    }
-
-    function handleTypeChange() {
-        try {
-            if(!currentUser) return;
-            
-            var myDept = "";
-            if (globalDB && globalDB.employees) {
-                for(var e=0; e<globalDB.employees.length; e++){
-                    if(globalDB.employees[e][0] === currentUser) { myDept = globalDB.employees[e][1]; break; }
-                }
-            }
-
-            var holidayBox = document.getElementById('holidayTypeBox');
-            var isHol = false;
-            if (globalDB && globalDB.schedule) {
-                var now = new Date();
-                var monthStr = now.getFullYear() + '-' + pad(now.getMonth()+1);
-                var sched = null;
-                for(var s=0; s<globalDB.schedule.length; s++){ if(globalDB.schedule[s][0] === monthStr && globalDB.schedule[s][1] === currentUser) { sched = globalDB.schedule[s]; break; } }
-                if (sched && (sched[2 + now.getDate()] === "排休" || sched[2 + now.getDate()] === "假日值班" || sched[2 + now.getDate()] === "假日加班")) {
-                    isHol = true;
-                }
-            }
-            
-            if(holidayBox) { holidayBox.style.display = isHol ? "flex" : "none"; handleHolidayTypeChange(); }
-
-            var typeInput = document.querySelector('input[name="attType"]:checked');
-            if(!typeInput) return; var type = typeInput.value;
-            var list = document.getElementById('statusList'); 
-
-            var nowTime = new Date(); var time = nowTime.getHours() * 60 + nowTime.getMinutes();
-            if(list) list.innerHTML = "";
-
-            if (type === "上班") {
-                if (myIsFlex) { 
-                    addStatusBtn("打卡紀錄 (彈性上班)", true); 
-                    addStatusBtn("遲到", false);
-                    addStatusBtn("請假後上班", false);
-                    addStatusBtn("外出回廠上班", false);
-                    addStatusBtn("外勤/遠端打卡", false); 
-                } else {
-                    if (time < 440) addStatusBtn("個人因素提早上班", true);
-                    else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
-                    else addStatusBtn("遲到", true);
-                    addStatusBtn("請假後上班", false); 
-                    addStatusBtn("外出回廠上班", false);
-                    addStatusBtn("外勤/遠端打卡", false); 
-                }
-            } else {
-                if (myIsFlex) { 
-                    addStatusBtn("打卡紀錄 (彈性下班)", true); 
-                    addStatusBtn("經主管核准加班", false);
-                    addStatusBtn("值班(換補休)", false);
-                    addStatusBtn("外出暫時下班", false);
-                    addStatusBtn("外勤/遠端打卡", false); 
-                } else {
-                    if (time >= 1010) { 
-                        if (myDept === "運輸部") {
-                            addStatusBtn("勤務結束下班", true); 
-                            addStatusBtn("因個人因素延後下班", false); 
-                        } else {
-                            addStatusBtn("因個人因素延後下班", true); 
-                            addStatusBtn("經主管核准加班", false); 
-                        }
-                    } else { 
-                        addStatusBtn("正常下班", true); 
-                    }
-                    addStatusBtn("值班(換補休)", false); 
-                    addStatusBtn("外出暫時下班", false);
-                    addStatusBtn("外勤/遠端打卡", false); 
-                }
-            }
-            updateGPSUI();
-        } catch(e) { console.error(e); }
-    }
-
-    function addStatusBtn(txt, isSelected) {
-        var div = document.createElement('div');
-        div.className = isSelected ? "status-btn selected" : "status-btn";
-        div.innerText = txt;
-        
-        if (isSelected) {
-            selectedStatus = txt;
-            toggleReasonBox(txt); 
-        }
-
-        div.onclick = function() {
-            var btns = document.querySelectorAll('#statusList .status-btn');
-            for(var i=0; i<btns.length; i++){ btns[i].className = 'status-btn'; }
-            div.className = 'status-btn selected'; 
-            selectedStatus = txt;
-            toggleReasonBox(txt); 
-            updateGPSUI();
-        };
-        document.getElementById('statusList').appendChild(div);
-    }
-
-    function updateGPSUI() {
-        var box = document.getElementById('gpsStatus'); var btn = document.querySelector('.punch-btn');
-        if(!box || !btn) return;
-        
-        if (!isMobileDevice) { box.innerText = "❌ 必須使用手機打卡"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; }
-        
-        if (myIsFlex) { box.innerText = "✅ 免定位模式已啟動"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; return; }
-        if (userLat === null || userLon === null) { box.innerText = "📍 獲取定位中... (請允許權限)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; } 
-        
-        var isRemote = selectedStatus.indexOf("外勤") !== -1 || selectedStatus.indexOf("遠端") !== -1;
-
-        if (isWithinRange) { 
-            box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
-        } else if (isRemote) {
-            box.innerText = "⚠️ 遠端打卡模式"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
-        } else { 
-            box.innerText = "❌ 不在打卡範圍內 (需選外勤/遠端)"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; 
-        }
-    }
-
-    function fetchBackendData() {
-        fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: "", key: "" })
-        .then(function() {
-            return fetch(ATTENDANCE_API_URL + "?t=" + new Date().getTime());
-        })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            globalDB = data;
-            parsePermissions(); 
-            updateAnnualLeaveUI(); populateAgentDropdown(); loadPendingProofs();
-            
-            if(document.getElementById('viewHistory').className.indexOf('active') !== -1) renderHistory();
-            renderHomeAlerts(); handleTypeChange();
-        })
-        .catch(function(e) { console.error("資料載入失敗:", e); });
     }
 
     function checkTodayAttendance() {
@@ -1043,11 +908,11 @@
         });
     }
 
-    function handleLeaveTypeChange() {
-        var type = document.getElementById('lvType').value; var box = document.getElementById('annualLeaveBox');
-        if(!box) return;
-        if (type === '特休') { box.style.display = 'block'; updateAnnualLeaveUI(); } 
-        else { box.style.display = 'none'; }
+    function handleHolidayTypeChange() {
+        var type = document.getElementById('holidayType').value;
+        var compBox = document.getElementById('compLeaveDateBox');
+        if (type === '假日值班 (擇日補休)') { compBox.style.display = 'block'; } 
+        else { compBox.style.display = 'none'; document.getElementById('compLeaveDate').value = ''; }
     }
 
     function updateAnnualLeaveUI() {
@@ -1370,6 +1235,134 @@
             }
         }
     };
+
+    function toggleReasonBox(txt) {
+        var rb = document.getElementById('reasonBox');
+        if (!rb) return;
+        
+        if (txt.indexOf("外勤") !== -1 || txt.indexOf("遠端") !== -1 || txt.indexOf("加班") !== -1 || txt.indexOf("值班") !== -1 || txt === "勤務結束下班") {
+            if (txt === "勤務結束下班") { rb.style.display = "none"; } 
+            else { rb.style.display = "block"; }
+        } else {
+            rb.style.display = "none";
+        }
+    }
+
+    function handleTypeChange() {
+        try {
+            if(!currentUser) return;
+            
+            var myDept = "";
+            if (globalDB && globalDB.employees) {
+                for(var e=0; e<globalDB.employees.length; e++){
+                    if(globalDB.employees[e][0] === currentUser) { myDept = globalDB.employees[e][1]; break; }
+                }
+            }
+
+            var holidayBox = document.getElementById('holidayTypeBox');
+            var isHol = false;
+            if (globalDB && globalDB.schedule) {
+                var now = new Date();
+                var monthStr = now.getFullYear() + '-' + pad(now.getMonth()+1);
+                var sched = null;
+                for(var s=0; s<globalDB.schedule.length; s++){ if(globalDB.schedule[s][0] === monthStr && globalDB.schedule[s][1] === currentUser) { sched = globalDB.schedule[s]; break; } }
+                if (sched && (sched[2 + now.getDate()] === "排休" || sched[2 + now.getDate()] === "假日值班" || sched[2 + now.getDate()] === "假日加班")) {
+                    isHol = true;
+                }
+            }
+            
+            if(holidayBox) { holidayBox.style.display = isHol ? "flex" : "none"; handleHolidayTypeChange(); }
+
+            var typeInput = document.querySelector('input[name="attType"]:checked');
+            if(!typeInput) return; var type = typeInput.value;
+            var list = document.getElementById('statusList'); 
+
+            var nowTime = new Date(); var time = nowTime.getHours() * 60 + nowTime.getMinutes();
+            if(list) list.innerHTML = "";
+
+            if (type === "上班") {
+                if (myIsFlex) { 
+                    addStatusBtn("打卡紀錄 (彈性上班)", true); 
+                    addStatusBtn("遲到", false);
+                    addStatusBtn("請假後上班", false);
+                    addStatusBtn("外出回廠上班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                } else {
+                    if (time < 440) addStatusBtn("個人因素提早上班", true);
+                    else if (time >= 440 && time <= 450) addStatusBtn("正常上班", true);
+                    else addStatusBtn("遲到", true);
+                    addStatusBtn("請假後上班", false); 
+                    addStatusBtn("外出回廠上班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                }
+            } else {
+                if (myIsFlex) { 
+                    addStatusBtn("打卡紀錄 (彈性下班)", true); 
+                    addStatusBtn("經主管核准加班", false);
+                    addStatusBtn("值班(換補休)", false);
+                    addStatusBtn("外出暫時下班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                } else {
+                    if (time >= 1010) { 
+                        if (myDept === "運輸部") {
+                            addStatusBtn("勤務結束下班", true); 
+                            addStatusBtn("因個人因素延後下班", false); 
+                        } else {
+                            addStatusBtn("因個人因素延後下班", true); 
+                            addStatusBtn("經主管核准加班", false); 
+                        }
+                    } else { 
+                        addStatusBtn("正常下班", true); 
+                    }
+                    addStatusBtn("值班(換補休)", false); 
+                    addStatusBtn("外出暫時下班", false);
+                    addStatusBtn("外勤/遠端打卡", false); 
+                }
+            }
+            updateGPSUI();
+        } catch(e) { console.error(e); }
+    }
+
+    function addStatusBtn(txt, isSelected) {
+        var div = document.createElement('div');
+        div.className = isSelected ? "status-btn selected" : "status-btn";
+        div.innerText = txt;
+        
+        if (isSelected) {
+            selectedStatus = txt;
+            toggleReasonBox(txt); 
+        }
+
+        div.onclick = function() {
+            var btns = document.querySelectorAll('#statusList .status-btn');
+            for(var i=0; i<btns.length; i++){ btns[i].className = 'status-btn'; }
+            div.className = 'status-btn selected'; 
+            selectedStatus = txt;
+            toggleReasonBox(txt); 
+            updateGPSUI();
+        };
+        document.getElementById('statusList').appendChild(div);
+    }
+
+    function updateGPSUI() {
+        var box = document.getElementById('gpsStatus'); var btn = document.querySelector('.punch-btn');
+        if(!box || !btn) return;
+        
+        if (!isMobileDevice) { box.innerText = "❌ 必須使用手機打卡"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; }
+        
+        if (myIsFlex) { box.innerText = "✅ 免定位模式已啟動"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; return; }
+        if (userLat === null || userLon === null) { box.innerText = "📍 獲取定位中... (請允許權限)"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; return; } 
+        
+        var isRemote = selectedStatus.indexOf("外勤") !== -1 || selectedStatus.indexOf("遠端") !== -1;
+
+        if (isWithinRange) { 
+            box.innerText = "✅ 定位成功，可打卡"; box.style.color = "#0f9d58"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
+        } else if (isRemote) {
+            box.innerText = "⚠️ 遠端打卡模式"; box.style.color = "var(--warning)"; btn.style.pointerEvents = "auto"; btn.style.opacity = "1"; 
+        } else { 
+            box.innerText = "❌ 不在打卡範圍內 (需選外勤/遠端)"; box.style.color = "var(--danger)"; btn.style.pointerEvents = "none"; btn.style.opacity = "0.5"; 
+        }
+    }
 
     function submitAttendance() {
         if (!isMobileDevice) { return showAlert('錯誤', '打卡失敗，系統偵測您並非使用行動裝置。', 'error'); }
