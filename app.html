@@ -563,15 +563,18 @@
         return false;
     }
 
-    // 💡 修正非同步錯誤，先載入資料判斷權限，再讀取戰情室
+    // 💡 關鍵修正：嚴格要求系統「先看考勤」再「載入戰情」
     window.onload = function() {
         console.log("App Starting...");
         var savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
-            checkTodayAttendance(); 
-            fetchBackendData(); 
+            
+            // 💡 確保順序：確認考勤解析完畢後，再發動後續 API
+            checkTodayAttendance().then(function() {
+                fetchBackendData(); 
+            });
         }
         
         if(navigator.geolocation) {
@@ -597,7 +600,10 @@
             if (text.indexOf("Success") === 0) {
                 currentUser = nameInput; localStorage.setItem('hohoyuan_user', currentUser);
                 var parts = text.split('|'); if (parts[1]) localStorage.setItem('hohoyuan_avatar_' + currentUser, parts[1]);
-                showMainScreen(); checkTodayAttendance(); fetchBackendData();
+                showMainScreen(); 
+                checkTodayAttendance().then(function() {
+                    fetchBackendData();
+                });
                 showAlert('登入成功', '歡迎，' + currentUser + '！', 'success');
             } else { showAlert('登入失敗', text, 'error'); }
         })
@@ -720,11 +726,9 @@
         
         if (viewId === 'viewHistory') renderHistory();
         else if (viewId === 'viewReport' && reportBlockCount === 0) { addReportBlock(); addErrorBlock(); }
-        // 防止戰情室沒資料時重整，若已載入則不重新載入
         else if (viewId === 'viewPerformance' && document.getElementById('perfMyAvgPts').innerText === "-") fetchPerformanceData();
     }
     
-    // 💡 戰情室專屬腳本
     function fetchPerformanceData() {
         var isManager = myIsManager;
         fetchApi(REPORT_API_URL, { action: "getPerformance", userName: currentUser, isManager: isManager })
@@ -736,11 +740,39 @@
         }).catch(function(e) { console.error("戰情室連線錯誤", e); });
     }
     
+    // 💡 讓手機前端扮演大腦，親自用手上的出勤紀錄扣除後台回傳的報表日期
     function renderPerformanceUI(data) {
         var myStats = data.myStats;
         
-        globalMissingReports = myStats.missingReports || [];
-        renderHomeAlerts(); 
+        var reportedDays = myStats.reportedDays || [];
+        var workedDaysMap = {};
+        
+        if (typeof currentMonthAttData !== "undefined" && currentMonthAttData.length > 0) {
+            for (var k = 1; k < currentMonthAttData.length; k++) {
+                var rowName = String(currentMonthAttData[k][1]).trim();
+                var rowType = String(currentMonthAttData[k][3]).trim();
+                var rowDate = new Date(currentMonthAttData[k][0]);
+                // 確認這天是「上班」卡，而且是本人
+                if (rowName === currentUser && !isNaN(rowDate.getTime()) && rowType.indexOf("上班") !== -1) {
+                    var dStr = pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate()); 
+                    workedDaysMap[dStr] = true;
+                }
+            }
+        }
+        
+        var missingReports = [];
+        var now = new Date();
+        var todayMD = pad(now.getMonth()+1) + '/' + pad(now.getDate());
+        
+        for (var wd in workedDaysMap) {
+            // 如果有打上班卡，卻沒有寫報表，且不是今天，就抓出來警告！
+            if (reportedDays.indexOf(wd) === -1 && wd !== todayMD) {
+                missingReports.push(wd);
+            }
+        }
+        
+        globalMissingReports = missingReports.sort();
+        renderHomeAlerts(); // 刷新首頁的警告區塊
 
         var myAvg = myStats.days > 0 ? Math.round(myStats.points / myStats.days) : 0;
         var myRate = myStats.points > 0 ? ((myStats.errors / myStats.points) * 100).toFixed(1) + "%" : (myStats.errors > 0 ? "100%" : "0%");
@@ -759,13 +791,12 @@
             errListDiv.innerHTML = '<div class="err-list" style="color:#0f9d58; background:#e6f4ea; border-color:#b7e1cd;">🎉 太棒了！您本月目前零出錯！</div>';
         }
         
-        // 渲染團隊看板 (加入點擊事件)
         if (myIsManager && data.teamStats) {
-            window.globalTeamStats = data.teamStats; // 存入全域變數供點擊讀取
+            window.globalTeamStats = data.teamStats; 
             var teamListHTML = "";
             data.teamStats.forEach(function(member, index) {
                 var isWarning = member.errors > 0 ? 'color:var(--danger); font-weight:bold;' : 'color:var(--text-main);';
-                // 💡 將姓名改為藍色可點擊樣式
+                // 💡 加入藍色可點擊特效，點擊後會觸發 showEmployeeDetails 函數
                 teamListHTML += '<div class="team-perf-row">' +
                                 '<span style="flex:2; font-weight:bold; color:var(--primary); text-decoration:underline; cursor:pointer;" onclick="showEmployeeDetails(' + index + ')">' + member.name + '</span>' +
                                 '<span style="flex:1.5; text-align:center;">' + member.points + ' / ' + member.avgPoints + '</span>' +
@@ -778,11 +809,11 @@
         }
     }
 
-    // 💡 點擊員工彈出詳細資訊與今日報表的視窗函數
+    // 💡 主管點擊員工姓名後，彈出今日報表明細與數據的函數
     window.showEmployeeDetails = function(index) {
         if (!window.globalTeamStats) return;
         var member = window.globalTeamStats[index];
-        var reportHtml = member.todayReport ? member.todayReport.replace(/\n/g, '<br>') : '<span style="color:#999;">尚未提交今日報表或今日無點數紀錄</span>';
+        var reportHtml = member.todayReport ? member.todayReport.replace(/\n/g, '<br>') : '<span style="color:#999;">尚未提交今日報表或未排班</span>';
         
         Swal.fire({
             title: '👤 ' + member.name,
@@ -844,6 +875,7 @@
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📅</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ' + monthlyMissingCount + ' 筆漏打卡</span></div><span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewProof\', document.querySelectorAll(\'.nav-item\')[2]); document.querySelectorAll(\'.report-tab\')[1].click();">前往補登 ➔</span></div><div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺卡明細：</strong> ' + datesStr + '</div></div>';
         }
 
+        // 💡 確保這裡能畫出我們剛剛前台運算出來的「未交報表」警告！
         if (typeof globalMissingReports !== "undefined" && globalMissingReports.length > 0) {
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">' +
                           '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">' +
@@ -856,6 +888,7 @@
         if (alertContainer) { alertContainer.innerHTML = alertsHTML; alertContainer.style.display = alertsHTML ? "flex" : "none"; }
     }
 
+    // 💡 升級為 Promise，讓系統可以「排隊」等它算完考勤
     function checkTodayAttendance() {
         var now = new Date();
         var currMonth = now.getFullYear() + '-' + pad(now.getMonth() + 1);
@@ -865,7 +898,7 @@
         var p1 = fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: currMonth, key: "" });
         var p2 = fetchApi(ATTENDANCE_API_URL, { action: "getAttendance", month: prevMonth, key: "" }).catch(function() { return "[]"; });
 
-        Promise.all([p1, p2]).then(function(results) {
+        return Promise.all([p1, p2]).then(function(results) {
             var currText = results[0];
             var prevText = results[1];
 
@@ -928,8 +961,11 @@
             else { statusCard.innerHTML = '<span style="color:var(--text-sub);">尚未打卡</span>'; }
             if(document.getElementById('viewHistory').className.indexOf('active') !== -1) renderHistory();
             renderHomeAlerts();
+            
+            return true; // 告知系統：我的考勤解析完成了，你可以繼續了！
         }).catch(function(e){
             document.getElementById('cardAttStatus').innerText = "無法載入";
+            return false;
         });
     }
 
