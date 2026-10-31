@@ -563,7 +563,6 @@
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
-            
             checkTodayAttendance().then(function() {
                 fetchBackendData(); 
             });
@@ -731,17 +730,18 @@
         }).catch(function(e) { console.error("戰情室連線錯誤", e); });
     }
     
-    // 💡 修正：嚴格過濾月份，員工看單月、主管看雙月
+    // 💡 大腦修正：雙重過濾出勤天數，有打卡或有交報表皆算一天，絕不重複計算！
     function renderPerformanceUI(data) {
         var myStats = data.myStats;
-        
         var reportedDays = myStats.reportedDays || [];
-        var workedDaysMap = {};
+        var workedDaysMap = {}; 
+        var realTeamDays = {}; 
         
         var isManager = myIsManager;
         var now = new Date();
         var currentMonthIndex = now.getMonth();
         var currentYear = now.getFullYear();
+        var todayMD = pad(now.getMonth()+1) + '/' + pad(now.getDate());
         
         if (typeof currentMonthAttData !== "undefined" && currentMonthAttData.length > 0) {
             for (var k = 1; k < currentMonthAttData.length; k++) {
@@ -749,29 +749,39 @@
                 var rowType = String(currentMonthAttData[k][3]).trim();
                 var rowDate = new Date(currentMonthAttData[k][0]);
                 
-                if (rowName === currentUser && !isNaN(rowDate.getTime()) && rowType.indexOf("上班") !== -1) {
-                    // 主管看兩個月，一般員工強制只看「這個月」
-                    if (isManager || (rowDate.getMonth() === currentMonthIndex && rowDate.getFullYear() === currentYear)) {
-                        var dStr = pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate()); 
-                        workedDaysMap[dStr] = true;
+                if (!isNaN(rowDate.getTime()) && rowType.indexOf("上班") !== -1) {
+                    var dStr = pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate()); 
+                    
+                    // 1. 給自己查缺交報表用 (員工看當月，主管看雙月)
+                    if (rowName === currentUser) {
+                        if (isManager || (rowDate.getMonth() === currentMonthIndex && rowDate.getFullYear() === currentYear)) {
+                            workedDaysMap[dStr] = true;
+                        }
+                    }
+                    
+                    // 2. 建立全體團隊的真實打卡日曆 (算薪水用，嚴格限當月)
+                    if (rowDate.getMonth() === currentMonthIndex && rowDate.getFullYear() === currentYear) {
+                        if (!realTeamDays[rowName]) realTeamDays[rowName] = {};
+                        realTeamDays[rowName][dStr] = true;
                     }
                 }
             }
         }
         
+        // 結算未交報表
         var missingReports = [];
-        var todayMD = pad(now.getMonth()+1) + '/' + pad(now.getDate());
-        
         for (var wd in workedDaysMap) {
             if (reportedDays.indexOf(wd) === -1 && wd !== todayMD) {
                 missingReports.push(wd);
             }
         }
-        
         globalMissingReports = missingReports.sort();
         renderHomeAlerts(); 
 
-        var myAvg = myStats.days > 0 ? Math.round(myStats.points / myStats.days) : 0;
+        // 💡 結算本人的真實出勤天數 = Max(打卡天數, 後台交報表的天數)
+        var myAttDays = realTeamDays[currentUser] ? Object.keys(realTeamDays[currentUser]).length : 0;
+        var myFinalDays = Math.max(myAttDays, myStats.days);
+        var myAvg = myFinalDays > 0 ? Math.round(myStats.points / myFinalDays) : 0;
         var myRate = myStats.points > 0 ? ((myStats.errors / myStats.points) * 100).toFixed(1) + "%" : (myStats.errors > 0 ? "100%" : "0%");
         
         document.getElementById('perfMyTotalPts').innerText = myStats.points; 
@@ -792,6 +802,13 @@
             window.globalTeamStats = data.teamStats; 
             var teamListHTML = "";
             data.teamStats.forEach(function(member, index) {
+                
+                // 💡 結算部屬的真實出勤天數 = Max(打卡天數, 後台交報表的天數)
+                var attDaysCount = realTeamDays[member.name] ? Object.keys(realTeamDays[member.name]).length : 0;
+                var finalDays = Math.max(attDaysCount, member.days); 
+                member.days = finalDays;
+                member.avgPoints = finalDays > 0 ? Math.round(member.points / finalDays) : 0;
+                
                 var isWarning = member.errors > 0 ? 'color:var(--danger); font-weight:bold;' : 'color:var(--text-main);';
                 teamListHTML += '<div class="team-perf-row">' +
                                 '<span style="flex:2; font-weight:bold; color:var(--primary); text-decoration:underline; cursor:pointer;" onclick="showEmployeeDetails(' + index + ')">' + member.name + '</span>' +
@@ -826,13 +843,12 @@
         });
     };
 
-    // 💡 匯出 CSV 功能，讓主管在手機或電腦都能下載 KPI 報表
     window.exportPerformanceCSV = function() {
         if (!window.globalTeamStats || window.globalTeamStats.length === 0) {
             return showAlert('提示', '目前沒有團隊資料可供匯出', 'warning');
         }
         
-        var csv = "\uFEFF"; // 讓 Excel 可以正確讀取繁體中文
+        var csv = "\uFEFF"; 
         csv += "司機姓名,本月總送點數,本月出勤天數,日均點數,出錯次數,出錯率\n";
         
         window.globalTeamStats.forEach(function(m) {
@@ -1630,9 +1646,12 @@
                     case "會計部": innerHtml = '<label class="rpt-label">今日對帳 (家數與名單)：</label><input type="text" class="rpt-input acc-match" placeholder="例如: 3家(大三元...)"><label class="rpt-label">今日催帳 (家數與名單)：</label><input type="text" class="rpt-input acc-chase" placeholder="例如: 2家(王老闆...)"><label class="rpt-label">應收/應付處理件數：</label><input type="text" class="rpt-input acc-process" placeholder="例如: 5件"><label class="rpt-label" style="color:var(--danger);">🚨 逾期未歸帳款：</label><input type="text" class="rpt-input acc-overdue" placeholder="客戶名稱與預計金額"><label class="rpt-label" style="color:var(--danger);">⚠️ 需特別注意客戶：</label><textarea class="rpt-textarea acc-warn" placeholder="名稱與原因 (例如付款變慢)"></textarea><label class="rpt-label">給公司的建議：</label><textarea class="rpt-textarea acc-advice" placeholder="財務戰略建議..."></textarea><label class="rpt-label">📌 其他處理事項：</label><textarea class="rpt-textarea acc-other" placeholder="填寫其他交辦或處理事項..."></textarea>'; break; 
                     case "生產部": innerHtml = '<label class="rpt-label">今日加工/包裝明細：</label><textarea class="rpt-textarea prod-detail" placeholder="香菇分裝50斤、干貝120包..."></textarea><label class="rpt-label" style="color:var(--danger);">⚠️ 原料損耗回報：</label><textarea class="rpt-textarea prod-loss" placeholder="損耗項目與原因 (若無請填無)"></textarea><label class="rpt-label">給公司的建議：</label><textarea class="rpt-textarea prod-advice" placeholder="機器狀況、包材短缺提醒..."></textarea>'; break; 
                     case "倉儲部": innerHtml = '<label class="rpt-label">今日進貨明細：</label><textarea class="rpt-textarea wh-in" placeholder="進了什麼貨？"></textarea><label class="rpt-label">🚛 退還廠商紀錄：</label><textarea class="rpt-textarea wh-return" placeholder="退給供應商的商品及原因"></textarea><label class="rpt-label" style="color:var(--danger);">⚠️ 數量誤差 (帳面與實際)：</label><textarea class="rpt-textarea wh-diff" placeholder="數量對不起來的商品"></textarea><label class="rpt-label" style="color:var(--danger);">⏳ 效期/品質異常：</label><textarea class="rpt-textarea wh-expire" placeholder="效期太短、破損或受潮商品"></textarea><label class="rpt-label">🏭 空間與耗材狀況：</label><textarea class="rpt-textarea wh-space" placeholder="空間夠嗎？紙箱膠帶需補貨嗎？"></textarea>'; break; 
-                    case "運輸部": innerHtml = '<label class="rpt-label">今日總送貨點數：</label><input type="number" class="rpt-input trans-points" placeholder="幾點"><label class="rpt-label">🚛 今日駕駛車號：</label><input type="text" class="rpt-input trans-plate" placeholder="例如: ABC-1234"><label class="rpt-label">🚗 出車 / 回公司里程數：</label><input type="text" class="rpt-input trans-km" placeholder="例如: 出1500 / 回1550"><label class="rpt-label">油錢與車輛保養：</label><textarea class="rpt-textarea trans-car" placeholder="加油金額？車子需保養嗎？"></textarea><label class="rpt-label" style="color:var(--danger);">🔄 客戶退貨紀錄 (第一線)：</label><textarea class="rpt-textarea trans-return" placeholder="品名/數量與原因 (送錯/破損)"></textarea><label class="rpt-label">退貨處置判斷：</label><select class="rpt-select trans-action"><option value="無退貨">無退貨</option><option value="可重新銷售">可重新銷售</option><option value="需報廢處理">需報廢處理</option></select><label class="rpt-label">🛑 配送異常與客戶反映：</label><textarea class="rpt-textarea trans-delay" placeholder="沒送到原因？客戶抱怨？"></textarea>'; break; 
-                    case "業務部": innerHtml = '<label class="rpt-label">今日最大亮點：</label><select class="rpt-select sales-type"><option value="開發新客">🆕 開發新客</option><option value="成功報價">📜 成功報價</option><option value="客訴解除">✅ 客訴解除</option><option value="業績達標">🎯 業績達標</option><option value="收集情報">🔍 收集情報</option></select><label class="rpt-label">聯繫對象：</label><input type="text" class="rpt-input sales-target" placeholder="客戶名稱"><label class="rpt-label">具體成果/情報：</label><textarea class="rpt-textarea sales-info" placeholder="主廚試用回饋、抱怨內容"></textarea><label class="rpt-label">對公司的貢獻：</label><textarea class="rpt-textarea sales-value" placeholder="例如: 預計帶來每月5萬新業績"></textarea>'; break; 
-                    default: innerHtml = '<label class="rpt-label">今日工作內容：</label><textarea class="rpt-textarea default-content" placeholder="請填寫今日重要工作事項..."></textarea>'; break; 
+                    case "運輸部": 
+                        var pts = getVal('.trans-points');
+                        if (pts && !isNaN(pts)) totalDeliveryPoints += parseInt(pts, 10); 
+                        text = '【送貨】' + pts + '點\n🚛【車號】' + getVal('.trans-plate') + '\n🚗【里程】' + getVal('.trans-km') + '\n⛽【車況】' + getVal('.trans-car') + '\n🔄【退貨】' + getVal('.trans-return') + ' (' + getVal('.trans-action') + ')\n🛑【反映】\n' + getVal('.trans-delay'); break; 
+                    case "業務部": text = '【亮點】' + getVal('.sales-type') + ' (' + getVal('.sales-target') + ')\n📝【情報】\n' + getVal('.sales-info') + '\n🏆【貢獻】\n' + getVal('.sales-value'); break; 
+                    default: text = '【工作內容】\n' + getVal('.default-content'); break; 
                 } 
             } 
         } 
