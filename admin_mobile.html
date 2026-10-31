@@ -156,7 +156,6 @@
 
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:900; color:var(--navy);">啟動企業智庫...</div></div>
-
     <input type="file" id="adminAvatarUpload" accept="image/*" style="display: none;" onchange="handleAdminAvatarUpload(event)">
 
     <!-- 登入介面 -->
@@ -278,7 +277,6 @@
             <div class="section-header">
                 <h3 class="section-title">管理決策報表</h3>
             </div>
-            
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h4 style="margin:0; color: var(--navy);">📈 本月加班趨勢</h4>
@@ -290,7 +288,6 @@
                 </div>
                 <div id="rptDeptOT"></div>
             </div>
-
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h4 style="margin:0; color: var(--navy);">🏖️ 本月請假狀況</h4>
@@ -302,7 +299,6 @@
                     <div class="interactive-row" style="text-align:center; flex:1;" onclick="showLeaveDetail('特休')"><div style="font-size:20px; font-weight:900; color:var(--info);" id="rptAnnual">0</div><div style="font-size:12px; color:var(--text-sub);">特休(天)</div></div>
                 </div>
             </div>
-
             <div class="card" id="rptDeptLeaveRatioCard">
                 <h4 style="margin:0 0 15px 0; color: var(--navy);">📊 異常：部門休假比例排行</h4>
                 <div style="font-size:12px; color:var(--text-sub); margin-bottom:15px;">( 依據：部門本月總請假天數 ÷ 部門總人數 )</div>
@@ -336,7 +332,9 @@
 
 <script>
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbwpBQWJQfEPSZlcglHakr4pV6QXWrhi5xTZQIKqNC-XjkgDzWbegRqy-B5ENm3zdGohDQ/exec"; 
-    
+    // 加入報表 API 的連線網址
+    const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec";
+
     let db = {};
     let attDataThisMonth = [];
     let currentRole = "";
@@ -447,6 +445,18 @@
             const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const attText = await fetchApi({ action: "getAttendance", month: currMonth, key: currentKey }).catch(()=>"[]");
             attDataThisMonth = JSON.parse(attText) || [];
+
+            // 💡 呼叫報表系統的 API，把包含 allReports 的整包數據抓下來
+            try {
+                const reportRes = await fetch(REPORT_API_URL + "?t=" + new Date().getTime(), {
+                    method: 'POST', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getPerformance", userName: currentRole, isManager: true })
+                });
+                const reportResult = await reportRes.json();
+                if (reportResult.status === "Success") {
+                    window.teamStatsData = reportResult.teamStats;
+                }
+            } catch(err) { console.error("報表抓取失敗", err); }
 
             analyzeDataAndRender();
             calculateRealReportData(); 
@@ -886,7 +896,79 @@
 
     function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
-    // 💡 關鍵修正：套用嚴格工時計算邏輯 (強制 07:30 錨點並扣除午休)
+    // 💡 點擊「運輸部即時工時追蹤」人員，彈出每日報表明細與打卡時間的函數
+    window.openTransportDetail = function(encodedStr) {
+        let t = JSON.parse(decodeURIComponent(encodedStr));
+        
+        // 尋找該員在報表資料庫中整個月的報告 (allReports)
+        let repData = null;
+        if (window.teamStatsData) {
+            repData = window.teamStatsData.find(s => s.name === t.name);
+        }
+        let allReports = repData && repData.allReports ? repData.allReports : {};
+
+        document.getElementById('modalMainTitle').innerText = `${t.name} - 每日工時與報表`;
+
+        let bodyHtml = `<div style="margin-bottom: 15px; font-size:13px; color:var(--text-sub);">本月累計工時：<strong style="color:var(--navy); font-size:15px;">${t.workHrs.toFixed(1)} h</strong></div>`;
+        
+        // 將紀錄按日期由新到舊排序
+        let dates = Object.keys(t.records).sort().reverse();
+        if (dates.length === 0) {
+            bodyHtml += `<div style="text-align:center; padding:20px; color:var(--text-light);">本月無紀錄</div>`;
+        } else {
+            dates.forEach(dKey => {
+                let rec = t.records[dKey];
+                let inStr = rec.in ? new Date(rec.in).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false}) : "未打卡";
+                let outStr = rec.out ? new Date(rec.out).toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit', hour12: false}) : "未打卡";
+                
+                let dailyHrsStr = "-";
+                let overTimeStr = "";
+                
+                // 💡 在彈出視窗同樣套用 07:30 錨點來計算單日工時
+                if (rec.in && rec.out) {
+                    let inDate = new Date(rec.in);
+                    let standardStart = new Date(inDate.getFullYear(), inDate.getMonth(), inDate.getDate(), 7, 30, 0);
+                    let startTimeMs = rec.in < standardStart.getTime() ? standardStart.getTime() : rec.in;
+                    
+                    let rawHrs = (rec.out - startTimeMs) / 3600000;
+                    let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
+                    actHrs = Math.max(0, actHrs);
+                    dailyHrsStr = actHrs.toFixed(1) + "h";
+                    if (actHrs > 8) {
+                        overTimeStr = `<span style="color:var(--danger); font-size:11px; margin-left:6px;">(超時 ${(actHrs - 8).toFixed(1)}h)</span>`;
+                    }
+                }
+                
+                // 將 2026-10-31 的格式轉為 10-31 以對齊 allReports 的 key
+                let parts = dKey.split("-"); 
+                let normDate = parts[0] + "-" + String(parts[1]).padStart(2, '0') + "-" + String(parts[2]).padStart(2, '0');
+                let repKey = parseInt(parts[0]) + "-" + parseInt(parts[1]) + "-" + parseInt(parts[2]);
+                
+                let reportContent = allReports[repKey] ? allReports[repKey].replace(/\n/g, '<br>') : "<span style='color:#ccc;'>無報表紀錄或未交</span>";
+
+                bodyHtml += `
+                    <div style="background:#F8F9FA; border-radius:10px; padding:12px; margin-bottom:10px; border-left:4px solid var(--info);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:6px;">
+                            <div style="font-weight:bold; color:var(--navy); font-size:14px;">📅 ${normDate}</div>
+                            <div style="font-weight:900; font-size:14px; color:var(--info);">${dailyHrsStr} ${overTimeStr}</div>
+                        </div>
+                        <div style="display:flex; gap:15px; font-size:12px; margin-bottom:8px;">
+                            <div><span style="color:var(--text-light);">上班:</span> <strong>${inStr}</strong></div>
+                            <div><span style="color:var(--text-light);">下班:</span> <strong style="color:var(--danger);">${outStr}</strong></div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #e0e0e0; border-radius:6px; padding:8px; font-size:12px; color:var(--text-sub); line-height:1.5; max-height:150px; overflow-y:auto;">
+                            ${reportContent}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('modalBody').innerHTML = bodyHtml;
+        document.getElementById('modalFooter').innerHTML = `<button class="btn-primary" style="padding:12px;" onclick="closeModal()">關閉視窗</button>`;
+        document.getElementById('globalModal').style.display = 'flex';
+    }
+
     function calculateRealReportData() {
         if (!db.leave || !db.employees) return;
         
@@ -938,29 +1020,28 @@
             for (let dKey in transportHours[emp].records) {
                 let rec = transportHours[emp].records[dKey];
                 if (rec.in && rec.out) {
-                    // 💡 加入 07:30 嚴格起算標準
+                    
                     let inDate = new Date(rec.in);
                     let standardStart = new Date(inDate.getFullYear(), inDate.getMonth(), inDate.getDate(), 7, 30, 0);
                     
                     let startTimeMs = rec.in;
                     if (rec.in < standardStart.getTime()) {
-                        startTimeMs = standardStart.getTime(); // 早到不予計算，強制校正回 07:30
+                        startTimeMs = standardStart.getTime(); // 提早打卡強制從 07:30 算
                     }
                     
                     let rawHrs = (rec.out - startTimeMs) / 3600000;
                     
-                    // 💡 扣除 1 小時休息時間 (如果上班時數大於 5 小時)
+                    // 扣除 1 小時休息時間
                     let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; 
                     actHrs = Math.max(0, actHrs);
                     
                     totalW += actHrs;
-                    // 大於 8 小時的部分才列入超時估算
                     if (actHrs > 8) totalO += (actHrs - 8);
                     daysCnt++;
                 }
             }
             if (totalW > 0 || daysCnt > 0) { 
-                thArr.push({ name: emp, workHrs: totalW, otHrs: totalO, days: daysCnt });
+                thArr.push({ name: emp, workHrs: totalW, otHrs: totalO, days: daysCnt, records: transportHours[emp].records });
             }
         }
 
@@ -971,15 +1052,17 @@
         } else {
             thArr.forEach(t => {
                 let overWarning = t.workHrs >= 200 ? "color:var(--danger);" : "color:var(--text-main);";
+                let encodedData = encodeURIComponent(JSON.stringify(t));
+                // 💡 加入點擊事件，呼叫 openTransportDetail 秀出報表與打卡時間
                 thHtml += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee; cursor:pointer;" onclick="openTransportDetail('${encodedData}')">
                         <div>
                             <div style="font-size:15px; font-weight:bold; ${overWarning}">${t.name}</div>
-                            <div style="font-size:11px; color:var(--text-sub); margin-top:4px;">出勤 ${t.days} 天</div>
+                            <div style="font-size:11px; color:var(--info); margin-top:4px; text-decoration:underline;">點擊查看每日明細 ></div>
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:16px; font-weight:900; ${overWarning}">${t.workHrs.toFixed(1)} <span style="font-size:11px;">h</span></div>
-                            <div style="font-size:12px; font-weight:bold; color:var(--danger); margin-top:4px;">實際超時估算: ${t.otHrs.toFixed(1)} h</div>
+                            <div style="font-size:12px; font-weight:bold; color:var(--danger); margin-top:4px;">實際超時: ${t.otHrs.toFixed(1)} h</div>
                         </div>
                     </div>
                 `;
