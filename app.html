@@ -563,6 +563,7 @@
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
+            
             checkTodayAttendance().then(function() {
                 fetchBackendData(); 
             });
@@ -730,7 +731,6 @@
         }).catch(function(e) { console.error("戰情室連線錯誤", e); });
     }
     
-    // 💡 大腦修正：雙重過濾出勤天數，有打卡或有交報表皆算一天，絕不重複計算！
     function renderPerformanceUI(data) {
         var myStats = data.myStats;
         var reportedDays = myStats.reportedDays || [];
@@ -752,14 +752,12 @@
                 if (!isNaN(rowDate.getTime()) && rowType.indexOf("上班") !== -1) {
                     var dStr = pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate()); 
                     
-                    // 1. 給自己查缺交報表用 (員工看當月，主管看雙月)
                     if (rowName === currentUser) {
                         if (isManager || (rowDate.getMonth() === currentMonthIndex && rowDate.getFullYear() === currentYear)) {
                             workedDaysMap[dStr] = true;
                         }
                     }
                     
-                    // 2. 建立全體團隊的真實打卡日曆 (算薪水用，嚴格限當月)
                     if (rowDate.getMonth() === currentMonthIndex && rowDate.getFullYear() === currentYear) {
                         if (!realTeamDays[rowName]) realTeamDays[rowName] = {};
                         realTeamDays[rowName][dStr] = true;
@@ -768,7 +766,6 @@
             }
         }
         
-        // 結算未交報表
         var missingReports = [];
         for (var wd in workedDaysMap) {
             if (reportedDays.indexOf(wd) === -1 && wd !== todayMD) {
@@ -778,7 +775,6 @@
         globalMissingReports = missingReports.sort();
         renderHomeAlerts(); 
 
-        // 💡 結算本人的真實出勤天數 = Max(打卡天數, 後台交報表的天數)
         var myAttDays = realTeamDays[currentUser] ? Object.keys(realTeamDays[currentUser]).length : 0;
         var myFinalDays = Math.max(myAttDays, myStats.days);
         var myAvg = myFinalDays > 0 ? Math.round(myStats.points / myFinalDays) : 0;
@@ -803,7 +799,6 @@
             var teamListHTML = "";
             data.teamStats.forEach(function(member, index) {
                 
-                // 💡 結算部屬的真實出勤天數 = Max(打卡天數, 後台交報表的天數)
                 var attDaysCount = realTeamDays[member.name] ? Object.keys(realTeamDays[member.name]).length : 0;
                 var finalDays = Math.max(attDaysCount, member.days); 
                 member.days = finalDays;
@@ -915,12 +910,15 @@
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📅</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ' + monthlyMissingCount + ' 筆漏打卡</span></div><span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewProof\', document.querySelectorAll(\'.nav-item\')[2]); document.querySelectorAll(\'.report-tab\')[1].click();">前往補登 ➔</span></div><div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺卡明細：</strong> ' + datesStr + '</div></div>';
         }
 
-        if (typeof globalMissingReports !== "undefined" && globalMissingReports.length > 0) {
-            alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">' +
-                          '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">' +
-                          '<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📝</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">您有 ' + globalMissingReports.length + ' 天未交報表</span></div>' +
-                          '<span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewReport\', document.querySelectorAll(\'.nav-item\')[3]); document.querySelectorAll(\'.report-tab\')[0].click();">前往補寫 ➔</span></div>' +
-                          '<div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺交明細：</strong> ' + globalMissingReports.join(', ') + '</div></div>';
+        // 💡 修正：判定若是主管 (myIsManager 為 true)，則不顯示個人的未交報表警告
+        if (!myIsManager) {
+            if (typeof globalMissingReports !== "undefined" && globalMissingReports.length > 0) {
+                alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">' +
+                              '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">' +
+                              '<div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📝</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">您有 ' + globalMissingReports.length + ' 天未交報表</span></div>' +
+                              '<span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewReport\', document.querySelectorAll(\'.nav-item\')[3]); document.querySelectorAll(\'.report-tab\')[0].click();">前往補寫 ➔</span></div>' +
+                              '<div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺交明細：</strong> ' + globalMissingReports.join(', ') + '</div></div>';
+            }
         }
 
         var alertContainer = document.getElementById('homeAlerts');
