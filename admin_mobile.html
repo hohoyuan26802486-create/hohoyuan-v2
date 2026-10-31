@@ -886,6 +886,7 @@
 
     function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
+    // 💡 關鍵修正：套用嚴格工時計算邏輯 (強制 07:30 錨點並扣除午休)
     function calculateRealReportData() {
         if (!db.leave || !db.employees) return;
         
@@ -937,10 +938,23 @@
             for (let dKey in transportHours[emp].records) {
                 let rec = transportHours[emp].records[dKey];
                 if (rec.in && rec.out) {
-                    let rawHrs = (rec.out - rec.in) / 3600000;
+                    // 💡 加入 07:30 嚴格起算標準
+                    let inDate = new Date(rec.in);
+                    let standardStart = new Date(inDate.getFullYear(), inDate.getMonth(), inDate.getDate(), 7, 30, 0);
+                    
+                    let startTimeMs = rec.in;
+                    if (rec.in < standardStart.getTime()) {
+                        startTimeMs = standardStart.getTime(); // 早到不予計算，強制校正回 07:30
+                    }
+                    
+                    let rawHrs = (rec.out - startTimeMs) / 3600000;
+                    
+                    // 💡 扣除 1 小時休息時間 (如果上班時數大於 5 小時)
                     let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; 
                     actHrs = Math.max(0, actHrs);
+                    
                     totalW += actHrs;
+                    // 大於 8 小時的部分才列入超時估算
                     if (actHrs > 8) totalO += (actHrs - 8);
                     daysCnt++;
                 }
@@ -1220,7 +1234,6 @@
             </div>`;
         }
 
-        // 🌟 修復明細字串亂碼：改為傳統組裝法，避免巢狀模板崩潰
         let leaveRecordsHtml = '';
         if (leaveRecords.length > 0) {
             leaveRecords.forEach(item => {
