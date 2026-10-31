@@ -156,6 +156,7 @@
 
 <div class="app-container">
     <div id="loadingOverlay"><div class="spinner"></div><div id="loadingText" style="font-weight:900; color:var(--navy);">啟動企業智庫...</div></div>
+
     <input type="file" id="adminAvatarUpload" accept="image/*" style="display: none;" onchange="handleAdminAvatarUpload(event)">
 
     <!-- 登入介面 -->
@@ -277,6 +278,7 @@
             <div class="section-header">
                 <h3 class="section-title">管理決策報表</h3>
             </div>
+            
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h4 style="margin:0; color: var(--navy);">📈 本月加班趨勢</h4>
@@ -288,6 +290,7 @@
                 </div>
                 <div id="rptDeptOT"></div>
             </div>
+
             <div class="card">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <h4 style="margin:0; color: var(--navy);">🏖️ 本月請假狀況</h4>
@@ -299,6 +302,7 @@
                     <div class="interactive-row" style="text-align:center; flex:1;" onclick="showLeaveDetail('特休')"><div style="font-size:20px; font-weight:900; color:var(--info);" id="rptAnnual">0</div><div style="font-size:12px; color:var(--text-sub);">特休(天)</div></div>
                 </div>
             </div>
+
             <div class="card" id="rptDeptLeaveRatioCard">
                 <h4 style="margin:0 0 15px 0; color: var(--navy);">📊 異常：部門休假比例排行</h4>
                 <div style="font-size:12px; color:var(--text-sub); margin-bottom:15px;">( 依據：部門本月總請假天數 ÷ 部門總人數 )</div>
@@ -332,7 +336,6 @@
 
 <script>
     const ATTENDANCE_API_URL = "https://script.google.com/macros/s/AKfycbwpBQWJQfEPSZlcglHakr4pV6QXWrhi5xTZQIKqNC-XjkgDzWbegRqy-B5ENm3zdGohDQ/exec"; 
-    // 加入報表 API 的連線網址
     const REPORT_API_URL = "https://script.google.com/macros/s/AKfycbzpmg2hyolDllQpCZQfYN0kYiEdwm0EfSfZRRDgA_dLgSdbLJ8rMwxEQ6Cg0EK3QuHbvg/exec";
 
     let db = {};
@@ -446,7 +449,6 @@
             const attText = await fetchApi({ action: "getAttendance", month: currMonth, key: currentKey }).catch(()=>"[]");
             attDataThisMonth = JSON.parse(attText) || [];
 
-            // 💡 呼叫報表系統的 API，把包含 allReports 的整包數據抓下來
             try {
                 const reportRes = await fetch(REPORT_API_URL + "?t=" + new Date().getTime(), {
                     method: 'POST', headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -896,11 +898,10 @@
 
     function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
-    // 💡 點擊「運輸部即時工時追蹤」人員，彈出每日報表明細與打卡時間的函數
+    // 💡 查閱司機「全月每日明細」的彈窗函式 (包含時間排序修正)
     window.openTransportDetail = function(encodedStr) {
         let t = JSON.parse(decodeURIComponent(encodedStr));
         
-        // 尋找該員在報表資料庫中整個月的報告 (allReports)
         let repData = null;
         if (window.teamStatsData) {
             repData = window.teamStatsData.find(s => s.name === t.name);
@@ -911,8 +912,13 @@
 
         let bodyHtml = `<div style="margin-bottom: 15px; font-size:13px; color:var(--text-sub);">本月累計工時：<strong style="color:var(--navy); font-size:15px;">${t.workHrs.toFixed(1)} h</strong></div>`;
         
-        // 將紀錄按日期由新到舊排序
-        let dates = Object.keys(t.records).sort().reverse();
+        // 💡 修正日期排序邏輯：將字串轉為真實的時間戳記進行比對，徹底解決 10-5 排在 10-29 前面的問題
+        let dates = Object.keys(t.records).sort((a, b) => {
+            let da = new Date(a.replace(/-/g, '/')).getTime();
+            let db = new Date(b.replace(/-/g, '/')).getTime();
+            return db - da; // 由新排到舊
+        });
+
         if (dates.length === 0) {
             bodyHtml += `<div style="text-align:center; padding:20px; color:var(--text-light);">本月無紀錄</div>`;
         } else {
@@ -924,7 +930,6 @@
                 let dailyHrsStr = "-";
                 let overTimeStr = "";
                 
-                // 💡 在彈出視窗同樣套用 07:30 錨點來計算單日工時
                 if (rec.in && rec.out) {
                     let inDate = new Date(rec.in);
                     let standardStart = new Date(inDate.getFullYear(), inDate.getMonth(), inDate.getDate(), 7, 30, 0);
@@ -939,7 +944,6 @@
                     }
                 }
                 
-                // 將 2026-10-31 的格式轉為 10-31 以對齊 allReports 的 key
                 let parts = dKey.split("-"); 
                 let normDate = parts[0] + "-" + String(parts[1]).padStart(2, '0') + "-" + String(parts[2]).padStart(2, '0');
                 let repKey = parseInt(parts[0]) + "-" + parseInt(parts[1]) + "-" + parseInt(parts[2]);
@@ -1026,12 +1030,11 @@
                     
                     let startTimeMs = rec.in;
                     if (rec.in < standardStart.getTime()) {
-                        startTimeMs = standardStart.getTime(); // 提早打卡強制從 07:30 算
+                        startTimeMs = standardStart.getTime(); 
                     }
                     
                     let rawHrs = (rec.out - startTimeMs) / 3600000;
                     
-                    // 扣除 1 小時休息時間
                     let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; 
                     actHrs = Math.max(0, actHrs);
                     
@@ -1053,7 +1056,6 @@
             thArr.forEach(t => {
                 let overWarning = t.workHrs >= 200 ? "color:var(--danger);" : "color:var(--text-main);";
                 let encodedData = encodeURIComponent(JSON.stringify(t));
-                // 💡 加入點擊事件，呼叫 openTransportDetail 秀出報表與打卡時間
                 thHtml += `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed #eee; cursor:pointer;" onclick="openTransportDetail('${encodedData}')">
                         <div>
