@@ -110,7 +110,6 @@
         .rpt-input:focus, .rpt-select:focus, .rpt-textarea:focus { border-color: var(--primary); background: white;}
         .rpt-textarea { height: 70px; resize: vertical; }
 
-        /* 績效看板專用 CSS */
         .perf-summary { display: flex; gap: 8px; margin-bottom: 15px; text-align: center; }
         .perf-box { flex: 1; background: #f8f9fa; padding: 12px 5px; border-radius: 10px; border: 1px solid #eee; }
         .perf-num { font-size: 18px; font-weight: 900; color: var(--primary); margin-top: 5px; }
@@ -160,7 +159,6 @@
             </div>
         </div>
 
-        <!-- 📍 打卡區塊 -->
         <div id="viewHome" class="view-section active">
             <div id="homeAlerts" style="display:none; width:100%; display:flex; flex-direction:column; margin-bottom: 10px;"></div>
             <div class="info-cards">
@@ -217,7 +215,6 @@
             </div>
         </div>
 
-        <!-- 📝 請假區塊 -->
         <div id="viewLeave" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">送出新假單</h3>
             <div class="app-form">
@@ -267,7 +264,6 @@
             </div>
         </div>
 
-        <!-- 📎 雙功能補件區塊 -->
         <div id="viewProof" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">補件與異常申請</h3>
             <div class="report-tabs">
@@ -318,7 +314,6 @@
             </div>
         </div>
 
-        <!-- 📊 報表區塊 -->
         <div id="viewReport" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">工作成果與回報</h3>
             <div class="report-tabs">
@@ -337,7 +332,6 @@
             </div>
         </div>
         
-        <!-- 📈 績效戰情室區塊 -->
         <div id="viewPerformance" class="view-section">
             <h3 style="margin-top:0; color:var(--primary);">📈 績效戰情室 (本月)</h3>
             
@@ -363,9 +357,12 @@
                 <div id="perfMyErrList" style="display:none;"></div>
             </div>
 
-            <!-- 團隊管理看板 (僅主管可見) -->
+            <!-- 💡 更新：在團隊看板標題旁邊新增「匯出 CSV」按鈕 -->
             <div id="perfTeamBoard" class="app-form" style="display:none; padding:15px;">
-                <div style="font-size:14px; font-weight:bold; color:#0f9d58; margin-bottom:10px;">📊 團隊管理看板 <span style="font-size:11px; font-weight:normal; color:#777;">(點擊姓名可看明細)</span></div>
+                <div style="font-size:14px; font-weight:bold; color:#0f9d58; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>📊 團隊看板 <span style="font-size:11px; font-weight:normal; color:#777;">(點名看明細)</span></span>
+                    <button onclick="exportPerformanceCSV()" style="background:#0f9d58; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1);">📥 匯出CSV</button>
+                </div>
                 <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px; border-bottom:1px dashed #ccc; padding-bottom:5px; display:flex; justify-content:space-between;">
                     <span style="flex:2;">同仁</span>
                     <span style="flex:1.5; text-align:center;">總送/日均</span>
@@ -376,7 +373,6 @@
             </div>
         </div>
 
-        <!-- 📁 紀錄區塊 -->
         <div id="viewHistory" class="view-section">
             <div class="toggle-group" style="margin-bottom: 20px; width:100%; box-sizing:border-box;">
                 <input type="radio" name="historyType" id="histAtt" value="att" checked onchange="renderHistory()">
@@ -391,7 +387,6 @@
             <div id="historyContent" style="display: flex; flex-direction: column; gap: 5px;"></div>
         </div>
 
-        <!-- ⬇️ 底部導覽列 -->
         <div class="bottom-nav">
             <div class="nav-item active" onclick="switchNav('viewHome', this)">
                 <div class="nav-icon">📍</div>打卡
@@ -563,15 +558,12 @@
         return false;
     }
 
-    // 💡 關鍵修正：嚴格要求系統「先看考勤」再「載入戰情」
     window.onload = function() {
         console.log("App Starting...");
         var savedUser = localStorage.getItem('hohoyuan_user');
         if (savedUser) {
             currentUser = savedUser;
             showMainScreen();
-            
-            // 💡 確保順序：確認考勤解析完畢後，再發動後續 API
             checkTodayAttendance().then(function() {
                 fetchBackendData(); 
             });
@@ -626,7 +618,6 @@
             if(document.getElementById('viewHistory').className.indexOf('active') !== -1) renderHistory();
             renderHomeAlerts(); handleTypeChange();
 
-            // 💡 權限確認完畢，向後台請求戰情室資料
             fetchPerformanceData(); 
         })
         .catch(function(e) { console.error("資料載入失敗:", e); });
@@ -740,39 +731,45 @@
         }).catch(function(e) { console.error("戰情室連線錯誤", e); });
     }
     
-    // 💡 讓手機前端扮演大腦，親自用手上的出勤紀錄扣除後台回傳的報表日期
+    // 💡 關鍵修正：一般員工只比對這個月，主管能看到這兩個月的缺交狀況
     function renderPerformanceUI(data) {
         var myStats = data.myStats;
         
         var reportedDays = myStats.reportedDays || [];
         var workedDaysMap = {};
         
+        var isManager = myIsManager;
+        var now = new Date();
+        var currentMonthIndex = now.getMonth();
+        var currentYear = now.getFullYear();
+        
         if (typeof currentMonthAttData !== "undefined" && currentMonthAttData.length > 0) {
             for (var k = 1; k < currentMonthAttData.length; k++) {
                 var rowName = String(currentMonthAttData[k][1]).trim();
                 var rowType = String(currentMonthAttData[k][3]).trim();
                 var rowDate = new Date(currentMonthAttData[k][0]);
-                // 確認這天是「上班」卡，而且是本人
+                
                 if (rowName === currentUser && !isNaN(rowDate.getTime()) && rowType.indexOf("上班") !== -1) {
-                    var dStr = pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate()); 
-                    workedDaysMap[dStr] = true;
+                    // 主管看兩個月，員工只看這個月
+                    if (isManager || (rowDate.getMonth() === currentMonthIndex && rowDate.getFullYear() === currentYear)) {
+                        var dStr = pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate()); 
+                        workedDaysMap[dStr] = true;
+                    }
                 }
             }
         }
         
         var missingReports = [];
-        var now = new Date();
         var todayMD = pad(now.getMonth()+1) + '/' + pad(now.getDate());
         
         for (var wd in workedDaysMap) {
-            // 如果有打上班卡，卻沒有寫報表，且不是今天，就抓出來警告！
             if (reportedDays.indexOf(wd) === -1 && wd !== todayMD) {
                 missingReports.push(wd);
             }
         }
         
         globalMissingReports = missingReports.sort();
-        renderHomeAlerts(); // 刷新首頁的警告區塊
+        renderHomeAlerts(); 
 
         var myAvg = myStats.days > 0 ? Math.round(myStats.points / myStats.days) : 0;
         var myRate = myStats.points > 0 ? ((myStats.errors / myStats.points) * 100).toFixed(1) + "%" : (myStats.errors > 0 ? "100%" : "0%");
@@ -796,7 +793,6 @@
             var teamListHTML = "";
             data.teamStats.forEach(function(member, index) {
                 var isWarning = member.errors > 0 ? 'color:var(--danger); font-weight:bold;' : 'color:var(--text-main);';
-                // 💡 加入藍色可點擊特效，點擊後會觸發 showEmployeeDetails 函數
                 teamListHTML += '<div class="team-perf-row">' +
                                 '<span style="flex:2; font-weight:bold; color:var(--primary); text-decoration:underline; cursor:pointer;" onclick="showEmployeeDetails(' + index + ')">' + member.name + '</span>' +
                                 '<span style="flex:1.5; text-align:center;">' + member.points + ' / ' + member.avgPoints + '</span>' +
@@ -809,7 +805,6 @@
         }
     }
 
-    // 💡 主管點擊員工姓名後，彈出今日報表明細與數據的函數
     window.showEmployeeDetails = function(index) {
         if (!window.globalTeamStats) return;
         var member = window.globalTeamStats[index];
@@ -819,6 +814,7 @@
             title: '👤 ' + member.name,
             html: '<div style="text-align:left; font-size:14px; line-height:1.8;">' +
                   '<b>本月總送點數：</b> ' + member.points + ' 點<br>' +
+                  '<b>本月出勤天數：</b> ' + member.days + ' 天<br>' +
                   '<b>本月出錯次數：</b> <span style="color:var(--danger);">' + member.errors + ' 次</span><br>' +
                   '<b>目前出錯率：</b> <span style="color:var(--danger); font-weight:bold;">' + member.rate + '</span><br>' +
                   '<hr style="border:0; border-top:1px dashed #ccc; margin:12px 0;">' +
@@ -828,6 +824,34 @@
             confirmButtonText: '關閉',
             confirmButtonColor: 'var(--primary)'
         });
+    };
+
+    // 💡 新增：主管專用匯出 CSV 功能
+    window.exportPerformanceCSV = function() {
+        if (!window.globalTeamStats || window.globalTeamStats.length === 0) {
+            return showAlert('提示', '目前沒有團隊資料可供匯出', 'warning');
+        }
+        
+        var csv = "\uFEFF"; // 讓 Excel 可以正確讀取繁體中文
+        csv += "司機姓名,本月總送點數,本月出勤天數,日均點數,出錯次數,出錯率\n";
+        
+        window.globalTeamStats.forEach(function(m) {
+            csv += m.name + "," + m.points + "," + m.days + "," + m.avgPoints + "," + m.errors + "," + m.rate + "\n";
+        });
+        
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement("a");
+        var url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        
+        var now = new Date();
+        var monthStr = now.getFullYear() + "_" + pad(now.getMonth() + 1);
+        link.setAttribute("download", "運輸部績效結算表_" + monthStr + ".csv");
+        
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     function renderHomeAlerts() {
@@ -875,7 +899,6 @@
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 18px;">📅</span><span style="font-size: 13px; font-weight: bold; color: #d93025;">本月有 ' + monthlyMissingCount + ' 筆漏打卡</span></div><span style="font-size: 11px; color: white; background: #d93025; padding: 2px 6px; border-radius: 4px; font-weight:bold;" onclick="switchNav(\'viewProof\', document.querySelectorAll(\'.nav-item\')[2]); document.querySelectorAll(\'.report-tab\')[1].click();">前往補登 ➔</span></div><div style="font-size: 12px; color: #d93025; padding-left: 26px; line-height: 1.4;"><strong>缺卡明細：</strong> ' + datesStr + '</div></div>';
         }
 
-        // 💡 確保這裡能畫出我們剛剛前台運算出來的「未交報表」警告！
         if (typeof globalMissingReports !== "undefined" && globalMissingReports.length > 0) {
             alertsHTML += '<div style="background: #fce8e6; padding: 12px 16px; border-radius: 12px; border: 1px dashed #d93025; margin-bottom: 10px; display: flex; flex-direction: column; box-shadow: 0 2px 5px rgba(0,0,0,0.03);">' +
                           '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">' +
@@ -888,7 +911,6 @@
         if (alertContainer) { alertContainer.innerHTML = alertsHTML; alertContainer.style.display = alertsHTML ? "flex" : "none"; }
     }
 
-    // 💡 升級為 Promise，讓系統可以「排隊」等它算完考勤
     function checkTodayAttendance() {
         var now = new Date();
         var currMonth = now.getFullYear() + '-' + pad(now.getMonth() + 1);
@@ -962,7 +984,7 @@
             if(document.getElementById('viewHistory').className.indexOf('active') !== -1) renderHistory();
             renderHomeAlerts();
             
-            return true; // 告知系統：我的考勤解析完成了，你可以繼續了！
+            return true;
         }).catch(function(e){
             document.getElementById('cardAttStatus').innerText = "無法載入";
             return false;
