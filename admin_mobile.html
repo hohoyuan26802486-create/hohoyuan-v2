@@ -438,6 +438,7 @@
         }
     }
 
+    // 💡 關鍵修正：同時加載「當月」與「上月」打卡資料，讓主管能看到兩個月的完整軌跡
     async function loadSecureData() {
         showLoading("獲取最高權限資料與日報...");
         try {
@@ -446,8 +447,27 @@
             
             const now = new Date();
             const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const attText = await fetchApi({ action: "getAttendance", month: currMonth, key: currentKey }).catch(()=>"[]");
-            attDataThisMonth = JSON.parse(attText) || [];
+            const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+            // 平行發出兩個月份的出勤查詢
+            const p1 = fetchApi({ action: "getAttendance", month: currMonth, key: currentKey }).catch(()=>"[]");
+            const p2 = fetchApi({ action: "getAttendance", month: prevMonth, key: currentKey }).catch(()=>"[]");
+
+            const [currText, prevText] = await Promise.all([p1, p2]);
+            const currData = JSON.parse(currText) || [];
+            const prevData = JSON.parse(prevText) || [];
+
+            attDataThisMonth = [];
+            if (currData.length > 0) {
+                attDataThisMonth = currData.slice();
+            }
+            if (prevData.length > 1) {
+                if (attDataThisMonth.length === 0) attDataThisMonth.push(prevData[0]);
+                for (let j = 1; j < prevData.length; j++) {
+                    attDataThisMonth.push(prevData[j]);
+                }
+            }
 
             try {
                 const reportRes = await fetch(REPORT_API_URL + "?t=" + new Date().getTime(), {
@@ -462,8 +482,12 @@
 
             analyzeDataAndRender();
             calculateRealReportData(); 
-        } catch(e) { console.error(e); Swal.fire('警告', '部分資料載入失敗，可能影響統計精準度', 'warning'); }
-        finally { hideLoading(); }
+        } catch(e) { 
+            console.error(e); 
+            Swal.fire('警告', '部分資料載入失敗，可能影響統計精準度', 'warning'); 
+        } finally { 
+            hideLoading(); 
+        }
     }
 
     function analyzeDataAndRender() {
@@ -898,7 +922,7 @@
 
     function closeModal() { document.getElementById('globalModal').style.display = 'none'; }
 
-    // 💡 修正：排序為最新在最前面，並加入嚴格工時計算邏輯
+    // 💡 查閱司機「跨月每日明細」的彈窗函式
     window.openTransportDetail = function(encodedStr) {
         let t = JSON.parse(decodeURIComponent(encodedStr));
         
@@ -910,13 +934,13 @@
 
         document.getElementById('modalMainTitle').innerText = `${t.name} - 每日工時與報表`;
 
-        let bodyHtml = `<div style="margin-bottom: 15px; font-size:13px; color:var(--text-sub);">本月累計工時：<strong style="color:var(--navy); font-size:15px;">${t.workHrs.toFixed(1)} h</strong></div>`;
+        let bodyHtml = `<div style="margin-bottom: 15px; font-size:13px; color:var(--text-sub);">本月累計工時：<strong style="color:var(--navy); font-size:15px;">${t.workHrs.toFixed(1)} h</strong> <span style="font-size:11px; color:#666;">(展示近兩個月明細)</span></div>`;
         
-        // 💡 修正日期排序邏輯：將字串轉為真實的時間戳記進行比對，解決 10-5 排在 10-29 前面的問題
+        // 💡 依據時間戳記由最新排到最舊
         let dates = Object.keys(t.records).sort((a, b) => {
             let da = new Date(a.replace(/-/g, '/')).getTime();
             let db = new Date(b.replace(/-/g, '/')).getTime();
-            return db - da; // 由最新排到最舊
+            return db - da; 
         });
 
         if (dates.length === 0) {
@@ -973,7 +997,7 @@
         document.getElementById('globalModal').style.display = 'flex';
     }
 
-    // 💡 關鍵修復點：加入強效防護機制防止錯誤的屬性取值造成系統當機
+    // 💡 關鍵修復：本月累計工時只計入當月，但彈窗可容納跨月所有打卡明細
     function calculateRealReportData() {
         if (!db.leave || !db.employees) return;
         
@@ -1025,7 +1049,6 @@
             for (let dKey in transportHours[emp].records) {
                 let rec = transportHours[emp].records[dKey];
                 if (rec.in && rec.out) {
-                    
                     let inDate = new Date(rec.in);
                     let standardStart = new Date(inDate.getFullYear(), inDate.getMonth(), inDate.getDate(), 7, 30, 0);
                     
@@ -1035,16 +1058,18 @@
                     }
                     
                     let rawHrs = (rec.out - startTimeMs) / 3600000;
-                    
                     let actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs; 
                     actHrs = Math.max(0, actHrs);
                     
-                    totalW += actHrs;
-                    if (actHrs > 8) totalO += (actHrs - 8);
-                    daysCnt++;
+                    // 💡 注意：首頁的累計數據只計算「當月」
+                    if (inDate.getFullYear() === currentYear && inDate.getMonth() === currentMonth) {
+                        totalW += actHrs;
+                        if (actHrs > 8) totalO += (actHrs - 8);
+                        daysCnt++;
+                    }
                 }
             }
-            if (totalW > 0 || daysCnt > 0) { 
+            if (Object.keys(transportHours[emp].records).length > 0 || totalW > 0) { 
                 thArr.push({ name: emp, workHrs: totalW, otHrs: totalO, days: daysCnt, records: transportHours[emp].records });
             }
         }
@@ -1052,7 +1077,7 @@
         thArr.sort((a,b) => b.workHrs - a.workHrs);
         let thHtml = '';
         if (thArr.length === 0) {
-            thHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">本月尚無運輸部打卡紀錄</div>';
+            thHtml = '<div style="font-size:12px; color:var(--text-light); text-align:center;">尚無運輸部打卡紀錄</div>';
         } else {
             thArr.forEach(t => {
                 let overWarning = t.workHrs >= 200 ? "color:var(--danger);" : "color:var(--text-main);";
@@ -1086,11 +1111,9 @@
 
                 if (type === "加班申請") {
                     let appliedOt = rawHrs;
-                    // 💡 防護機制：確保 reason 轉成字串後再使用 match，防止數字型態導致系統當機
                     let otMatch = reason ? reason.match(/申請\s*([\d\.]+)\s*小時/) : null;
                     if (otMatch && otMatch[1]) appliedOt = parseFloat(otMatch[1]);
                     
-                    // 💡 防護機制：預防跨部門/離職員工資料引發 undefined 錯誤
                     if (!globalReportOT[dept]) globalReportOT[dept] = { total: 0, emps: {} };
                     
                     if (globalReportOT[dept]) {
@@ -1105,7 +1128,6 @@
                     
                     globalReportLeave[type].push({ name: name, dept: dept, days: days, date: `${sDate.getDate()}號`, reason: reason || "無備註" });
                     
-                    // 💡 防護機制：預防跨部門/離職員工資料引發 undefined 錯誤
                     if (!deptLeaveStats[dept]) deptLeaveStats[dept] = { totalDays: 0, headcount: 0 };
                     if (deptLeaveStats[dept]) deptLeaveStats[dept].totalDays += days;
                 }
