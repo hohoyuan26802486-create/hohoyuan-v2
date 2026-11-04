@@ -1175,7 +1175,6 @@
 
             var todayHTML = '<div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;"><div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">🏝️ 今日休假人員</div><div style="font-size: 13px; color: var(--text-main); line-height: 1.6; padding-left: 5px;">' + (todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>") + '</div></div>';
 
-            // 🌟 【新增】部門今日出勤與工時面板
             var teamAttHTML = '<div style="background: #f4f8fb; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bbdefb;"><div style="font-weight: bold; color: #1a73e8; margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">⏱️ 今日出勤與工時</div>';
             var teamAttList = [];
             var todayStrYMD_slash = today.getFullYear() + '/' + pad(today.getMonth()+1) + '/' + pad(today.getDate());
@@ -1205,11 +1204,12 @@
                             }
                         }
                         
+                        var statusText = "尚未打卡";
+                        var statusColor = "#ccc";
+                        var workHoursText = "<span class='work-hour-val' style='color:#ccc;'>0.0 h</span>";
+                        var finalHrs = 0;
+
                         if (eHasIn) {
-                            var statusText = "";
-                            var statusColor = "";
-                            var workHoursText = "";
-                            
                             if (eHasIn && eHasOut) {
                                 statusText = "已下班 (" + eOutTime + ")";
                                 statusColor = "#70757a";
@@ -1217,7 +1217,7 @@
                                 var msDiff = eOutDate.getTime() - eInDate.getTime();
                                 var rawHrs = msDiff / 3600000;
                                 var actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
-                                var finalHrs = Math.max(0, actHrs).toFixed(1);
+                                finalHrs = Math.max(0, actHrs).toFixed(1);
                                 workHoursText = "<span class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</span>";
                             } else {
                                 statusText = "上班中 (" + eInTime + ")";
@@ -1226,12 +1226,11 @@
                                 var msDiff = todayTime.getTime() - eInDate.getTime();
                                 var rawHrs = msDiff / 3600000;
                                 var actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
-                                var finalHrs = Math.max(0, actHrs).toFixed(1);
+                                finalHrs = Math.max(0, actHrs).toFixed(1);
                                 workHoursText = "<span class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</span>";
                             }
-                            
-                            teamAttList.push({ name: eName, status: statusText, color: statusColor, html: "<div class='work-hour-item'><div class='work-hour-name'>" + eName + " <span style='font-size:11px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div>" + workHoursText + "</div>", hours: parseFloat(finalHrs) });
                         }
+                        teamAttList.push({ name: eName, status: statusText, color: statusColor, html: "<div class='work-hour-item'><div class='work-hour-name'>" + eName + " <span style='font-size:11px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div>" + workHoursText + "</div>", hours: parseFloat(finalHrs) });
                     }
                 }
             }
@@ -1254,8 +1253,6 @@
                 }
             }
             
-            if (teamLeaves.length === 0) { container.innerHTML = teamAttHTML + todayHTML + "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>"; return; }
-
             var pendingTeam = []; var nonPendingTeam = [];
             for(var pt=0; pt<teamLeaves.length; pt++) {
                 if(String(teamLeaves[pt][8]).indexOf('待') !== -1) pendingTeam.push(teamLeaves[pt]);
