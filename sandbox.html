@@ -1195,7 +1195,8 @@
                 for (var e2 = 0; e2 < globalDB.employees.length; e2++) {
                     var empR = globalDB.employees[e2];
                     var eName = empR[0]; var eDept = empR[1];
-                    var eStatus = String(empR[19] || "在職").trim();
+                    // 🔥 關鍵修正：手機版 API 回傳的精簡資料中，「在職狀態」是第 12 欄 (Index 11)
+                    var eStatus = String(empR[11] || "在職").trim();
                     if (!eName || eName === "姓名") continue; 
                     
                     // 🚨 過濾掉離職人員，不管他之前有沒有打卡紀錄，今天都不會出現在面板上
@@ -1275,6 +1276,8 @@
                 }
             }
             
+            if (teamLeaves.length === 0) { container.innerHTML = teamAttHTML + todayHTML + "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>"; return; }
+
             var pendingTeam = []; var nonPendingTeam = [];
             for(var pt=0; pt<teamLeaves.length; pt++) {
                 if(String(teamLeaves[pt][8]).indexOf('待') !== -1) pendingTeam.push(teamLeaves[pt]);
