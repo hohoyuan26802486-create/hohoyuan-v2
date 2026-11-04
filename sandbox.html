@@ -120,11 +120,22 @@
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .work-hour-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px dashed #eee; background: white; margin-bottom: 5px; border-radius: 8px;}
-        .work-hour-name { font-weight: bold; color: var(--text-main); font-size: 15px; }
+        /* 🌟 全新升級：即時工時追蹤面板樣式 */
+        .work-hour-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px dashed #eee; background: white; margin-bottom: 0; border-radius: 0;}
+        .work-hour-item:last-child { border-bottom: none; }
+        .work-hour-info { display: flex; flex-direction: column; gap: 6px; }
+        .work-hour-name { font-weight: 800; color: var(--text-main); font-size: 16px; }
+        .work-hour-link { font-size: 12px; color: var(--primary); text-decoration: none; cursor: pointer; font-weight: bold; }
+        
+        .work-hour-stats { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         .work-hour-val { font-size: 18px; font-weight: 900; }
-        .val-danger { color: var(--danger); }
-        .val-primary { color: var(--primary); }
+        .val-danger { color: #d93025; }
+        .val-primary { color: #202124; }
+        .work-hour-over { font-size: 12px; color: #d93025; font-weight: bold; }
+        
+        .team-att-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 5px;}
+        .team-att-title { font-weight: 900; color: #202124; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+        .team-att-badge { background: #d93025; color: white; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 12px; }
     </style>
 </head>
 <body>
@@ -1175,7 +1186,8 @@
 
             var todayHTML = '<div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;"><div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">🏝️ 今日休假人員</div><div style="font-size: 13px; color: var(--text-main); line-height: 1.6; padding-left: 5px;">' + (todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>") + '</div></div>';
 
-            var teamAttHTML = '<div style="background: #f4f8fb; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bbdefb;"><div style="font-weight: bold; color: #1a73e8; margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">⏱️ 今日出勤與工時</div>';
+            // 🌟 【重構設計稿樣式】：部門今日出勤與工時面板，且過濾掉離職人員
+            var teamAttHTML = '<div style="background: white; padding: 10px 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.03);"><div class="team-att-header"><span class="team-att-title">⏱️ 今日出勤與工時</span><span class="team-att-badge">即時打卡累計</span></div>';
             var teamAttList = [];
             var todayStrYMD_slash = today.getFullYear() + '/' + pad(today.getMonth()+1) + '/' + pad(today.getDate());
 
@@ -1183,7 +1195,11 @@
                 for (var e2 = 0; e2 < globalDB.employees.length; e2++) {
                     var empR = globalDB.employees[e2];
                     var eName = empR[0]; var eDept = empR[1];
+                    var eStatus = String(empR[19] || "在職").trim();
                     if (!eName || eName === "姓名") continue; 
+                    
+                    // 🚨 過濾掉離職人員，不管他之前有沒有打卡紀錄，今天都不會出現在面板上
+                    if (eStatus.indexOf("離職") !== -1) continue;
                     
                     var isSameDeptCheck = isManagedBy(eDept, myDept);
                     
@@ -1206,7 +1222,6 @@
                         
                         var statusText = "尚未打卡";
                         var statusColor = "#ccc";
-                        var workHoursText = "<span class='work-hour-val' style='color:#ccc;'>0.0 h</span>";
                         var finalHrs = 0;
 
                         if (eHasIn) {
@@ -1218,7 +1233,6 @@
                                 var rawHrs = msDiff / 3600000;
                                 var actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
                                 finalHrs = Math.max(0, actHrs).toFixed(1);
-                                workHoursText = "<span class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</span>";
                             } else {
                                 statusText = "上班中 (" + eInTime + ")";
                                 statusColor = "#0f9d58";
@@ -1227,10 +1241,18 @@
                                 var rawHrs = msDiff / 3600000;
                                 var actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
                                 finalHrs = Math.max(0, actHrs).toFixed(1);
-                                workHoursText = "<span class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</span>";
                             }
                         }
-                        teamAttList.push({ name: eName, status: statusText, color: statusColor, html: "<div class='work-hour-item'><div class='work-hour-name'>" + eName + " <span style='font-size:11px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div>" + workHoursText + "</div>", hours: parseFloat(finalHrs) });
+                        
+                        var otText = "";
+                        if (finalHrs > 8) {
+                            var otHrs = (finalHrs - 8).toFixed(1);
+                            otText = "<div class='work-hour-over'>實際超時: " + otHrs + " h</div>";
+                        }
+                        
+                        var itemHTML = "<div class='work-hour-item'><div class='work-hour-info'><div class='work-hour-name'>" + eName + " <span style='font-size:12px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div><a class='work-hour-link'>點擊查看每日明細 ></a></div><div class='work-hour-stats'><div class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</div>" + otText + "</div></div>";
+                        
+                        teamAttList.push({ name: eName, html: itemHTML, hours: parseFloat(finalHrs) });
                     }
                 }
             }
