@@ -120,7 +120,6 @@
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* 🌟 全新升級：即時工時追蹤面板樣式 */
         .work-hour-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px dashed #eee; background: white; margin-bottom: 0; border-radius: 0;}
         .work-hour-item:last-child { border-bottom: none; }
         .work-hour-info { display: flex; flex-direction: column; gap: 6px; }
@@ -964,7 +963,7 @@
                     var r = globalDB.leave[j];
                     if (r[2] === currentUser && r[8] === "已生效") {
                         var sDate = new Date(r[5]); var eDate = new Date(r[6]);
-                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime()) && sDate.getFullYear() === currentYear) {
+                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
                             var rawHours = (eDate.getTime() - sDate.getTime()) / 3600000;
                             var days = 0;
                             if (rawHours > 16) { days = Math.ceil(rawHours / 24); } else { var actHours = rawHours >= 5 ? rawHours - 1 : rawHours; days = Math.min(8, actHours) / 8; }
@@ -1085,6 +1084,60 @@
         return '<div class="history-card leave" style="border-left-color:' + statusColor + ';"><div class="hist-content"><div><div class="hist-title">' + titleHTML + '</div><div class="hist-sub" style="margin-bottom:3px;">' + sStr + ' ~ ' + eStr + '</div><div class="hist-sub">📝 ' + reason + '</div></div><div class="hist-status" style="color:' + statusColor + '; border: 1px solid ' + statusColor + '33; background: #fff;">' + status + '</div></div>' + actionBtnsHTML + '</div>';
     }
 
+    // 🌟 新增：點擊查看每日明細專屬彈窗
+    window.viewMemberDailyDetail = function(empName) {
+        var today = new Date();
+        var pad = function(n) { return n.toString().padStart(2, '0'); };
+        var todayStr = today.getFullYear() + '/' + pad(today.getMonth() + 1) + '/' + pad(today.getDate());
+        
+        var logs = [];
+        for (var i = 1; i < currentMonthAttData.length; i++) {
+            var row = currentMonthAttData[i];
+            if (String(row[1]).trim() === empName) {
+                var d = new Date(row[0]);
+                if (!isNaN(d.getTime())) {
+                    var dStr = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate());
+                    if (dStr === todayStr) {
+                        logs.push({
+                            time: pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()),
+                            type: row[3] || "未知",
+                            status: row[4] || "",
+                            reason: row[5] || ""
+                        });
+                    }
+                }
+            }
+        }
+        
+        if (logs.length === 0) {
+            showAlert('出勤明細', '員工【' + empName + '】今日尚無任何打卡紀錄。', 'info');
+            return;
+        }
+        
+        var html = '<div style="text-align:left; font-size:13px; max-height:260px; overflow-y:auto;">';
+        for (var j = 0; j < logs.length; j++) {
+            var item = logs[j];
+            var color = item.type.indexOf('上班') !== -1 ? '#1a73e8' : '#e67c73';
+            html += '<div style="padding:8px 0; border-bottom:1px dashed #eee;">' +
+                    '<b style="color:' + color + ';">[' + item.type + '] ' + item.time + '</b><br>' +
+                    '<span style="color:#555;">狀態：' + (item.status || "正常") + '</span>' +
+                    (item.reason ? '<br><span style="color:#888;">備註：' + item.reason + '</span>' : '') +
+                    '</div>';
+        }
+        html += '</div>';
+        
+        if (typeof Swal !== "undefined") {
+            Swal.fire({
+                title: empName + ' 今日明細',
+                html: html,
+                confirmButtonText: '關閉',
+                confirmButtonColor: 'var(--primary)'
+            });
+        } else {
+            alert(empName + ' 今日打卡紀錄共 ' + logs.length + ' 筆');
+        }
+    };
+
     function renderHistory() {
         var types = document.getElementsByName('historyType');
         var type = 'att';
@@ -1186,7 +1239,6 @@
 
             var todayHTML = '<div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;"><div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">🏝️ 今日休假人員</div><div style="font-size: 13px; color: var(--text-main); line-height: 1.6; padding-left: 5px;">' + (todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>") + '</div></div>';
 
-            // 🌟 【重構設計稿樣式】：部門今日出勤與工時面板，且過濾掉離職人員
             var teamAttHTML = '<div style="background: white; padding: 10px 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.03);"><div class="team-att-header"><span class="team-att-title">⏱️ 今日出勤與工時</span><span class="team-att-badge">即時打卡累計</span></div>';
             var teamAttList = [];
             var todayStrYMD_slash = today.getFullYear() + '/' + pad(today.getMonth()+1) + '/' + pad(today.getDate());
@@ -1195,11 +1247,9 @@
                 for (var e2 = 0; e2 < globalDB.employees.length; e2++) {
                     var empR = globalDB.employees[e2];
                     var eName = empR[0]; var eDept = empR[1];
-                    // 🔥 關鍵修正：手機版 API 回傳的精簡資料中，「在職狀態」是第 12 欄 (Index 11)
                     var eStatus = String(empR[11] || "在職").trim();
                     if (!eName || eName === "姓名") continue; 
                     
-                    // 🚨 過濾掉離職人員，不管他之前有沒有打卡紀錄，今天都不會出現在面板上
                     if (eStatus.indexOf("離職") !== -1) continue;
                     
                     var isSameDeptCheck = isManagedBy(eDept, myDept);
@@ -1251,7 +1301,8 @@
                             otText = "<div class='work-hour-over'>實際超時: " + otHrs + " h</div>";
                         }
                         
-                        var itemHTML = "<div class='work-hour-item'><div class='work-hour-info'><div class='work-hour-name'>" + eName + " <span style='font-size:12px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div><a class='work-hour-link'>點擊查看每日明細 ></a></div><div class='work-hour-stats'><div class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</div>" + otText + "</div></div>";
+                        var safeEmpName = eName.replace(/'/g, "\\'");
+                        var itemHTML = "<div class='work-hour-item'><div class='work-hour-info'><div class='work-hour-name'>" + eName + " <span style='font-size:12px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div><a class='work-hour-link' onclick=\"window.viewMemberDailyDetail('" + safeEmpName + "')\">點擊查看每日明細 &gt;</a></div><div class='work-hour-stats'><div class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</div>" + otText + "</div></div>";
                         
                         teamAttList.push({ name: eName, html: itemHTML, hours: parseFloat(finalHrs) });
                     }
@@ -1276,8 +1327,6 @@
                 }
             }
             
-            if (teamLeaves.length === 0) { container.innerHTML = teamAttHTML + todayHTML + "<div style='text-align:center; padding:30px; color:gray; font-weight:bold;'>目前沒有部屬的假單紀錄。</div>"; return; }
-
             var pendingTeam = []; var nonPendingTeam = [];
             for(var pt=0; pt<teamLeaves.length; pt++) {
                 if(String(teamLeaves[pt][8]).indexOf('待') !== -1) pendingTeam.push(teamLeaves[pt]);
@@ -1523,7 +1572,10 @@
         var myDept = empRecord[1]; var isManager = myIsManager; 
         reportBlockCount++; var container = document.getElementById('dynamicReports'); var innerHtml = ''; 
         
-        if (isManager) { 
+        // 🌟 核心修正：許翊宏身兼司機，讓他直接填寫「運輸部司機報表」，不填寫主管問答題
+        if (currentUser === "許翊宏") {
+            innerHtml = '<label class="rpt-label">今日總送貨點數：</label><input type="number" class="rpt-input trans-points" placeholder="幾點"><label class="rpt-label">🚛 今日駕駛車號：</label><input type="text" class="rpt-input trans-plate" placeholder="例如: ABC-1234"><label class="rpt-label">🚗 出車 / 回公司里程數：</label><input type="text" class="rpt-input trans-km" placeholder="例如: 出1500 / 回1550"><label class="rpt-label">油錢與車輛保養：</label><textarea class="rpt-textarea trans-car" placeholder="加油金額？車子需保養嗎？"></textarea><label class="rpt-label" style="color:var(--danger);">🔄 客戶退貨紀錄 (第一線)：</label><textarea class="rpt-textarea trans-return" placeholder="品名/數量與原因 (送錯/破損)"></textarea><label class="rpt-label">退貨處置判斷：</label><select class="rpt-select trans-action"><option value="無退貨">無退貨</option><option value="可重新銷售">可重新銷售</option><option value="需報廢處理">需報廢處理</option></select><label class="rpt-label">🛑 配送異常與客戶反映：</label><textarea class="rpt-textarea trans-delay" placeholder="沒送到原因？客戶抱怨？"></textarea>';
+        } else if (isManager) { 
             innerHtml = '<label class="rpt-label">團隊今日狀態：</label><select class="rpt-select m-status"><option value="🟢 正常">🟢 正常</option><option value="🟡 追趕中">🟡 追趕中</option><option value="🔴 發生異常">🔴 發生異常</option></select><label class="rpt-label">今日重大問題排除：</label><textarea class="rpt-textarea m-issue" placeholder="解決了哪些下屬無法解決的難題？"></textarea><label class="rpt-label">跨部門協調事項：</label><textarea class="rpt-textarea m-coord" placeholder="今天與誰對接、溝通結果？"></textarea><label class="rpt-label">明日重點戰略：</label><textarea class="rpt-textarea m-plan" placeholder="明天部門的核心目標？"></textarea><label class="rpt-label">人員觀察與建議：</label><textarea class="rpt-textarea m-advice" placeholder="誰表現好？誰需要輔導？"></textarea>'; 
         } else { 
             if (currentUser === "林心評" || currentUser === "許芳瑜") { 
@@ -1564,10 +1616,24 @@
     function submitDailyReport() { 
         if (!globalDB || !globalDB.employees) return alert("資料尚未載入完成"); 
         var empRecord = globalDB.employees.find(function(r) { return r[0] === currentUser; }); if (!empRecord) return; 
-        var myDept = empRecord[1]; var isManager = myIsManager; var myRole = isManager ? "部門主管" : "一般員工"; var blocks = document.querySelectorAll('#dailyTab .report-block'); var contentsArray = []; var hasContent = false; 
+        var myDept = empRecord[1]; var isManager = myIsManager; 
+        
+        var myRole = isManager ? "部門主管" : "一般員工"; 
+        if (currentUser === "許翊宏") myRole = "一般員工"; // 許翊宏身分送出為一般員工
+        
+        var blocks = document.querySelectorAll('#dailyTab .report-block'); var contentsArray = []; var hasContent = false; 
         blocks.forEach(function(block) { 
-            var text = ""; var getVal = function(selector) { var node = block.querySelector(selector); var val = node ? node.value.trim() : ""; if(val) hasContent = true; return val; }; 
-            if (isManager) { 
+            var text = ""; 
+            var getVal = function(selector) { 
+                var node = block.querySelector(selector); 
+                var val = node ? node.value.trim() : ""; 
+                if(val) hasContent = true; 
+                return val; 
+            }; 
+            
+            if (currentUser === "許翊宏") {
+                text = '【送貨】' + getVal('.trans-points') + '點\n🚛【車號】' + getVal('.trans-plate') + '\n🚗【里程】' + getVal('.trans-km') + '\n⛽【車況】' + getVal('.trans-car') + '\n🔄【退貨】' + getVal('.trans-return') + ' (' + getVal('.trans-action') + ')\n🛑【反映】\n' + getVal('.trans-delay');
+            } else if (isManager) { 
                 text = '【團隊狀態】' + getVal('.m-status') + '\n【問題排除】\n' + getVal('.m-issue') + '\n【跨部協調】\n' + getVal('.m-coord') + '\n【明日戰略】\n' + getVal('.m-plan') + '\n【人員觀察】\n' + getVal('.m-advice'); 
             } else { 
                 if (currentUser === "林心評" || currentUser === "許芳瑜") { text = '【戰果】' + getVal('.pur-type') + ' (' + getVal('.pur-target') + ')\n💰【價值】\n' + getVal('.pur-value') + '\n📈【情報】\n' + getVal('.pur-market'); } 
