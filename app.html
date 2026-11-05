@@ -120,6 +120,7 @@
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
+        /* 🌟 全新升級：即時工時追蹤面板樣式 */
         .work-hour-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px dashed #eee; background: white; margin-bottom: 0; border-radius: 0;}
         .work-hour-item:last-child { border-bottom: none; }
         .work-hour-info { display: flex; flex-direction: column; gap: 6px; }
@@ -963,7 +964,7 @@
                     var r = globalDB.leave[j];
                     if (r[2] === currentUser && r[8] === "已生效") {
                         var sDate = new Date(r[5]); var eDate = new Date(r[6]);
-                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
+                        if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime()) && sDate.getFullYear() === currentYear) {
                             var rawHours = (eDate.getTime() - sDate.getTime()) / 3600000;
                             var days = 0;
                             if (rawHours > 16) { days = Math.ceil(rawHours / 24); } else { var actHours = rawHours >= 5 ? rawHours - 1 : rawHours; days = Math.min(8, actHours) / 8; }
@@ -1084,22 +1085,24 @@
         return '<div class="history-card leave" style="border-left-color:' + statusColor + ';"><div class="hist-content"><div><div class="hist-title">' + titleHTML + '</div><div class="hist-sub" style="margin-bottom:3px;">' + sStr + ' ~ ' + eStr + '</div><div class="hist-sub">📝 ' + reason + '</div></div><div class="hist-status" style="color:' + statusColor + '; border: 1px solid ' + statusColor + '33; background: #fff;">' + status + '</div></div>' + actionBtnsHTML + '</div>';
     }
 
-    // 🌟 新增：點擊查看每日明細專屬彈窗
     window.viewMemberDailyDetail = function(empName) {
         var today = new Date();
         var pad = function(n) { return n.toString().padStart(2, '0'); };
-        var todayStr = today.getFullYear() + '/' + pad(today.getMonth() + 1) + '/' + pad(today.getDate());
         
         var logs = [];
+        var monthStr = today.getFullYear() + '-' + pad(today.getMonth() + 1);
+        
         for (var i = 1; i < currentMonthAttData.length; i++) {
             var row = currentMonthAttData[i];
             if (String(row[1]).trim() === empName) {
                 var d = new Date(row[0]);
                 if (!isNaN(d.getTime())) {
-                    var dStr = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate());
-                    if (dStr === todayStr) {
+                    var mStr = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+                    if (mStr === monthStr) {
                         logs.push({
-                            time: pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()),
+                            dateObj: d,
+                            dateStr: pad(d.getMonth() + 1) + '/' + pad(d.getDate()),
+                            time: pad(d.getHours()) + ':' + pad(d.getMinutes()),
                             type: row[3] || "未知",
                             status: row[4] || "",
                             reason: row[5] || ""
@@ -1110,15 +1113,18 @@
         }
         
         if (logs.length === 0) {
-            showAlert('出勤明細', '員工【' + empName + '】今日尚無任何打卡紀錄。', 'info');
+            showAlert('出勤明細', '員工【' + empName + '】本月尚無任何打卡紀錄。', 'info');
             return;
         }
         
-        var html = '<div style="text-align:left; font-size:13px; max-height:260px; overflow-y:auto;">';
+        logs.sort(function(a, b) { return b.dateObj.getTime() - a.dateObj.getTime(); });
+        
+        var html = '<div style="text-align:left; font-size:13px; max-height:300px; overflow-y:auto; padding-right:10px;">';
         for (var j = 0; j < logs.length; j++) {
             var item = logs[j];
             var color = item.type.indexOf('上班') !== -1 ? '#1a73e8' : '#e67c73';
-            html += '<div style="padding:8px 0; border-bottom:1px dashed #eee;">' +
+            html += '<div style="padding:10px 0; border-bottom:1px dashed #eee;">' +
+                    '<b style="color:#202124; font-size:14px;">' + item.dateStr + '</b> ' +
                     '<b style="color:' + color + ';">[' + item.type + '] ' + item.time + '</b><br>' +
                     '<span style="color:#555;">狀態：' + (item.status || "正常") + '</span>' +
                     (item.reason ? '<br><span style="color:#888;">備註：' + item.reason + '</span>' : '') +
@@ -1128,13 +1134,13 @@
         
         if (typeof Swal !== "undefined") {
             Swal.fire({
-                title: empName + ' 今日明細',
+                title: empName + ' 本月打卡明細',
                 html: html,
                 confirmButtonText: '關閉',
                 confirmButtonColor: 'var(--primary)'
             });
         } else {
-            alert(empName + ' 今日打卡紀錄共 ' + logs.length + ' 筆');
+            alert(empName + ' 本月打卡紀錄共 ' + logs.length + ' 筆');
         }
     };
 
@@ -1199,8 +1205,11 @@
             }
             
             var todayTime = new Date(); todayTime.setHours(0,0,0,0);
-            var today = new Date(); var todayStrYMD = today.getFullYear() + pad(today.getMonth()+1) + pad(today.getDate());
-            var todayMonthStr = today.getFullYear() + '-' + pad(today.getMonth()+1); var dayNum = today.getDate();
+            var today = new Date(); 
+            var todayStrYMD = today.getFullYear() + pad(today.getMonth()+1) + pad(today.getDate());
+            var todayStrYMD_slash = today.getFullYear() + '/' + pad(today.getMonth()+1) + '/' + pad(today.getDate());
+            var todayMonthStr = today.getFullYear() + '-' + pad(today.getMonth()+1); 
+            var dayNum = today.getDate();
             var todayLeaveList = []; 
             var isBoss = false; for(var b = 0; b < TOP_BOSSES.length; b++){ if(TOP_BOSSES[b] === currentUser) isBoss = true; }
             var isHR = false; for(var hm = 0; hm < HR_MANAGERS.length; hm++){ if(HR_MANAGERS[hm] === currentUser) isHR = true; }
@@ -1239,9 +1248,9 @@
 
             var todayHTML = '<div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;"><div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">🏝️ 今日休假人員</div><div style="font-size: 13px; color: var(--text-main); line-height: 1.6; padding-left: 5px;">' + (todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>") + '</div></div>';
 
-            var teamAttHTML = '<div style="background: white; padding: 10px 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.03);"><div class="team-att-header"><span class="team-att-title">⏱️ 今日出勤與工時</span><span class="team-att-badge">即時打卡累計</span></div>';
+            var teamAttHTML = '<div style="background: white; padding: 10px 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.03);"><div class="team-att-header"><span class="team-att-title">⏱️ 運輸部即時工時追蹤</span><span class="team-att-badge">本月累計</span></div>';
             var teamAttList = [];
-            var todayStrYMD_slash = today.getFullYear() + '/' + pad(today.getMonth()+1) + '/' + pad(today.getDate());
+            var startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
 
             if (globalDB.employees) {
                 for (var e2 = 0; e2 < globalDB.employees.length; e2++) {
@@ -1255,56 +1264,75 @@
                     var isSameDeptCheck = isManagedBy(eDept, myDept);
                     
                     if ((isSameDeptCheck && (myIsManager || isExtraManager)) || isBoss || isHR) {
-                        var eHasIn = false; var eInTime = ""; var eInDate = null;
-                        var eHasOut = false; var eOutTime = ""; var eOutDate = null;
                         
+                        var totalMonthlyHours = 0;
+                        var totalMonthlyOT = 0;
+                        var dailyInOutMap = {}; 
+
                         for (var k2 = 1; k2 < currentMonthAttData.length; k2++) {
                             var rowName2 = String(currentMonthAttData[k2][1]).trim(); 
                             var rowType2 = String(currentMonthAttData[k2][3]).trim(); 
                             var rowDate2 = new Date(currentMonthAttData[k2][0]);
-                            if (rowName2 === eName && !isNaN(rowDate2.getTime())) {
-                                var dStr2 = rowDate2.getFullYear() + '/' + pad(rowDate2.getMonth()+1) + '/' + pad(rowDate2.getDate());
-                                if (dStr2 === todayStrYMD_slash) {
-                                    if (rowType2.indexOf("上班") !== -1) { eHasIn = true; eInTime = pad(rowDate2.getHours()) + ':' + pad(rowDate2.getMinutes()); eInDate = rowDate2; }
-                                    if (rowType2.indexOf("下班") !== -1) { eHasOut = true; eOutTime = pad(rowDate2.getHours()) + ':' + pad(rowDate2.getMinutes()); eOutDate = rowDate2; }
+                            
+                            if (rowName2 === eName && !isNaN(rowDate2.getTime()) && rowDate2.getTime() >= startOfMonth) {
+                                var dayKey = rowDate2.getFullYear() + '/' + pad(rowDate2.getMonth()+1) + '/' + pad(rowDate2.getDate());
+                                if (!dailyInOutMap[dayKey]) dailyInOutMap[dayKey] = { inTime: null, outTime: null };
+                                
+                                if (rowType2.indexOf("上班") !== -1) {
+                                    if (!dailyInOutMap[dayKey].inTime || rowDate2 < dailyInOutMap[dayKey].inTime) {
+                                        dailyInOutMap[dayKey].inTime = rowDate2;
+                                    }
+                                }
+                                if (rowType2.indexOf("下班") !== -1) {
+                                    if (!dailyInOutMap[dayKey].outTime || rowDate2 > dailyInOutMap[dayKey].outTime) {
+                                        dailyInOutMap[dayKey].outTime = rowDate2;
+                                    }
+                                }
+                            }
+                        }
+
+                        var todayStatusText = "尚未打卡";
+                        var todayStatusColor = "#ccc";
+                        
+                        for (var dKey in dailyInOutMap) {
+                            var dayData = dailyInOutMap[dKey];
+                            var dayHrs = 0;
+                            
+                            if (dayData.inTime) {
+                                var calcEndTime = dayData.outTime ? dayData.outTime : (dKey === todayStrYMD_slash ? todayTime : dayData.inTime);
+                                
+                                var msDiff = calcEndTime.getTime() - dayData.inTime.getTime();
+                                var rawHrs = msDiff / 3600000;
+                                dayHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
+                                dayHrs = Math.max(0, dayHrs);
+                                
+                                totalMonthlyHours += dayHrs;
+                                if (dayHrs > 8) totalMonthlyOT += (dayHrs - 8);
+
+                                if (dKey === todayStrYMD_slash) {
+                                    if (dayData.outTime) {
+                                        todayStatusText = "已下班 (" + pad(dayData.outTime.getHours()) + ":" + pad(dayData.outTime.getMinutes()) + ")";
+                                        todayStatusColor = "#70757a";
+                                    } else {
+                                        todayStatusText = "上班中 (" + pad(dayData.inTime.getHours()) + ":" + pad(dayData.inTime.getMinutes()) + ")";
+                                        todayStatusColor = "#0f9d58";
+                                    }
                                 }
                             }
                         }
                         
-                        var statusText = "尚未打卡";
-                        var statusColor = "#ccc";
-                        var finalHrs = 0;
-
-                        if (eHasIn) {
-                            if (eHasIn && eHasOut) {
-                                statusText = "已下班 (" + eOutTime + ")";
-                                statusColor = "#70757a";
-                                
-                                var msDiff = eOutDate.getTime() - eInDate.getTime();
-                                var rawHrs = msDiff / 3600000;
-                                var actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
-                                finalHrs = Math.max(0, actHrs).toFixed(1);
-                            } else {
-                                statusText = "上班中 (" + eInTime + ")";
-                                statusColor = "#0f9d58";
-                                
-                                var msDiff = todayTime.getTime() - eInDate.getTime();
-                                var rawHrs = msDiff / 3600000;
-                                var actHrs = rawHrs >= 5 ? rawHrs - 1 : rawHrs;
-                                finalHrs = Math.max(0, actHrs).toFixed(1);
-                            }
-                        }
+                        var finalHrsStr = totalMonthlyHours.toFixed(1);
+                        var finalOtStr = totalMonthlyOT.toFixed(1);
                         
                         var otText = "";
-                        if (finalHrs > 8) {
-                            var otHrs = (finalHrs - 8).toFixed(1);
-                            otText = "<div class='work-hour-over'>實際超時: " + otHrs + " h</div>";
+                        if (totalMonthlyOT > 0) {
+                            otText = "<div class='work-hour-over'>實際超時: " + finalOtStr + " h</div>";
                         }
                         
                         var safeEmpName = eName.replace(/'/g, "\\'");
-                        var itemHTML = "<div class='work-hour-item'><div class='work-hour-info'><div class='work-hour-name'>" + eName + " <span style='font-size:12px; font-weight:normal; color:" + statusColor + ";'>" + statusText + "</span></div><a class='work-hour-link' onclick=\"window.viewMemberDailyDetail('" + safeEmpName + "')\">點擊查看每日明細 &gt;</a></div><div class='work-hour-stats'><div class='work-hour-val " + (finalHrs > 8 ? "val-danger" : "val-primary") + "'>" + finalHrs + " h</div>" + otText + "</div></div>";
+                        var itemHTML = "<div class='work-hour-item'><div class='work-hour-info'><div class='work-hour-name'>" + eName + " <span style='font-size:12px; font-weight:normal; color:" + todayStatusColor + ";'>" + todayStatusText + "</span></div><a class='work-hour-link' onclick=\"window.viewMemberDailyDetail('" + safeEmpName + "')\">點擊查看每日明細 &gt;</a></div><div class='work-hour-stats'><div class='work-hour-val " + (totalMonthlyHours > (Object.keys(dailyInOutMap).length * 8) ? "val-danger" : "val-primary") + "'>" + finalHrsStr + " h</div>" + otText + "</div></div>";
                         
-                        teamAttList.push({ name: eName, html: itemHTML, hours: parseFloat(finalHrs) });
+                        teamAttList.push({ name: eName, html: itemHTML, hours: totalMonthlyHours });
                     }
                 }
             }
@@ -1313,7 +1341,7 @@
                 teamAttList.sort(function(a, b) { return b.hours - a.hours; });
                 for(var t=0; t<teamAttList.length; t++) { teamAttHTML += teamAttList[t].html; }
             } else {
-                teamAttHTML += "<div style='color:var(--text-sub); font-size:13px; text-align:center; padding:10px;'>部門今日尚無打卡紀錄</div>";
+                teamAttHTML += "<div style='color:var(--text-sub); font-size:13px; text-align:center; padding:10px;'>部門本月尚無打卡紀錄</div>";
             }
             teamAttHTML += '</div>';
 
@@ -1572,7 +1600,6 @@
         var myDept = empRecord[1]; var isManager = myIsManager; 
         reportBlockCount++; var container = document.getElementById('dynamicReports'); var innerHtml = ''; 
         
-        // 🌟 核心修正：許翊宏身兼司機，讓他直接填寫「運輸部司機報表」，不填寫主管問答題
         if (currentUser === "許翊宏") {
             innerHtml = '<label class="rpt-label">今日總送貨點數：</label><input type="number" class="rpt-input trans-points" placeholder="幾點"><label class="rpt-label">🚛 今日駕駛車號：</label><input type="text" class="rpt-input trans-plate" placeholder="例如: ABC-1234"><label class="rpt-label">🚗 出車 / 回公司里程數：</label><input type="text" class="rpt-input trans-km" placeholder="例如: 出1500 / 回1550"><label class="rpt-label">油錢與車輛保養：</label><textarea class="rpt-textarea trans-car" placeholder="加油金額？車子需保養嗎？"></textarea><label class="rpt-label" style="color:var(--danger);">🔄 客戶退貨紀錄 (第一線)：</label><textarea class="rpt-textarea trans-return" placeholder="品名/數量與原因 (送錯/破損)"></textarea><label class="rpt-label">退貨處置判斷：</label><select class="rpt-select trans-action"><option value="無退貨">無退貨</option><option value="可重新銷售">可重新銷售</option><option value="需報廢處理">需報廢處理</option></select><label class="rpt-label">🛑 配送異常與客戶反映：</label><textarea class="rpt-textarea trans-delay" placeholder="沒送到原因？客戶抱怨？"></textarea>';
         } else if (isManager) { 
@@ -1619,7 +1646,7 @@
         var myDept = empRecord[1]; var isManager = myIsManager; 
         
         var myRole = isManager ? "部門主管" : "一般員工"; 
-        if (currentUser === "許翊宏") myRole = "一般員工"; // 許翊宏身分送出為一般員工
+        if (currentUser === "許翊宏") myRole = "一般員工"; 
         
         var blocks = document.querySelectorAll('#dailyTab .report-block'); var contentsArray = []; var hasContent = false; 
         blocks.forEach(function(block) { 
