@@ -1088,18 +1088,21 @@
     window.viewMemberDailyDetail = function(empName) {
         var today = new Date();
         var pad = function(n) { return n.toString().padStart(2, '0'); };
-        var todayStr = today.getFullYear() + '/' + pad(today.getMonth() + 1) + '/' + pad(today.getDate());
         
         var logs = [];
+        var monthStr = today.getFullYear() + '-' + pad(today.getMonth() + 1);
+        
         for (var i = 1; i < currentMonthAttData.length; i++) {
             var row = currentMonthAttData[i];
             if (String(row[1]).trim() === empName) {
                 var d = new Date(row[0]);
                 if (!isNaN(d.getTime())) {
-                    var dStr = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate());
-                    if (dStr === todayStr) {
+                    var mStr = d.getFullYear() + '-' + pad(d.getMonth() + 1);
+                    if (mStr === monthStr) {
                         logs.push({
-                            time: pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()),
+                            dateObj: d,
+                            dateStr: pad(d.getMonth() + 1) + '/' + pad(d.getDate()),
+                            time: pad(d.getHours()) + ':' + pad(d.getMinutes()),
                             type: row[3] || "未知",
                             status: row[4] || "",
                             reason: row[5] || ""
@@ -1110,15 +1113,18 @@
         }
         
         if (logs.length === 0) {
-            showAlert('出勤明細', '員工【' + empName + '】今日尚無任何打卡紀錄。', 'info');
+            showAlert('出勤明細', '員工【' + empName + '】本月尚無任何打卡紀錄。', 'info');
             return;
         }
         
-        var html = '<div style="text-align:left; font-size:13px; max-height:260px; overflow-y:auto;">';
+        logs.sort(function(a, b) { return b.dateObj.getTime() - a.dateObj.getTime(); });
+        
+        var html = '<div style="text-align:left; font-size:13px; max-height:300px; overflow-y:auto; padding-right:10px;">';
         for (var j = 0; j < logs.length; j++) {
             var item = logs[j];
             var color = item.type.indexOf('上班') !== -1 ? '#1a73e8' : '#e67c73';
-            html += '<div style="padding:8px 0; border-bottom:1px dashed #eee;">' +
+            html += '<div style="padding:10px 0; border-bottom:1px dashed #eee;">' +
+                    '<b style="color:#202124; font-size:14px;">' + item.dateStr + '</b> ' +
                     '<b style="color:' + color + ';">[' + item.type + '] ' + item.time + '</b><br>' +
                     '<span style="color:#555;">狀態：' + (item.status || "正常") + '</span>' +
                     (item.reason ? '<br><span style="color:#888;">備註：' + item.reason + '</span>' : '') +
@@ -1128,13 +1134,13 @@
         
         if (typeof Swal !== "undefined") {
             Swal.fire({
-                title: empName + ' 今日明細',
+                title: empName + ' 本月打卡明細',
                 html: html,
                 confirmButtonText: '關閉',
                 confirmButtonColor: 'var(--primary)'
             });
         } else {
-            alert(empName + ' 今日打卡紀錄共 ' + logs.length + ' 筆');
+            alert(empName + ' 本月打卡紀錄共 ' + logs.length + ' 筆');
         }
     };
 
@@ -1199,8 +1205,11 @@
             }
             
             var todayTime = new Date(); todayTime.setHours(0,0,0,0);
-            var today = new Date(); var todayStrYMD = today.getFullYear() + pad(today.getMonth()+1) + pad(today.getDate());
-            var todayMonthStr = today.getFullYear() + '-' + pad(today.getMonth()+1); var dayNum = today.getDate();
+            var today = new Date(); 
+            var todayStrYMD = today.getFullYear() + pad(today.getMonth()+1) + pad(today.getDate());
+            var todayStrYMD_slash = today.getFullYear() + '/' + pad(today.getMonth()+1) + '/' + pad(today.getDate());
+            var todayMonthStr = today.getFullYear() + '-' + pad(today.getMonth()+1); 
+            var dayNum = today.getDate();
             var todayLeaveList = []; 
             var isBoss = false; for(var b = 0; b < TOP_BOSSES.length; b++){ if(TOP_BOSSES[b] === currentUser) isBoss = true; }
             var isHR = false; for(var hm = 0; hm < HR_MANAGERS.length; hm++){ if(HR_MANAGERS[hm] === currentUser) isHR = true; }
@@ -1239,11 +1248,9 @@
 
             var todayHTML = '<div style="background: #e8f0fe; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #cce0ff;"><div style="font-weight: bold; color: var(--primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 5px;">🏝️ 今日休假人員</div><div style="font-size: 13px; color: var(--text-main); line-height: 1.6; padding-left: 5px;">' + (todayLeaveList.length > 0 ? todayLeaveList.join("<br>") : "<span style='color:var(--text-sub);'>✅ 今日無人休假</span>") + '</div></div>';
 
-            // 🌟 【升級月累計工時運算邏輯】
             var teamAttHTML = '<div style="background: white; padding: 10px 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.03);"><div class="team-att-header"><span class="team-att-title">⏱️ 運輸部即時工時追蹤</span><span class="team-att-badge">本月累計</span></div>';
             var teamAttList = [];
             var startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
-            var todayEndStr = todayStrYMD; 
 
             if (globalDB.employees) {
                 for (var e2 = 0; e2 < globalDB.employees.length; e2++) {
@@ -1262,7 +1269,6 @@
                         var totalMonthlyOT = 0;
                         var dailyInOutMap = {}; 
 
-                        // 蒐集該員工本月所有打卡
                         for (var k2 = 1; k2 < currentMonthAttData.length; k2++) {
                             var rowName2 = String(currentMonthAttData[k2][1]).trim(); 
                             var rowType2 = String(currentMonthAttData[k2][3]).trim(); 
@@ -1285,7 +1291,6 @@
                             }
                         }
 
-                        // 計算每一天的工時並累加
                         var todayStatusText = "尚未打卡";
                         var todayStatusColor = "#ccc";
                         
@@ -1304,7 +1309,6 @@
                                 totalMonthlyHours += dayHrs;
                                 if (dayHrs > 8) totalMonthlyOT += (dayHrs - 8);
 
-                                // 若為今天的紀錄，更新狀態文字
                                 if (dKey === todayStrYMD_slash) {
                                     if (dayData.outTime) {
                                         todayStatusText = "已下班 (" + pad(dayData.outTime.getHours()) + ":" + pad(dayData.outTime.getMinutes()) + ")";
