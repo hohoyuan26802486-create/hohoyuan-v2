@@ -35,7 +35,7 @@
         .login-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
         .btn-login { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(26,115,232,0.3); }
 
-        #mainScreen { display: none; flex-direction: column; height: 100%; padding-bottom: 70px; }
+        #mainScreen { display: none; flex-direction: column; height: 100%; padding-bottom: 0; }
         .header-bg { background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%); padding: 30px 20px 20px 20px; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;}
         .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
         .app-title { font-weight: 900; color: var(--primary); font-size: 18px; letter-spacing: 1px;}
@@ -43,7 +43,8 @@
         .greeting h2 { font-size: 28px; color: var(--text-main); margin: 0 0 5px 0; font-weight: 800;}
         .greeting p { font-size: 14px; color: var(--danger); margin: 0; font-weight: bold;}
 
-        .view-section { display: none; flex: 1; flex-direction: column; padding: 20px; overflow-y: auto;}
+        /* 🌟 修正點：加長底部留白到 120px，確保按鈕不會被底部導覽列遮擋 */
+        .view-section { display: none; flex: 1; flex-direction: column; padding: 20px 20px 120px 20px; overflow-y: auto;}
         .view-section.active { display: flex; }
 
         .info-cards { display: flex; gap: 15px; margin-top: -10px; margin-bottom: 20px;}
@@ -120,7 +121,6 @@
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* 🌟 全新升級：即時工時追蹤面板樣式 */
         .work-hour-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px dashed #eee; background: white; margin-bottom: 0; border-radius: 0;}
         .work-hour-item:last-child { border-bottom: none; }
         .work-hour-info { display: flex; flex-direction: column; gap: 6px; }
@@ -867,6 +867,16 @@
         })
         .catch(function(e) { console.error("資料載入失敗:", e); });
     }
+    
+    function parseDateSafelyJS(raw) {
+        if (!raw) return new Date(NaN);
+        var d = new Date(raw);
+        if (!isNaN(d.getTime())) return d;
+        var str = String(raw).replace(/-/g, '/').replace('T', ' ');
+        d = new Date(str);
+        if (!isNaN(d.getTime())) return d;
+        return new Date(NaN);
+    }
 
     function checkTodayAttendance() {
         var now = new Date();
@@ -906,7 +916,8 @@
             var currentMonthPrefix = now.getFullYear() + '/' + pad(now.getMonth()+1);
 
             for (var k = 1; k < currentMonthAttData.length; k++) {
-                var rowName = String(currentMonthAttData[k][1]).trim(); var rowType = String(currentMonthAttData[k][3]).trim(); var rowDate = new Date(currentMonthAttData[k][0]);
+                var rowName = String(currentMonthAttData[k][1]).trim(); var rowType = String(currentMonthAttData[k][3]).trim(); 
+                var rowDate = parseDateSafelyJS(currentMonthAttData[k][0]);
                 if (rowName === currentUser && !isNaN(rowDate.getTime())) {
                     var dStr = rowDate.getFullYear() + '/' + pad(rowDate.getMonth()+1) + '/' + pad(rowDate.getDate());
                     if (!dailyPunches[dStr]) dailyPunches[dStr] = { in: false, out: false };
@@ -1023,7 +1034,7 @@
 
     function generateLeaveCardHTML(r, isTeamView, myDept) {
         var leaveId = r[0]; var empName = r[2]; var empDept = r[3]; var typeStr = r[4]; 
-        var sDate = new Date(r[5]); var eDate = new Date(r[6]);
+        var sDate = parseDateSafelyJS(r[5]); var eDate = parseDateSafelyJS(r[6]);
         var sStr = isNaN(sDate.getTime()) ? r[5] : (sDate.getMonth()+1) + '/' + sDate.getDate() + ' ' + pad(sDate.getHours()) + ':' + pad(sDate.getMinutes());
         var eStr = isNaN(eDate.getTime()) ? r[6] : (eDate.getMonth()+1) + '/' + eDate.getDate() + ' ' + pad(eDate.getHours()) + ':' + pad(eDate.getMinutes());
         var status = r[8]; var reason = r[7];
@@ -1095,7 +1106,7 @@
         for (var i = 1; i < currentMonthAttData.length; i++) {
             var row = currentMonthAttData[i];
             if (String(row[1]).trim() === empName) {
-                var d = new Date(row[0]);
+                var d = parseDateSafelyJS(row[0]);
                 if (!isNaN(d.getTime())) {
                     var mStr = d.getFullYear() + '-' + pad(d.getMonth() + 1);
                     if (mStr === monthStr) {
@@ -1221,7 +1232,7 @@
                     if (status === "已生效" || status.indexOf("待") !== -1) {
                         var isSameDept = isManagedBy(r[3], myDept);
                         if ((isSameDept && (myIsManager || isExtraManager)) || isBoss || isHR) {
-                            var sDate = new Date(r[5]); var eDate = new Date(r[6]);
+                            var sDate = parseDateSafelyJS(r[5]); var eDate = parseDateSafelyJS(r[6]);
                             if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime())) {
                                 var sStr = sDate.getFullYear() + pad(sDate.getMonth()+1) + pad(sDate.getDate()); 
                                 var eStr = eDate.getFullYear() + pad(eDate.getMonth()+1) + pad(eDate.getDate());
@@ -1272,7 +1283,7 @@
                         for (var k2 = 1; k2 < currentMonthAttData.length; k2++) {
                             var rowName2 = String(currentMonthAttData[k2][1]).trim(); 
                             var rowType2 = String(currentMonthAttData[k2][3]).trim(); 
-                            var rowDate2 = new Date(currentMonthAttData[k2][0]);
+                            var rowDate2 = parseDateSafelyJS(currentMonthAttData[k2][0]);
                             
                             if (rowName2 === eName && !isNaN(rowDate2.getTime()) && rowDate2.getTime() >= startOfMonth) {
                                 var dayKey = rowDate2.getFullYear() + '/' + pad(rowDate2.getMonth()+1) + '/' + pad(rowDate2.getDate());
@@ -1481,10 +1492,15 @@
                     fetchApi(ATTENDANCE_API_URL, otPayload); 
                 }
                 
+                // 🌟 修正點：加入 1.5 秒等待時間，讓 Google Sheets 完全寫入後再重整
                 if (typeof Swal !== "undefined") {
-                    Swal.fire('成功', '打卡成功！', 'success').then(function() { location.reload(); });
+                    Swal.fire('成功', '打卡成功！', 'success').then(function() { 
+                        showLoading("同步出勤資料中...");
+                        setTimeout(function(){ location.reload(); }, 1500);
+                    });
                 } else {
-                    alert('打卡成功！'); location.reload();
+                    alert('打卡成功！'); 
+                    setTimeout(function(){ location.reload(); }, 1500);
                 }
             } else { showAlert('失敗', result, 'error'); }
         }).catch(function(e) {
