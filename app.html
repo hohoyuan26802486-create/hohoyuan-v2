@@ -43,7 +43,6 @@
         .greeting h2 { font-size: 28px; color: var(--text-main); margin: 0 0 5px 0; font-weight: 800;}
         .greeting p { font-size: 14px; color: var(--danger); margin: 0; font-weight: bold;}
 
-        /* 🌟 修正點：加長底部留白到 120px，確保按鈕不會被底部導覽列遮擋 */
         .view-section { display: none; flex: 1; flex-direction: column; padding: 20px 20px 120px 20px; overflow-y: auto;}
         .view-section.active { display: flex; }
 
@@ -196,10 +195,12 @@
                         <option value="假日值班 (算加班費)">假日值班 (算加班費)</option>
                         <option value="假日值班 (擇日補休)">假日值班 (擇日補休)</option>
                     </select>
-                    <div id="compLeaveDateBox" style="display:none; width: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 8px; border: 1px dashed #1a73e8;">
-                        <p style="margin:0 0 8px 0; color: #1a73e8; font-size:12px; font-weight:bold;">📅 預計補休日期：<br><span style="font-weight:normal; color:#555;">(若已知請選擇，系統將自動生成假單)</span></p>
-                        <input type="date" id="compLeaveDate" class="form-control" style="padding: 8px; border-color: #1a73e8;">
-                    </div>
+                </div>
+                
+                <!-- 🌟 修正點：將補休日期框獨立出來，避免被鎖在假日判斷內 -->
+                <div id="compLeaveDateBox" style="display:none; width: 100%; margin-top: 10px; background: white; padding: 10px; border-radius: 8px; border: 1px dashed #1a73e8;">
+                    <p style="margin:0 0 8px 0; color: #1a73e8; font-size:12px; font-weight:bold;">📅 預計補休日期：<br><span style="font-weight:normal; color:#555;">(若已知請選擇，系統將自動生成假單)</span></p>
+                    <input type="date" id="compLeaveDate" class="form-control" style="padding: 8px; border-color: #1a73e8;">
                 </div>
                 
                 <div id="statusArea" style="width: 100%; margin-top: 20px;">
@@ -479,6 +480,17 @@
         return (day === 0 || day === 6 || isHol);
     }
 
+    // 🌟 修正點：吳宏文也可以管理倉儲部
+    function isManagedBy(empDept, myDept) {
+        var e = String(empDept).trim();
+        var m = String(myDept).trim();
+        if (e === m) return true; 
+        if (m === '業務部' && (e === '業務行政部' || e === '打單行政部' || e === '採購部')) return true;
+        if (m === '生產部' && e === '倉儲部') return true;
+        if (e === '倉儲部' && currentUser === '吳宏文') return true; // 吳宏文專屬擴充權限
+        return false;
+    }
+
     function parsePermissions() {
         if (!globalDB || !globalDB.employees) return;
         var emp = null;
@@ -517,15 +529,6 @@
                 if (lblHistAtt) lblHistAtt.style.display = 'block';
             }
         }
-    }
-
-    function isManagedBy(empDept, myDept) {
-        var e = String(empDept).trim();
-        var m = String(myDept).trim();
-        if (e === m) return true; 
-        if (m === '業務部' && (e === '業務行政部' || e === '打單行政部' || e === '採購部')) return true;
-        if (m === '生產部' && e === '倉儲部') return true;
-        return false;
     }
 
     window.onload = function() {
@@ -716,15 +719,24 @@
         if (alertContainer) { alertContainer.innerHTML = alertsHTML; alertContainer.style.display = alertsHTML ? "flex" : "none"; }
     }
 
+    // 🌟 修正點：獨立處理「假日擇日補休」與「一般值班換補休」的日期框顯示
     function handleHolidayTypeChange() {
         var type = document.getElementById('holidayType').value;
-        var compBox = document.getElementById('compLeaveDateBox');
-        if (type === '假日值班 (擇日補休)') { compBox.style.display = 'block'; } 
-        else { compBox.style.display = 'none'; document.getElementById('compLeaveDate').value = ''; }
+        var cb = document.getElementById('compLeaveDateBox');
+        if (cb) {
+            if (type.indexOf('擇日補休') !== -1 || selectedStatus.indexOf('換補休') !== -1) {
+                cb.style.display = 'block';
+            } else {
+                cb.style.display = 'none';
+                document.getElementById('compLeaveDate').value = '';
+            }
+        }
     }
 
     function toggleReasonBox(txt) {
         var rb = document.getElementById('reasonBox');
+        var cb = document.getElementById('compLeaveDateBox');
+        
         if (!rb) return;
         
         if (txt.indexOf("外勤") !== -1 || txt.indexOf("遠端") !== -1 || txt.indexOf("加班") !== -1 || txt.indexOf("值班") !== -1 || txt === "勤務結束下班") {
@@ -732,6 +744,19 @@
             else { rb.style.display = "block"; }
         } else {
             rb.style.display = "none";
+        }
+
+        if (cb) {
+            var hBox = document.getElementById('holidayTypeBox');
+            var hType = document.getElementById('holidayType');
+            var isHolidayComp = (hBox && hBox.style.display !== 'none' && hType && hType.value.indexOf("擇日補休") !== -1);
+            
+            if (txt.indexOf("換補休") !== -1 || isHolidayComp) {
+                cb.style.display = "block";
+            } else {
+                cb.style.display = "none";
+                document.getElementById('compLeaveDate').value = '';
+            }
         }
     }
 
@@ -1465,7 +1490,22 @@
 
         showLoading("打卡資料傳送中...");
         
-        var payload = { action: "write", sheetName: "attendance", name: currentUser, type: type, status: finalStatus, reason: finalReason, lat: userLat || "", lon: userLon || "" };
+        // 🌟 修正點：送出補休日期變數
+        var compDateInput = document.getElementById('compLeaveDate');
+        var compLeaveDateVal = (compDateInput && compDateInput.offsetParent !== null) ? compDateInput.value : "";
+        
+        var payload = { 
+            action: "write", 
+            sheetName: "attendance", 
+            name: currentUser, 
+            type: type, 
+            status: finalStatus, 
+            reason: finalReason, 
+            lat: userLat || "", 
+            lon: userLon || "",
+            compLeaveDate: compLeaveDateVal 
+        };
+
         fetch(ATTENDANCE_API_URL, { 
             method: 'POST', headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload) 
@@ -1492,7 +1532,6 @@
                     fetchApi(ATTENDANCE_API_URL, otPayload); 
                 }
                 
-                // 🌟 修正點：加入 1.5 秒等待時間，讓 Google Sheets 完全寫入後再重整
                 if (typeof Swal !== "undefined") {
                     Swal.fire('成功', '打卡成功！', 'success').then(function() { 
                         showLoading("同步出勤資料中...");
